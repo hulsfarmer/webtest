@@ -1,0 +1,24 @@
+# dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# env files
+.env.local
+.env.local.save
+.env*.local
+
+# generated files
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# video output, temp audio, user uploads
+public/videos/
+data/audio/
+data/uploads/
+
+# misc
+.DS_Store
+*.pem
