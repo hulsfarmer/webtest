@@ -2,8 +2,16 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Sparkles, ImagePlus, X } from 'lucide-react';
+import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Sparkles, ImagePlus, X, Edit3, RefreshCw } from 'lucide-react';
 import RevisePanel from '@/components/RevisePanel';
+
+type VideoScript = {
+  title: string;
+  hashtags: string[];
+  sections: Array<{ type: string; text: string; duration: number }>;
+  totalDuration: number;
+  bgKeyword: string;
+};
 
 type StepStatus = 'pending' | 'running' | 'done' | 'failed';
 
@@ -143,12 +151,20 @@ export default function PromoPage() {
   const [isDragging, setIsDragging]         = useState(false);
   const fileInputRef                        = useRef<HTMLInputElement>(null);
 
+  // Upload & section state
+  const [uploadId, setUploadId]             = useState<string | null>(null);
+  const [sectionImages, setSectionImages]   = useState<(File | null)[]>([]);
+  const [sectionPreviews, setSectionPreviews] = useState<(string | null)[]>([]);
+  const [pickerSection, setPickerSection]   = useState<number>(-1);
+
   const [jobId, setJobId]                   = useState<string | null>(null);
   const [jobStatus, setJobStatus]           = useState<JobStatus | null>(null);
   const [loading, setLoading]               = useState(false);
   const [error, setError]                   = useState<string | null>(null);
   const [usage, setUsage]                   = useState<UsageInfo | null>(null);
   const [showScript, setShowScript]         = useState(false);
+  const [scriptDraft, setScriptDraft]       = useState<VideoScript | null>(null);
+  const [loadingScript, setLoadingScript]   = useState(false);
   const pollRef   = useRef<NodeJS.Timeout | null>(null);
   const sessionId = useRef<string>('');
 
@@ -182,12 +198,14 @@ export default function PromoPage() {
     const newPreviews = toAdd.map(f => URL.createObjectURL(f));
     setImages(prev => [...prev, ...toAdd]);
     setImagePreviews(prev => [...prev, ...newPreviews]);
+    setUploadId(null); // force re-upload on next script generation
   }, [images.length]);
 
   function removeImage(idx: number) {
     URL.revokeObjectURL(imagePreviews[idx]);
     setImages(prev => prev.filter((_, i) => i !== idx));
     setImagePreviews(prev => prev.filter((_, i) => i !== idx));
+    setUploadId(null); // force re-upload on next script generation
   }
 
   function onFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -206,6 +224,58 @@ export default function PromoPage() {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files) addImages(e.dataTransfer.files);
+  }
+
+  async function generateScriptPreview() {
+    if (!businessName.trim() || !businessType || !sellingPoints.trim()) return;
+    setError(null);
+    setLoadingScript(true);
+    setScriptDraft(null);
+    try {
+      // Upload images first (if any) to get uploadId
+      let currentUploadId = uploadId;
+      if (images.length > 0 && !currentUploadId) {
+        const formData = new FormData();
+        for (const img of images) formData.append('images', img);
+        const upRes = await fetch('/api/upload', { method: 'POST', body: formData });
+        const upData = await upRes.json();
+        if (!upRes.ok) throw new Error(upData.error || '사진 업로드에 실패했습니다.');
+        currentUploadId = upData.uploadId;
+        setUploadId(currentUploadId);
+      }
+
+      const res = await fetch('/api/promo-script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName: businessName.trim(),
+          businessType,
+          sellingPoints: sellingPoints.trim(),
+          contact: contact.trim() || undefined,
+          location: location.trim() || undefined,
+          cta: cta.trim() || undefined,
+          duration,
+          tone,
+          uploadId: currentUploadId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '스크립트 생성에 실패했습니다.');
+
+      setScriptDraft(data.script);
+
+      // Initialize section images from uploaded photos
+      const n = data.script.sections.length;
+      const initImgs: (File | null)[] = Array.from({ length: n }, (_, i) => images[i] ?? null);
+      const initPrevs: (string | null)[] = Array.from({ length: n }, (_, i) => imagePreviews[i] ?? null);
+      setSectionImages(initImgs);
+      setSectionPreviews(initPrevs);
+      setPickerSection(-1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
+    } finally {
+      setLoadingScript(false);
+    }
   }
 
   async function startGeneration() {
@@ -229,9 +299,15 @@ export default function PromoPage() {
       formData.append('voice',      voice);
       formData.append('speed',      String(speed));
       formData.append('sessionId',  sessionId.current);
+      if (scriptDraft) {
+        formData.append('prebuiltScript', JSON.stringify(scriptDraft));
+      }
 
-      // Attach images
-      for (const img of images) {
+      // Attach images in section order (fall back to original images if no sections)
+      const orderedImgs = sectionImages.length > 0
+        ? sectionImages.filter((img): img is File => img !== null)
+        : images;
+      for (const img of orderedImgs) {
         formData.append('images', img);
       }
 
@@ -297,15 +373,23 @@ export default function PromoPage() {
     setBusinessName('');
     setSellingPoints('');
     setError(null);
+    setScriptDraft(null);
+    setLoadingScript(false);
     imagePreviews.forEach(url => URL.revokeObjectURL(url));
     setImages([]);
     setImagePreviews([]);
+    setUploadId(null);
+    setSectionImages([]);
+    setSectionPreviews([]);
+    setPickerSection(-1);
   }
 
-  const isGenerating = loading && jobId;
-  const isDone       = jobStatus?.status === 'done';
-  const isFailed     = jobStatus?.status === 'failed';
-  const canStart     = businessName.trim().length > 0 && businessType.length > 0 && sellingPoints.trim().length > 0 && !loading;
+  const isGenerating    = loading && jobId;
+  const isDone          = jobStatus?.status === 'done';
+  const isFailed        = jobStatus?.status === 'failed';
+  const isScriptReview  = !loading && !loadingScript && !jobId && scriptDraft !== null && !isDone && !isFailed;
+  const showForm        = !isGenerating && !isDone && !isFailed && !isScriptReview && !loadingScript;
+  const canStart        = businessName.trim().length > 0 && businessType.length > 0 && sellingPoints.trim().length > 0 && !loading && !loadingScript;
 
   return (
     <main className="min-h-screen bg-[#0B0A14] text-white">
@@ -355,7 +439,7 @@ export default function PromoPage() {
         )}
 
         {/* Form */}
-        {!isGenerating && !isDone && (
+        {showForm && (
           <div className="glass-card p-6 space-y-5">
 
             {/* 업체명 */}
@@ -656,19 +740,178 @@ export default function PromoPage() {
 
             {/* Submit */}
             <button
-              onClick={startGeneration}
+              onClick={generateScriptPreview}
               disabled={!canStart || (usage?.remaining === 0)}
               className="w-full py-4 rounded-xl text-white font-bold text-base disabled:opacity-40 hover:opacity-90 transition-all flex items-center justify-center gap-2"
               style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
             >
-              <Megaphone className="w-5 h-5" />
-              홍보 영상 생성 시작
-              {images.length > 0 && (
-                <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
-                  사진 {images.length}장
-                </span>
-              )}
+              <Sparkles className="w-5 h-5" />
+              AI 스크립트 생성
             </button>
+          </div>
+        )}
+
+        {/* Loading script preview */}
+        {loadingScript && (
+          <div className="glass-card p-8 text-center">
+            <Loader2 className="w-8 h-8 text-emerald-400 animate-spin mx-auto mb-4" />
+            <p className="text-gray-300 font-medium">AI가 홍보 스크립트를 작성하는 중...</p>
+            <p className="text-gray-500 text-xs mt-2">잠시만 기다려주세요</p>
+          </div>
+        )}
+
+        {/* Script review phase */}
+        {isScriptReview && scriptDraft && (
+          <div className="space-y-4">
+            <div className="glass-card p-4 flex items-center gap-3 border-emerald-500/20 bg-emerald-500/5">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <Edit3 className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <p className="font-bold text-emerald-300">스크립트 검토</p>
+                <p className="text-gray-400 text-xs">내용을 수정한 후 영상을 생성하세요</p>
+              </div>
+            </div>
+
+            <div className="glass-card p-5 space-y-4">
+              {/* Title */}
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">제목</label>
+                <input
+                  type="text"
+                  value={scriptDraft.title}
+                  onChange={(e) => setScriptDraft({ ...scriptDraft, title: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+                />
+              </div>
+
+              {/* Sections */}
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">스크립트 섹션</label>
+                <div className="space-y-3">
+                  {scriptDraft.sections.map((section, i) => (
+                    <div key={i} className="bg-white/3 rounded-xl p-3 border border-white/5">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-gray-500 uppercase tracking-wide">
+                          {section.type === 'hook' ? '💡 훅' : section.type === 'cta' ? '📣 CTA' : `📌 포인트 ${i}`}
+                        </span>
+                        <span className="text-xs text-gray-600">{section.duration}초</span>
+                      </div>
+                      <div className="flex gap-3">
+                        {/* Photo column */}
+                        <div className="flex-shrink-0">
+                          <div className="w-24 h-24 rounded-xl overflow-hidden border border-white/10 bg-white/5 flex items-center justify-center">
+                            {sectionPreviews[i] ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={sectionPreviews[i]!} alt={`섹션 ${i + 1} 사진`} className="w-24 h-24 object-cover" />
+                            ) : (
+                              <ImagePlus className="w-6 h-6 text-gray-600" />
+                            )}
+                          </div>
+                          {images.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setPickerSection(pickerSection === i ? -1 : i)}
+                              className="w-24 mt-1.5 text-center text-[10px] text-emerald-400 hover:text-emerald-300 transition-colors"
+                            >
+                              사진 변경
+                            </button>
+                          )}
+                        </div>
+                        {/* Text column */}
+                        <textarea
+                          value={section.text}
+                          onChange={(e) => {
+                            const newSections = [...scriptDraft.sections];
+                            newSections[i] = { ...newSections[i], text: e.target.value };
+                            setScriptDraft({ ...scriptDraft, sections: newSections });
+                          }}
+                          rows={4}
+                          className="flex-1 bg-transparent text-gray-200 text-sm focus:outline-none resize-none leading-relaxed"
+                        />
+                      </div>
+                      {/* Inline photo picker */}
+                      {pickerSection === i && images.length > 0 && (
+                        <div className="mt-2 p-2 bg-white/5 rounded-xl border border-white/10 flex flex-wrap gap-2">
+                          {imagePreviews.map((url, pi) => (
+                            <button
+                              key={pi}
+                              type="button"
+                              onClick={() => {
+                                const newImgs = [...sectionImages];
+                                const newPrevs = [...sectionPreviews];
+                                newImgs[i] = images[pi];
+                                newPrevs[i] = url;
+                                setSectionImages(newImgs);
+                                setSectionPreviews(newPrevs);
+                                setPickerSection(-1);
+                              }}
+                              className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                                sectionImages[i] === images[pi]
+                                  ? 'border-emerald-400'
+                                  : 'border-transparent hover:border-white/40'
+                              }`}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={url} alt={`사진 ${pi + 1}`} className="w-full h-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Hashtags */}
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">해시태그</label>
+                <div className="flex flex-wrap gap-2">
+                  {scriptDraft.hashtags.map((tag, i) => (
+                    <span key={i} className="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 text-xs">{tag}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {error && (
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                <p className="text-red-300 text-sm">{error}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setScriptDraft(null); setError(null); }}
+                className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/8 text-gray-300 font-medium hover:bg-white/12 transition-all border border-white/10 text-sm"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                돌아가기
+              </button>
+              <button
+                onClick={generateScriptPreview}
+                disabled={loadingScript}
+                className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/8 text-gray-300 font-medium hover:bg-white/12 transition-all border border-white/10 text-sm"
+              >
+                <RefreshCw className="w-4 h-4" />
+                재생성
+              </button>
+              <button
+                onClick={startGeneration}
+                disabled={usage?.remaining === 0}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-white font-bold hover:opacity-90 transition-all disabled:opacity-40"
+                style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
+              >
+                <Megaphone className="w-5 h-5" />
+                이 스크립트로 영상 생성
+                {images.length > 0 && (
+                  <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
+                    사진 {images.length}장
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
         )}
 
@@ -695,7 +938,7 @@ export default function PromoPage() {
         )}
 
         {/* Loading before first status */}
-        {loading && !jobStatus && (
+        {loading && !jobStatus && !loadingScript && (
           <div className="glass-card p-8 text-center">
             <Loader2 className="w-8 h-8 text-emerald-400 animate-spin mx-auto mb-4" />
             <p className="text-gray-300">영상 생성을 시작하는 중...</p>
