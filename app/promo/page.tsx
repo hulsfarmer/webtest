@@ -763,76 +763,74 @@ export default function PromoPage() {
         {/* Script review phase */}
         {isScriptReview && scriptDraft && (
           <div className="space-y-4">
-            <div className="glass-card p-4 flex items-center gap-3 border-emerald-500/20 bg-emerald-500/5">
-              <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                <Edit3 className="w-5 h-5 text-emerald-400" />
-              </div>
-              <div>
-                <p className="font-bold text-emerald-300">스크립트 검토</p>
-                <p className="text-gray-400 text-xs">내용을 수정한 후 영상을 생성하세요</p>
-              </div>
-            </div>
-
-            <div className="glass-card p-5 space-y-4">
-              {/* Title */}
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">제목</label>
+            {/* Header — business name + editable script title */}
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <h2 className="font-bold text-lg flex items-center gap-2">
+                  <Megaphone className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                  {businessName}
+                </h2>
                 <input
                   type="text"
                   value={scriptDraft.title}
                   onChange={(e) => setScriptDraft({ ...scriptDraft, title: e.target.value })}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all"
+                  className="mt-1.5 text-sm text-gray-400 bg-transparent border-b border-white/10 focus:outline-none focus:border-emerald-500/50 w-full transition-all placeholder-gray-600"
+                  placeholder="영상 제목"
                 />
               </div>
+              <button
+                onClick={() => { setScriptDraft(null); setError(null); }}
+                className="text-xs text-gray-500 hover:text-gray-300 transition-colors flex-shrink-0 ml-4 mt-1"
+              >
+                ← 처음으로
+              </button>
+            </div>
 
+            <div className="glass-card p-5 space-y-3">
               {/* Sections */}
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">스크립트 섹션</label>
-                <div className="space-y-3">
-                  {scriptDraft.sections.map((section, i) => (
-                    <div key={i} className="bg-white/3 rounded-xl p-3 border border-white/5">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-gray-500 uppercase tracking-wide">
-                          {section.type === 'hook' ? '💡 훅' : section.type === 'cta' ? '📣 CTA' : `📌 포인트 ${i}`}
-                        </span>
-                        <span className="text-xs text-gray-600">{section.duration}초</span>
-                      </div>
-                      <div className="flex gap-3">
-                        {/* Photo column */}
-                        <div className="flex-shrink-0">
-                          <div className="w-24 h-24 rounded-xl overflow-hidden border border-white/10 bg-white/5 flex items-center justify-center">
-                            {sectionPreviews[i] ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={sectionPreviews[i]!} alt={`섹션 ${i + 1} 사진`} className="w-24 h-24 object-cover" />
-                            ) : (
-                              <ImagePlus className="w-6 h-6 text-gray-600" />
-                            )}
-                          </div>
-                          {images.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => setPickerSection(pickerSection === i ? -1 : i)}
-                              className="w-24 mt-1.5 text-center text-[10px] text-emerald-400 hover:text-emerald-300 transition-colors"
-                            >
-                              사진 변경
-                            </button>
-                          )}
+              {scriptDraft.sections.map((section, i) => (
+                <div key={i} className="bg-white/3 rounded-xl p-4 space-y-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+                      {section.type === 'hook' ? '💡 훅' : section.type === 'cta' ? '📣 CTA' : `📌 포인트 ${i}`}
+                    </span>
+                    <span className="text-xs text-gray-600">{section.duration}초</span>
+                  </div>
+
+                  {/* Photo (left) + Text (right) */}
+                  <div className="flex gap-3 items-start">
+                    {/* Photo column */}
+                    <div className="flex-shrink-0 w-24">
+                      {sectionPreviews[i] ? (
+                        <div className="space-y-1">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={sectionPreviews[i]!}
+                            alt={`섹션 ${i + 1}`}
+                            className="w-24 h-24 object-cover rounded-lg border border-white/10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setPickerSection(pickerSection === i ? -1 : i)}
+                            className="w-full text-[10px] text-gray-500 hover:text-emerald-400 transition-colors text-center"
+                          >
+                            사진 변경
+                          </button>
                         </div>
-                        {/* Text column */}
-                        <textarea
-                          value={section.text}
-                          onChange={(e) => {
-                            const newSections = [...scriptDraft.sections];
-                            newSections[i] = { ...newSections[i], text: e.target.value };
-                            setScriptDraft({ ...scriptDraft, sections: newSections });
-                          }}
-                          rows={4}
-                          className="flex-1 bg-transparent text-gray-200 text-sm focus:outline-none resize-none leading-relaxed"
-                        />
-                      </div>
-                      {/* Inline photo picker */}
-                      {pickerSection === i && images.length > 0 && (
-                        <div className="mt-2 p-2 bg-white/5 rounded-xl border border-white/10 flex flex-wrap gap-2">
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setPickerSection(pickerSection === i ? -1 : i)}
+                          className="w-24 h-24 rounded-lg border border-dashed border-white/20 text-gray-600 hover:border-emerald-500/40 hover:text-emerald-400 transition-colors flex flex-col items-center justify-center gap-1 text-[10px]"
+                        >
+                          <ImagePlus className="w-4 h-4" />
+                          사진 선택
+                        </button>
+                      )}
+
+                      {/* Photo picker — stacked vertically under photo */}
+                      {pickerSection === i && imagePreviews.length > 0 && (
+                        <div className="mt-1.5 p-1.5 bg-[#1a1825] rounded-lg border border-white/10 flex flex-col gap-1">
                           {imagePreviews.map((url, pi) => (
                             <button
                               key={pi}
@@ -846,26 +844,39 @@ export default function PromoPage() {
                                 setSectionPreviews(newPrevs);
                                 setPickerSection(-1);
                               }}
-                              className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                              className={`relative rounded overflow-hidden border-2 transition-all ${
                                 sectionImages[i] === images[pi]
-                                  ? 'border-emerald-400'
-                                  : 'border-transparent hover:border-white/40'
+                                  ? 'border-emerald-500'
+                                  : 'border-transparent hover:border-white/30'
                               }`}
                             >
                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={url} alt={`사진 ${pi + 1}`} className="w-full h-full object-cover" />
+                              <img src={url} alt={`사진 ${pi + 1}`} className="w-full h-14 object-cover" />
+                              <div className="absolute bottom-0 left-0 right-0 text-center text-[8px] text-white/60 bg-black/40">{pi + 1}</div>
                             </button>
                           ))}
                         </div>
                       )}
                     </div>
-                  ))}
+
+                    {/* Script text column */}
+                    <textarea
+                      value={section.text}
+                      onChange={(e) => {
+                        const newSections = [...scriptDraft.sections];
+                        newSections[i] = { ...newSections[i], text: e.target.value };
+                        setScriptDraft({ ...scriptDraft, sections: newSections });
+                      }}
+                      rows={4}
+                      className="flex-1 bg-transparent border border-white/10 rounded-lg px-3 py-2 text-gray-200 text-sm focus:outline-none focus:border-emerald-500/40 transition-all resize-none"
+                    />
+                  </div>
                 </div>
-              </div>
+              ))}
 
               {/* Hashtags */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">해시태그</label>
+                <label className="text-xs text-gray-500 mb-1 block">해시태그</label>
                 <div className="flex flex-wrap gap-2">
                   {scriptDraft.hashtags.map((tag, i) => (
                     <span key={i} className="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 text-xs">{tag}</span>
@@ -883,33 +894,21 @@ export default function PromoPage() {
 
             <div className="flex gap-3">
               <button
-                onClick={() => { setScriptDraft(null); setError(null); }}
-                className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/8 text-gray-300 font-medium hover:bg-white/12 transition-all border border-white/10 text-sm"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                돌아가기
-              </button>
-              <button
                 onClick={generateScriptPreview}
                 disabled={loadingScript}
-                className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/8 text-gray-300 font-medium hover:bg-white/12 transition-all border border-white/10 text-sm"
+                className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/15 transition-all border border-white/10 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                <RefreshCw className="w-4 h-4" />
+                {loadingScript ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                 재생성
               </button>
               <button
                 onClick={startGeneration}
                 disabled={usage?.remaining === 0}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-white font-bold hover:opacity-90 transition-all disabled:opacity-40"
+                className="flex-2 flex-grow py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 transition-all disabled:opacity-40 flex items-center justify-center gap-2 px-6"
                 style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
               >
-                <Megaphone className="w-5 h-5" />
+                <Megaphone className="w-4 h-4" />
                 이 스크립트로 영상 생성
-                {images.length > 0 && (
-                  <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
-                    사진 {images.length}장
-                  </span>
-                )}
               </button>
             </div>
           </div>
