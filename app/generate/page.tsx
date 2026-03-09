@@ -2,10 +2,23 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Sparkles, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown } from 'lucide-react';
-import RevisePanel from '@/components/RevisePanel';
+import { Sparkles, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Pencil, ImagePlus, X } from 'lucide-react';
 
 type StepStatus = 'pending' | 'running' | 'done' | 'failed';
+
+interface ScriptSection {
+  type: string;
+  text: string;
+  duration: number;
+}
+
+interface VideoScript {
+  title: string;
+  hashtags: string[];
+  sections: ScriptSection[];
+  totalDuration: number;
+  bgKeyword: string;
+}
 
 interface JobStatus {
   id: string;
@@ -17,13 +30,7 @@ interface JobStatus {
     video: StepStatus;
   };
   videoUrl?: string;
-  script?: {
-    title: string;
-    hashtags: string[];
-    sections: Array<{ type: string; text: string; duration: number }>;
-    totalDuration: number;
-    bgKeyword: string;
-  };
+  script?: VideoScript;
   error?: string;
 }
 
@@ -57,6 +64,12 @@ const STEP_LABELS: Record<string, string> = {
   script: 'AI 스크립트 생성',
   audio: '한국어 음성 생성',
   video: '영상 합성',
+};
+
+const SECTION_TYPE_LABELS: Record<string, string> = {
+  hook:  '💡 훅',
+  main:  '📌 본문',
+  cta:   '🔔 CTA',
 };
 
 function StepIndicator({ label, status }: { label: string; status: StepStatus }) {
@@ -113,6 +126,15 @@ export default function GeneratePage() {
   const [voice, setVoice] = useState('nova');
   const [speed, setSpeed] = useState(1.1);
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Script review state
+  const [scriptDraft, setScriptDraft] = useState<VideoScript | null>(null);
+  const [loadingScript, setLoadingScript] = useState(false);
+
+  // Per-section images
+  const [sectionImages, setSectionImages] = useState<(File | null)[]>([]);
+  const [sectionPreviews, setSectionPreviews] = useState<(string | null)[]>([]);
+
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [loading, setLoading] = useState(false);
@@ -127,6 +149,14 @@ export default function GeneratePage() {
     fetchUsage();
   }, []);
 
+  // Init section images when script changes
+  useEffect(() => {
+    if (scriptDraft) {
+      setSectionImages(scriptDraft.sections.map(() => null));
+      setSectionPreviews(scriptDraft.sections.map(() => null));
+    }
+  }, [scriptDraft?.sections.length]);
+
   async function fetchUsage() {
     try {
       const res = await fetch(`/api/usage?sessionId=${sessionId.current}`);
@@ -135,8 +165,50 @@ export default function GeneratePage() {
     } catch { /* ignore */ }
   }
 
-  async function startGeneration() {
+  // Per-section image handlers
+  function handleImageChange(index: number, file: File | null) {
+    setSectionImages(prev => {
+      const next = [...prev];
+      next[index] = file;
+      return next;
+    });
+    setSectionPreviews(prev => {
+      const next = [...prev];
+      if (file) {
+        next[index] = URL.createObjectURL(file);
+      } else {
+        if (prev[index]) URL.revokeObjectURL(prev[index]!);
+        next[index] = null;
+      }
+      return next;
+    });
+  }
+
+  // Step 1: Generate script only
+  async function generateScriptPreview() {
     if (!topic.trim()) return;
+    setError(null);
+    setLoadingScript(true);
+    setScriptDraft(null);
+
+    try {
+      const res = await fetch('/api/script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: topic.trim(), duration, tone }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '스크립트 생성에 실패했습니다.');
+      setScriptDraft(data.script);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
+    } finally {
+      setLoadingScript(false);
+    }
+  }
+
+  // Step 2: Upload images then generate video
+  async function startGeneration() {
     setError(null);
     setLoading(true);
     setJobId(null);
@@ -144,6 +216,20 @@ export default function GeneratePage() {
     setShowScript(false);
 
     try {
+      // Upload images if any selected
+      let uploadId: string | undefined;
+      const hasImages = sectionImages.some(img => img !== null);
+      if (hasImages) {
+        const formData = new FormData();
+        sectionImages.forEach((img) => {
+          if (img) formData.append('images', img);
+        });
+        const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadData.error || '이미지 업로드에 실패했습니다.');
+        uploadId = uploadData.uploadId;
+      }
+
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -154,14 +240,13 @@ export default function GeneratePage() {
           voice,
           speed,
           sessionId: sessionId.current,
+          prebuiltScript: scriptDraft ?? undefined,
+          uploadId,
         }),
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || '영상 생성에 실패했습니다.');
-      }
+      if (!res.ok) throw new Error(data.error || '영상 생성에 실패했습니다.');
 
       setJobId(data.jobId);
       startPolling(data.jobId);
@@ -203,18 +288,25 @@ export default function GeneratePage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
-  function startRevise(newJobId: string) {
+  function goBackToScript() {
+    setJobId(null);
     setJobStatus(null);
+    setLoading(false);
     setError(null);
-    setLoading(true);
-    setJobId(newJobId);
-    startPolling(newJobId);
+    // scriptDraft is still set so isScriptReview becomes true
+  }
+
+  function resetAll() {
+    setJobId(null); setJobStatus(null); setLoading(false);
+    setTopic(''); setError(null); setScriptDraft(null);
+    setSectionImages([]); setSectionPreviews([]);
   }
 
   const isGenerating = loading && jobId;
   const isDone = jobStatus?.status === 'done';
   const isFailed = jobStatus?.status === 'failed';
-  const canStart = topic.trim().length > 0 && !loading;
+  const isScriptReview = !loading && !jobId && scriptDraft !== null;
+  const canStart = topic.trim().length > 0 && !loading && !loadingScript;
 
   return (
     <main className="min-h-screen bg-[#0B0A14] text-white">
@@ -258,8 +350,8 @@ export default function GeneratePage() {
           </div>
         )}
 
-        {/* Form */}
-        {!isGenerating && !isDone && (
+        {/* ── PHASE 1: Form ── */}
+        {!isGenerating && !isDone && !isScriptReview && (
           <div className="glass-card p-6 space-y-5">
             {/* Topic input */}
             <div>
@@ -272,7 +364,7 @@ export default function GeneratePage() {
                 placeholder="예: 다이어트 팁 5가지, 재테크 기초, 영어 공부 방법..."
                 rows={3}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 focus:bg-white/8 transition-all resize-none text-sm"
-                onKeyDown={(e) => { if (e.key === 'Enter' && e.metaKey) startGeneration(); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && e.metaKey) generateScriptPreview(); }}
               />
               <p className="text-gray-600 text-xs mt-1">구체적인 주제일수록 좋은 영상이 나옵니다</p>
             </div>
@@ -333,7 +425,6 @@ export default function GeneratePage() {
 
               {showAdvanced && (
                 <div className="mt-4 space-y-4">
-                  {/* Voice */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       🎙 나레이터 음성
@@ -364,7 +455,6 @@ export default function GeneratePage() {
                     </div>
                   </div>
 
-                  {/* Speed */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       ⚡ 음성 속도
@@ -401,19 +491,156 @@ export default function GeneratePage() {
 
             {/* Submit */}
             <button
-              onClick={startGeneration}
+              onClick={generateScriptPreview}
               disabled={!canStart || (usage?.remaining === 0)}
               className="w-full py-4 rounded-xl bg-gradient-brand text-white font-bold text-base disabled:opacity-40 hover:opacity-90 transition-all flex items-center justify-center gap-2"
             >
-              <Sparkles className="w-5 h-5" />
-              영상 생성 시작
+              {loadingScript ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  스크립트 생성 중...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  AI 스크립트 생성
+                </>
+              )}
             </button>
+          </div>
+        )}
 
-            {!process.env.NEXT_PUBLIC_ANTHROPIC_CONFIGURED && (
-              <p className="text-center text-gray-600 text-xs">
-                ANTHROPIC_API_KEY 없이도 Mock 모드로 작동합니다
-              </p>
+        {/* ── PHASE 2: Script Review ── */}
+        {isScriptReview && scriptDraft && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-bold text-lg flex items-center gap-2">
+                  <Pencil className="w-5 h-5 text-purple-400" />
+                  스크립트 확인 · 수정
+                </h2>
+                <p className="text-gray-500 text-xs mt-0.5">텍스트와 사진을 수정한 뒤 영상 생성을 시작하세요</p>
+              </div>
+              <button
+                onClick={() => setScriptDraft(null)}
+                className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+              >
+                ← 처음으로
+              </button>
+            </div>
+
+            <div className="glass-card p-5 space-y-4">
+              {/* Title */}
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">제목</label>
+                <input
+                  type="text"
+                  value={scriptDraft.title}
+                  onChange={(e) => setScriptDraft({ ...scriptDraft, title: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500/50 transition-all"
+                />
+              </div>
+
+              {/* Sections */}
+              {scriptDraft.sections.map((section, i) => (
+                <div key={i} className="bg-white/3 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+                      {SECTION_TYPE_LABELS[section.type] ?? section.type}
+                    </span>
+                    <span className="text-xs text-gray-600">{section.duration}초</span>
+                  </div>
+
+                  {/* Script text */}
+                  <textarea
+                    value={section.text}
+                    onChange={(e) => {
+                      const sections = [...scriptDraft.sections];
+                      sections[i] = { ...sections[i], text: e.target.value };
+                      setScriptDraft({ ...scriptDraft, sections });
+                    }}
+                    rows={3}
+                    className="w-full bg-transparent border border-white/10 rounded-lg px-3 py-2 text-gray-200 text-sm focus:outline-none focus:border-purple-500/40 transition-all resize-none"
+                  />
+
+                  {/* Image upload for this section */}
+                  <div>
+                    {sectionPreviews[i] ? (
+                      <div className="relative group w-full h-28 rounded-lg overflow-hidden border border-white/10">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={sectionPreviews[i]!}
+                          alt="섹션 이미지"
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleImageChange(i, null)}
+                          className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3.5 h-3.5 text-white" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-white/20 text-gray-500 hover:border-purple-500/40 hover:text-purple-400 transition-colors cursor-pointer text-xs">
+                        <ImagePlus className="w-4 h-4 flex-shrink-0" />
+                        <span>이 섹션에 사진 추가 (선택)</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] ?? null;
+                            handleImageChange(i, file);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* Hashtags */}
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">해시태그</label>
+                <div className="flex flex-wrap gap-2">
+                  {scriptDraft.hashtags.map((tag) => (
+                    <span key={tag} className="px-2 py-1 rounded-lg bg-purple-500/10 text-purple-300 text-xs">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                <p className="text-red-300 text-sm">{error}</p>
+              </div>
             )}
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={generateScriptPreview}
+                disabled={loadingScript}
+                className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/15 transition-all border border-white/10 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {loadingScript ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                스크립트 재생성
+              </button>
+              <button
+                onClick={startGeneration}
+                disabled={usage?.remaining === 0}
+                className="flex-2 flex-grow py-3 rounded-xl bg-gradient-brand text-white font-bold text-sm hover:opacity-90 transition-all disabled:opacity-40 flex items-center justify-center gap-2 px-6"
+              >
+                <Check className="w-4 h-4" />
+                이 스크립트로 영상 생성
+              </button>
+            </div>
           </div>
         )}
 
@@ -425,7 +652,6 @@ export default function GeneratePage() {
               <span className="text-purple-400 font-bold">{jobStatus.progress ?? 0}%</span>
             </div>
 
-            {/* Progress bar */}
             <div className="h-2 bg-white/5 rounded-full overflow-hidden">
               <div
                 className="h-full progress-bar rounded-full transition-all duration-500"
@@ -462,9 +688,7 @@ export default function GeneratePage() {
             </div>
             <p className="text-gray-400 text-sm">{jobStatus?.error || '알 수 없는 오류가 발생했습니다.'}</p>
             <button
-              onClick={() => {
-                setJobId(null); setJobStatus(null); setLoading(false); setError(null);
-              }}
+              onClick={() => { setJobId(null); setJobStatus(null); setLoading(false); setError(null); }}
               className="w-full py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/15 transition-all"
             >
               다시 시도
@@ -475,7 +699,6 @@ export default function GeneratePage() {
         {/* Done state */}
         {isDone && jobStatus && (
           <div className="space-y-4">
-            {/* Success header */}
             <div className="glass-card p-4 flex items-center gap-3 border-green-500/20 bg-green-500/5">
               <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
                 <Check className="w-5 h-5 text-green-400" />
@@ -486,21 +709,18 @@ export default function GeneratePage() {
               </div>
             </div>
 
-            {/* Video player */}
             {jobStatus.videoUrl && (
               <div className="glass-card overflow-hidden">
                 <video
                   controls
                   className="w-full max-h-96 object-contain bg-black"
                   src={jobStatus.videoUrl}
-                  poster=""
                 >
                   영상을 재생할 수 없습니다.
                 </video>
               </div>
             )}
 
-            {/* Actions */}
             <div className="flex gap-3">
               {jobStatus.videoUrl && (
                 <a
@@ -513,27 +733,19 @@ export default function GeneratePage() {
                 </a>
               )}
               <button
-                onClick={() => {
-                  setJobId(null); setJobStatus(null); setLoading(false);
-                  setTopic(''); setError(null);
-                }}
+                onClick={goBackToScript}
+                className="flex-1 py-3 rounded-xl bg-purple-500/15 text-purple-300 font-medium hover:bg-purple-500/25 transition-all border border-purple-500/30 flex items-center justify-center gap-2"
+              >
+                <Pencil className="w-4 h-4" />
+                스크립트 수정
+              </button>
+              <button
+                onClick={resetAll}
                 className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/15 transition-all border border-white/10"
               >
                 새 영상 만들기
               </button>
             </div>
-
-            {/* AI 수정 패널 */}
-            {jobStatus.script && (
-              <RevisePanel
-                script={jobStatus.script}
-                sessionId={sessionId.current}
-                voice={voice}
-                speed={speed}
-                color="purple"
-                onReviseStart={startRevise}
-              />
-            )}
 
             {/* Script preview */}
             {jobStatus.script && (
@@ -558,7 +770,7 @@ export default function GeneratePage() {
                     {jobStatus.script.sections.map((section, i) => (
                       <div key={i} className="bg-white/3 rounded-xl p-3">
                         <div className="text-xs text-gray-500 mb-1 uppercase tracking-wide">
-                          {section.type === 'hook' ? '💡 훅' : section.type === 'cta' ? '🔔 CTA' : `📌 포인트 ${i}`}
+                          {SECTION_TYPE_LABELS[section.type] ?? `📌 섹션 ${i + 1}`}
                           <span className="ml-2">{section.duration}초</span>
                         </div>
                         <p className="text-gray-300 text-sm">{section.text}</p>

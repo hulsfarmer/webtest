@@ -4,11 +4,30 @@ import path from 'path';
 import fs from 'fs';
 import { createJob, updateJob } from '@/lib/jobStore';
 import { canGenerate, incrementUsage } from '@/lib/usageStore';
-import { generateScript } from '@/lib/anthropic';
-import { generateAudio } from '@/lib/tts';
+import { generateScript, VideoScript } from '@/lib/anthropic';
+import { generateAudioWithTimepoints } from '@/lib/tts';
 import { generateVideo } from '@/lib/video';
 
-async function processJob(jobId: string, topic: string, duration: number, tone: string, voice: string, speed: number) {
+function getUploadedImagePaths(uploadId?: string): string[] {
+  if (!uploadId) return [];
+  const uploadDir = path.join(process.cwd(), 'data', 'uploads', uploadId);
+  if (!fs.existsSync(uploadDir)) return [];
+  return fs.readdirSync(uploadDir)
+    .filter(f => /\.(jpe?g|png|webp|gif)$/i.test(f))
+    .sort()
+    .map(f => path.join(uploadDir, f));
+}
+
+async function processJob(
+  jobId: string,
+  topic: string,
+  duration: number,
+  tone: string,
+  voice: string,
+  speed: number,
+  prebuiltScript?: VideoScript,
+  uploadId?: string,
+) {
   const audioDir = path.join(process.cwd(), 'data', 'audio');
   const videoDir = path.join(process.cwd(), 'public', 'videos');
 
@@ -20,25 +39,40 @@ async function processJob(jobId: string, topic: string, duration: number, tone: 
   const videoPath = path.join(videoDir, `${jobId}.mp4`);
 
   try {
-    // Step 1: Generate script
-    updateJob(jobId, {
-      status: 'generating_script',
-      progress: 10,
-      steps: { script: 'running', audio: 'pending', video: 'pending' },
-    });
+    let script: VideoScript;
 
-    const script = await generateScript(topic, duration, tone);
+    if (prebuiltScript) {
+      // Skip script generation — use the user-reviewed script directly
+      script = prebuiltScript;
+      updateJob(jobId, {
+        status: 'generating_audio',
+        progress: 30,
+        script: JSON.stringify(script),
+        steps: { script: 'done', audio: 'running', video: 'pending' },
+      });
+    } else {
+      // Step 1: Generate script
+      updateJob(jobId, {
+        status: 'generating_script',
+        progress: 10,
+        steps: { script: 'running', audio: 'pending', video: 'pending' },
+      });
 
-    updateJob(jobId, {
-      progress: 30,
-      script: JSON.stringify(script),
-      steps: { script: 'done', audio: 'running', video: 'pending' },
-      status: 'generating_audio',
-    });
+      script = await generateScript(topic, duration, tone);
 
-    // Step 2: Generate audio
-    const fullText = script.sections.map((s) => s.text).join(' ');
-    await generateAudio(fullText, audioPath, duration, voice, speed);
+      updateJob(jobId, {
+        progress: 30,
+        script: JSON.stringify(script),
+        steps: { script: 'done', audio: 'running', video: 'pending' },
+        status: 'generating_audio',
+      });
+    }
+
+    // Step 2: Generate audio with SSML timepoints for accurate subtitle timing
+    const sentences = script.sections.flatMap(s =>
+      s.text.split(/(?<=[.!?。！？])\s*/).map(x => x.trim()).filter(Boolean)
+    );
+    const sentenceDurations = await generateAudioWithTimepoints(sentences, audioPath, voice, speed);
 
     updateJob(jobId, {
       progress: 65,
@@ -46,8 +80,9 @@ async function processJob(jobId: string, topic: string, duration: number, tone: 
       status: 'generating_video',
     });
 
-    // Step 3: Generate video
-    await generateVideo(script, audioPath, videoPath);
+    // Step 3: Generate video with accurate per-sentence durations
+    const userImagePaths = getUploadedImagePaths(uploadId);
+    await generateVideo(script, audioPath, videoPath, userImagePaths, undefined, sentenceDurations);
 
     // Cleanup audio file
     try { fs.unlinkSync(audioPath); } catch { /* ignore */ }
@@ -70,7 +105,7 @@ async function processJob(jobId: string, topic: string, duration: number, tone: 
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  const { topic, duration = 60, tone = '정보성', sessionId, voice = 'nova', speed = 1.1 } = body;
+  const { topic, duration = 60, tone = '정보성', sessionId, voice = 'nova', speed = 1.1, prebuiltScript, uploadId } = body;
 
   if (!topic || typeof topic !== 'string' || topic.trim().length === 0) {
     return NextResponse.json({ error: '주제를 입력해주세요.' }, { status: 400 });
@@ -92,7 +127,7 @@ export async function POST(req: NextRequest) {
   incrementUsage(sessionId);
 
   // Fire-and-forget background processing
-  processJob(jobId, topic.trim(), duration, tone, voice, Number(speed)).catch(console.error);
+  processJob(jobId, topic.trim(), duration, tone, voice, Number(speed), prebuiltScript ?? undefined, uploadId ?? undefined).catch(console.error);
 
   return NextResponse.json({ jobId });
 }
