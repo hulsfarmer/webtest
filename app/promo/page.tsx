@@ -366,6 +366,14 @@ export default function PromoPage() {
     startPolling(newJobId);
   }
 
+  function goBackToScript() {
+    setJobId(null);
+    setJobStatus(null);
+    setLoading(false);
+    setError(null);
+    // scriptDraft and sectionImages stay intact → isScriptReview becomes true
+  }
+
   function resetForm() {
     setJobId(null);
     setJobStatus(null);
@@ -994,9 +1002,18 @@ export default function PromoPage() {
                   MP4 다운로드
                 </a>
               )}
+              {scriptDraft && (
+                <button
+                  onClick={goBackToScript}
+                  className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/15 transition-all border border-white/10 flex items-center justify-center gap-2 text-sm"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  스크립트 수정
+                </button>
+              )}
               <button
                 onClick={resetForm}
-                className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/15 transition-all border border-white/10"
+                className="flex-1 py-3 rounded-xl bg-white/8 text-gray-400 font-medium hover:bg-white/12 transition-all border border-white/8 text-sm"
               >
                 새 영상 만들기
               </button>
