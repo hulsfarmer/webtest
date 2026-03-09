@@ -90,28 +90,14 @@ async function getAudioDuration(audioPath: string): Promise<number> {
 }
 
 function splitIntoSentences(text: string): string[] {
+  // Only split at sentence-ending punctuation — never mid-sentence.
+  // Splitting at commas or arbitrary char limits causes perceived audio pauses
+  // because TTS continues speaking while the subtitle frame changes.
   const parts = text
-    .split(/(?<=[.!?。！？,，])\s*/)
+    .split(/(?<=[.!?。！？])\s*/)
     .map((s) => s.trim())
     .filter(Boolean);
-
-  const result: string[] = [];
-  for (const part of parts) {
-    if (part.length <= 30) {
-      result.push(part);
-    } else {
-      let remaining = part;
-      while (remaining.length > 30) {
-        let cut = 25;
-        const space = remaining.lastIndexOf(' ', 30);
-        if (space > 10) cut = space;
-        result.push(remaining.slice(0, cut).trim());
-        remaining = remaining.slice(cut).trim();
-      }
-      if (remaining) result.push(remaining);
-    }
-  }
-  return result.length > 0 ? result : [text];
+  return parts.length > 0 ? parts : [text];
 }
 
 function wrapKorean(text: string, maxChars = 14): string {
@@ -212,44 +198,48 @@ async function createTextOverlay(
   ctx.shadowBlur = 0;
 
   // ── TITLE: fixed zone, gradient text, 78px, shadow only (no backing rect) ──
-  const titleWrapped = wrapKorean(title, 13);
-  const titleLines = titleWrapped.split('\n');
-  const titleFontSize = 78;
-  const titleLineH = 90;
-  const titleBlockH = titleLines.length * titleLineH;
-  const titleStartY = TITLE_ZONE_Y + (TITLE_ZONE_H - titleBlockH) / 2 + titleFontSize * 0.85;
+  if (title) {
+    const titleWrapped = wrapKorean(title, 13);
+    const titleLines = titleWrapped.split('\n');
+    const titleFontSize = 78;
+    const titleLineH = 90;
+    const titleBlockH = titleLines.length * titleLineH;
+    const titleStartY = TITLE_ZONE_Y + (TITLE_ZONE_H - titleBlockH) / 2 + titleFontSize * 0.85;
 
-  ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
-  // Gradient: accentColor → white, clean shadow (no double-draw)
-  const titleGrad = ctx.createLinearGradient(W / 2 - 380, 0, W / 2 + 380, 0);
-  titleGrad.addColorStop(0, accentColor);
-  titleGrad.addColorStop(1, 'white');
-  ctx.fillStyle = titleGrad;
-  ctx.shadowColor = 'rgba(0,0,0,0.85)';
-  ctx.shadowBlur = 18;
-  titleLines.forEach((line, i) => {
-    ctx.fillText(line, W / 2, titleStartY + i * titleLineH);
-  });
-  ctx.shadowBlur = 0;
+    ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
+    // Gradient: accentColor → white, clean shadow (no double-draw)
+    const titleGrad = ctx.createLinearGradient(W / 2 - 380, 0, W / 2 + 380, 0);
+    titleGrad.addColorStop(0, accentColor);
+    titleGrad.addColorStop(1, 'white');
+    ctx.fillStyle = titleGrad;
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur = 18;
+    titleLines.forEach((line, i) => {
+      ctx.fillText(line, W / 2, titleStartY + i * titleLineH);
+    });
+    ctx.shadowBlur = 0;
 
-  // Divider line (FIXED position)
-  const divGrad = ctx.createLinearGradient(80, 0, W - 80, 0);
-  divGrad.addColorStop(0, 'transparent');
-  divGrad.addColorStop(0.5, accentColor);
-  divGrad.addColorStop(1, 'transparent');
-  ctx.strokeStyle = divGrad;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(80, DIV_Y);
-  ctx.lineTo(W - 80, DIV_Y);
-  ctx.stroke();
+    // Divider line (FIXED position)
+    const divGrad = ctx.createLinearGradient(80, 0, W - 80, 0);
+    divGrad.addColorStop(0, 'transparent');
+    divGrad.addColorStop(0.5, accentColor);
+    divGrad.addColorStop(1, 'transparent');
+    ctx.strokeStyle = divGrad;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(80, DIV_Y);
+    ctx.lineTo(W - 80, DIV_Y);
+    ctx.stroke();
+  }
 
-  // ── MAIN TEXT BOX: FIXED size (BOX_Y, BOX_H) – prevents trembling ──
+  // ── MAIN TEXT BOX: expands to fill title zone when title is hidden ──
+  const effectiveBOX_Y = title ? BOX_Y : TITLE_ZONE_Y + 20;
+  const effectiveBOX_H = title ? BOX_H : (BOX_Y + BOX_H) - (TITLE_ZONE_Y + 20);
   const boxX = BOX_W_MARGIN;
   const boxW = W - BOX_W_MARGIN * 2;
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
   ctx.beginPath();
-  ctx.roundRect(boxX, BOX_Y, boxW, BOX_H, 28);
+  ctx.roundRect(boxX, effectiveBOX_Y, boxW, effectiveBOX_H, 28);
   ctx.fill();
   ctx.strokeStyle = accentColor + '55';
   ctx.lineWidth = 2;
@@ -261,7 +251,7 @@ async function createTextOverlay(
   const fontSize = textLines.length > 3 ? 68 : textLines.length > 1 ? 76 : 84;
   const lineHeight = fontSize + 22;
   const textBlockH = textLines.length * lineHeight;
-  const textStartY = BOX_Y + (BOX_H - textBlockH) / 2 + fontSize * 0.85;
+  const textStartY = effectiveBOX_Y + (effectiveBOX_H - textBlockH) / 2 + fontSize * 0.85;
 
   ctx.font = `bold ${fontSize}px ${fontFamily}`;
   ctx.fillStyle = 'white';
@@ -425,43 +415,47 @@ async function createFrameImage(
   ctx.fillText('ShortsAI', W / 2, 76);
 
   // ── TITLE: fixed zone, gradient text, 78px ──
-  const titleWrapped = wrapKorean(title, 13);
-  const titleLines = titleWrapped.split('\n');
-  const titleFontSize = 78;
-  const titleLineH = 90;
-  const titleBlockH = titleLines.length * titleLineH;
-  const titleStartY = TITLE_ZONE_Y + (TITLE_ZONE_H - titleBlockH) / 2 + titleFontSize * 0.85;
+  if (title) {
+    const titleWrapped = wrapKorean(title, 13);
+    const titleLines = titleWrapped.split('\n');
+    const titleFontSize = 78;
+    const titleLineH = 90;
+    const titleBlockH = titleLines.length * titleLineH;
+    const titleStartY = TITLE_ZONE_Y + (TITLE_ZONE_H - titleBlockH) / 2 + titleFontSize * 0.85;
 
-  ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
-  const titleGrad = ctx.createLinearGradient(W / 2 - 380, 0, W / 2 + 380, 0);
-  titleGrad.addColorStop(0, accentColor);
-  titleGrad.addColorStop(1, 'white');
-  ctx.fillStyle = titleGrad;
-  ctx.shadowColor = 'rgba(0,0,0,0.85)';
-  ctx.shadowBlur = 18;
-  titleLines.forEach((line, i) => {
-    ctx.fillText(line, W / 2, titleStartY + i * titleLineH);
-  });
-  ctx.shadowBlur = 0;
+    ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
+    const titleGrad = ctx.createLinearGradient(W / 2 - 380, 0, W / 2 + 380, 0);
+    titleGrad.addColorStop(0, accentColor);
+    titleGrad.addColorStop(1, 'white');
+    ctx.fillStyle = titleGrad;
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur = 18;
+    titleLines.forEach((line, i) => {
+      ctx.fillText(line, W / 2, titleStartY + i * titleLineH);
+    });
+    ctx.shadowBlur = 0;
 
-  // Divider (FIXED position)
-  const divGrad = ctx.createLinearGradient(80, 0, W - 80, 0);
-  divGrad.addColorStop(0, 'transparent');
-  divGrad.addColorStop(0.5, accentColor);
-  divGrad.addColorStop(1, 'transparent');
-  ctx.strokeStyle = divGrad;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(80, DIV_Y);
-  ctx.lineTo(W - 80, DIV_Y);
-  ctx.stroke();
+    // Divider (FIXED position)
+    const divGrad = ctx.createLinearGradient(80, 0, W - 80, 0);
+    divGrad.addColorStop(0, 'transparent');
+    divGrad.addColorStop(0.5, accentColor);
+    divGrad.addColorStop(1, 'transparent');
+    ctx.strokeStyle = divGrad;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(80, DIV_Y);
+    ctx.lineTo(W - 80, DIV_Y);
+    ctx.stroke();
+  }
 
-  // ── MAIN TEXT BOX: FIXED size (BOX_Y, BOX_H) – prevents trembling ──
+  // ── MAIN TEXT BOX: expands to fill title zone when title is hidden ──
+  const effectiveBOX_Y = title ? BOX_Y : TITLE_ZONE_Y + 20;
+  const effectiveBOX_H = title ? BOX_H : (BOX_Y + BOX_H) - (TITLE_ZONE_Y + 20);
   const boxX = BOX_W_MARGIN;
   const boxW = W - BOX_W_MARGIN * 2;
   ctx.fillStyle = 'rgba(0,0,0,0.38)';
   ctx.beginPath();
-  ctx.roundRect(boxX, BOX_Y, boxW, BOX_H, 28);
+  ctx.roundRect(boxX, effectiveBOX_Y, boxW, effectiveBOX_H, 28);
   ctx.fill();
   ctx.strokeStyle = accentColor + '44';
   ctx.lineWidth = 2;
@@ -472,7 +466,7 @@ async function createFrameImage(
   const fontSize = textLines.length > 3 ? 68 : textLines.length > 1 ? 76 : 84;
   const lineHeight = fontSize + 22;
   const textBlockH = textLines.length * lineHeight;
-  const textStartY = BOX_Y + (BOX_H - textBlockH) / 2 + fontSize * 0.85;
+  const textStartY = effectiveBOX_Y + (effectiveBOX_H - textBlockH) / 2 + fontSize * 0.85;
 
   ctx.font = `bold ${fontSize}px ${fontFamily}`;
   ctx.fillStyle = 'white';
@@ -577,6 +571,7 @@ export async function generateVideo(
   outputPath: string,
   userImagePaths?: string[],
   bottomInfo?: string,
+  externalSentenceDurations?: number[],
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const ffmpegPath = require('ffmpeg-static') as string;
@@ -638,10 +633,13 @@ export async function generateVideo(
   }
   const totalChars = allSentences.reduce((s, item) => s + item.sentence.length, 0);
 
-  // Sentence durations and timestamps
-  const sentenceDurations: number[] = allSentences.map(item =>
-    Math.max((item.sentence.length / totalChars) * audioDuration, 0.4)
-  );
+  // Sentence durations: use externally-supplied SSML timepoints when available,
+  // otherwise fall back to proportional character-count estimation.
+  const sentenceDurations: number[] = externalSentenceDurations && externalSentenceDurations.length === allSentences.length
+    ? externalSentenceDurations
+    : allSentences.map(item =>
+        Math.max((item.sentence.length / totalChars) * audioDuration, 0.4)
+      );
   const sentenceTimestamps: number[] = [];
   let cumTime = 0;
   for (const dur of sentenceDurations) {

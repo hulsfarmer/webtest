@@ -4,8 +4,8 @@ import path from 'path';
 import fs from 'fs';
 import { createJob, updateJob } from '@/lib/jobStore';
 import { canGenerate, incrementUsage } from '@/lib/usageStore';
-import { generatePromoScript, PromoInput } from '@/lib/anthropic';
-import { generateAudio } from '@/lib/tts';
+import { generatePromoScript, PromoInput, VideoScript } from '@/lib/anthropic';
+import { generateAudioWithTimepoints } from '@/lib/tts';
 import { generateVideo } from '@/lib/video';
 
 /** Strip phone numbers / addresses from text so TTS doesn't read them awkwardly */
@@ -28,6 +28,7 @@ async function processPromoJob(
   voice: string,
   speed: number,
   userImagePaths: string[],
+  prebuiltScript?: VideoScript,
 ) {
   const audioDir = path.join(process.cwd(), 'data', 'audio');
   const videoDir = path.join(process.cwd(), 'public', 'videos');
@@ -46,26 +47,42 @@ async function processPromoJob(
   const bottomInfo = infoParts.length > 0 ? infoParts.join('   ') : undefined;
 
   try {
-    // Step 1: Generate promo script
-    updateJob(jobId, {
-      status: 'generating_script',
-      progress: 10,
-      steps: { script: 'running', audio: 'pending', video: 'pending' },
+    let script: VideoScript;
+
+    if (prebuiltScript) {
+      // Skip script generation — use the user-reviewed script directly
+      script = prebuiltScript;
+      updateJob(jobId, {
+        status: 'generating_audio',
+        progress: 30,
+        script: JSON.stringify(script),
+        steps: { script: 'done', audio: 'running', video: 'pending' },
+      });
+    } else {
+      // Step 1: Generate promo script
+      updateJob(jobId, {
+        status: 'generating_script',
+        progress: 10,
+        steps: { script: 'running', audio: 'pending', video: 'pending' },
+      });
+
+      script = await generatePromoScript(input);
+
+      updateJob(jobId, {
+        progress: 30,
+        script: JSON.stringify(script),
+        steps: { script: 'done', audio: 'running', video: 'pending' },
+        status: 'generating_audio',
+      });
+    }
+
+    // Step 2: Generate audio with SSML timepoints for accurate subtitle timing
+    // Strip phone numbers/URLs so TTS reads naturally
+    const sentences = script.sections.flatMap(s => {
+      const cleaned = stripContactFromText(s.text);
+      return cleaned.split(/(?<=[.!?。！？])\s*/).map(x => x.trim()).filter(Boolean);
     });
-
-    const script = await generatePromoScript(input);
-
-    updateJob(jobId, {
-      progress: 30,
-      script: JSON.stringify(script),
-      steps: { script: 'done', audio: 'running', video: 'pending' },
-      status: 'generating_audio',
-    });
-
-    // Step 2: Generate audio — strip phone numbers/URLs so TTS reads naturally
-    const rawText = script.sections.map((s) => s.text).join(' ');
-    const ttsText = stripContactFromText(rawText);
-    await generateAudio(ttsText, audioPath, input.duration, voice, speed);
+    const sentenceDurations = await generateAudioWithTimepoints(sentences, audioPath, voice, speed);
 
     updateJob(jobId, {
       progress: 65,
@@ -73,8 +90,10 @@ async function processPromoJob(
       status: 'generating_video',
     });
 
-    // Step 3: Generate video (with user images + bottom contact bar)
-    await generateVideo(script, audioPath, videoPath, userImagePaths, bottomInfo);
+    // Step 3: Generate video (with user images + bottom contact bar + accurate timing)
+    // Pass empty title so the title zone is suppressed in the promo video overlay —
+    // the business name belongs in the UI (script review header), not in the video itself.
+    await generateVideo({ ...script, title: '' }, audioPath, videoPath, userImagePaths, bottomInfo, sentenceDurations);
 
     // Cleanup audio and uploaded images
     try { fs.unlinkSync(audioPath); } catch { /* ignore */ }
@@ -121,6 +140,7 @@ export async function POST(req: NextRequest) {
   let sessionId = '';
   let voice = 'nova';
   let speed = 1.0;
+  let prebuiltScript: VideoScript | undefined;
   const userImagePaths: string[] = [];
 
   if (isFormData) {
@@ -137,6 +157,10 @@ export async function POST(req: NextRequest) {
     duration      = parseInt((formData.get('duration') as string | null) ?? '60', 10);
     tone          = (formData.get('tone')          as string | null) ?? '친근한';
     speed         = parseFloat((formData.get('speed') as string | null) ?? '1.0');
+    const prebuiltScriptRaw = formData.get('prebuiltScript') as string | null;
+    if (prebuiltScriptRaw) {
+      try { prebuiltScript = JSON.parse(prebuiltScriptRaw); } catch { /* ignore */ }
+    }
 
     // Save uploaded images
     const jobId = uuidv4();
@@ -194,7 +218,7 @@ export async function POST(req: NextRequest) {
       tone,
     };
 
-    processPromoJob(jobId, input, voice, speed, userImagePaths).catch(console.error);
+    processPromoJob(jobId, input, voice, speed, userImagePaths, prebuiltScript).catch(console.error);
     return NextResponse.json({ jobId });
 
   } else {
@@ -213,6 +237,7 @@ export async function POST(req: NextRequest) {
       voice = 'nova',
       speed = 1.0,
     } = body);
+    prebuiltScript = body.prebuiltScript ?? undefined;
 
     if (!businessName?.trim()) {
       return NextResponse.json({ error: '업체명을 입력해주세요.' }, { status: 400 });
@@ -250,7 +275,7 @@ export async function POST(req: NextRequest) {
       tone,
     };
 
-    processPromoJob(jobId, input, voice, Number(speed), []).catch(console.error);
+    processPromoJob(jobId, input, voice, Number(speed), [], prebuiltScript).catch(console.error);
     return NextResponse.json({ jobId });
   }
 }
