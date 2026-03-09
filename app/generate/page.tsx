@@ -139,6 +139,8 @@ export default function GeneratePage() {
   // Phase 2: per-section images (initialized from uploadedFiles)
   const [sectionImages, setSectionImages] = useState<(File | null)[]>([]);
   const [sectionPreviews, setSectionPreviews] = useState<(string | null)[]>([]);
+  // Which section's photo picker is open (-1 = none)
+  const [pickerSection, setPickerSection] = useState<number>(-1);
 
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
@@ -628,76 +630,85 @@ export default function GeneratePage() {
 
               {/* Sections */}
               {scriptDraft.sections.map((section, i) => (
-                <div key={i} className="bg-white/3 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
+                <div key={i} className="bg-white/3 rounded-xl p-4 space-y-2">
+                  {/* Header row */}
+                  <div className="flex items-center justify-between mb-1">
                     <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">
                       {SECTION_TYPE_LABELS[section.type] ?? section.type}
                     </span>
                     <span className="text-xs text-gray-600">{section.duration}초</span>
                   </div>
 
-                  {/* Photo for this section (shown first) */}
-                  {sectionPreviews[i] ? (
-                    <div className="relative group w-full h-36 rounded-lg overflow-hidden border border-white/10">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={sectionPreviews[i]!}
-                        alt={`섹션 ${i + 1} 사진`}
-                        className="w-full h-full object-cover"
-                      />
-                      {/* Replace button */}
-                      <label className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 transition-colors cursor-pointer group">
-                        <span className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 text-white text-xs">
-                          <ImagePlus className="w-3.5 h-3.5" />
-                          사진 교체
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0] ?? null;
-                            handleImageChange(i, file);
-                            e.target.value = '';
-                          }}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => handleImageChange(i, null)}
-                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                      >
-                        <X className="w-3.5 h-3.5 text-white" />
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-white/20 text-gray-500 hover:border-purple-500/40 hover:text-purple-400 transition-colors cursor-pointer text-xs">
-                      <ImagePlus className="w-4 h-4 flex-shrink-0" />
-                      <span>이 섹션에 사진 추가</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] ?? null;
-                          handleImageChange(i, file);
-                          e.target.value = '';
-                        }}
-                      />
-                    </label>
-                  )}
+                  {/* Photo (left) + Text (right) */}
+                  <div className="flex gap-3 items-start">
+                    {/* Photo column */}
+                    <div className="flex-shrink-0 w-24">
+                      {sectionPreviews[i] ? (
+                        <div className="space-y-1">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={sectionPreviews[i]!}
+                            alt={`섹션 ${i + 1}`}
+                            className="w-24 h-24 object-cover rounded-lg border border-white/10"
+                          />
+                          {/* Change button */}
+                          <button
+                            type="button"
+                            onClick={() => setPickerSection(pickerSection === i ? -1 : i)}
+                            className="w-full text-[10px] text-gray-500 hover:text-purple-400 transition-colors text-center"
+                          >
+                            사진 변경
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setPickerSection(pickerSection === i ? -1 : i)}
+                          className="w-24 h-24 rounded-lg border border-dashed border-white/20 text-gray-600 hover:border-purple-500/40 hover:text-purple-400 transition-colors flex flex-col items-center justify-center gap-1 text-[10px]"
+                        >
+                          <ImagePlus className="w-4 h-4" />
+                          사진 선택
+                        </button>
+                      )}
 
-                  {/* Script text */}
-                  <textarea
-                    value={section.text}
-                    onChange={(e) => {
-                      const sections = [...scriptDraft.sections];
-                      sections[i] = { ...sections[i], text: e.target.value };
-                      setScriptDraft({ ...scriptDraft, sections });
-                    }}
-                    rows={3}
-                    className="w-full bg-transparent border border-white/10 rounded-lg px-3 py-2 text-gray-200 text-sm focus:outline-none focus:border-purple-500/40 transition-all resize-none"
-                  />
+                      {/* Photo picker (opens below photo) */}
+                      {pickerSection === i && uploadedPreviews.length > 0 && (
+                        <div className="mt-1.5 p-1.5 bg-[#1a1825] rounded-lg border border-white/10 flex flex-col gap-1">
+                          {uploadedPreviews.map((prev, j) => (
+                            <button
+                              key={j}
+                              type="button"
+                              onClick={() => {
+                                handleImageChange(i, uploadedFiles[j]);
+                                setPickerSection(-1);
+                              }}
+                              className={`relative rounded overflow-hidden border-2 transition-all ${
+                                sectionImages[i] === uploadedFiles[j]
+                                  ? 'border-purple-500'
+                                  : 'border-transparent hover:border-white/30'
+                              }`}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={prev} alt={`사진 ${j + 1}`} className="w-full h-14 object-cover" />
+                              <div className="absolute bottom-0 left-0 right-0 text-center text-[8px] text-white/60 bg-black/40">{j + 1}</div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Script text column */}
+                    <textarea
+                      value={section.text}
+                      onChange={(e) => {
+                        const sections = [...scriptDraft.sections];
+                        sections[i] = { ...sections[i], text: e.target.value };
+                        setScriptDraft({ ...scriptDraft, sections });
+                      }}
+                      rows={4}
+                      className="flex-1 bg-transparent border border-white/10 rounded-lg px-3 py-2 text-gray-200 text-sm focus:outline-none focus:border-purple-500/40 transition-all resize-none"
+                    />
+                  </div>
                 </div>
               ))}
 
