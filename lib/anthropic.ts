@@ -1,4 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
+import fs from 'fs';
+import path from 'path';
 
 export interface ScriptSection {
   type: 'hook' | 'main' | 'cta';
@@ -97,6 +99,94 @@ export async function generateScript(
 
   try {
     // Strip markdown code block if present (e.g. ```json ... ```)
+    const raw = content.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    return JSON.parse(raw) as VideoScript;
+  } catch {
+    throw new Error('Claude returned invalid JSON: ' + content.text.slice(0, 200));
+  }
+}
+
+// ─────────────────────────────────────────────
+// 사진 기반 스크립트 생성 (Claude Vision)
+// ─────────────────────────────────────────────
+
+export async function generateScriptFromImages(
+  imagePaths: string[],
+  topic: string,
+  duration: number,
+  tone: string,
+): Promise<VideoScript> {
+  if (!process.env.ANTHROPIC_API_KEY || imagePaths.length === 0) {
+    return getMockScript(topic, duration);
+  }
+
+  const n = imagePaths.length;
+  const perDuration = Math.floor(duration / n);
+
+  function fileToImageBlock(imgPath: string): { type: 'image'; source: { type: 'base64'; media_type: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'; data: string } } {
+    const buffer = fs.readFileSync(imgPath);
+    const base64 = buffer.toString('base64');
+    const ext = path.extname(imgPath).slice(1).toLowerCase();
+    const mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' =
+      ext === 'png' ? 'image/png' :
+      ext === 'webp' ? 'image/webp' :
+      ext === 'gif' ? 'image/gif' :
+      'image/jpeg';
+    return { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } };
+  }
+
+  const sectionSpecs = imagePaths.map((_, i) => ({
+    type: i === 0 ? 'hook' : i === n - 1 && n > 1 ? 'cta' : 'main',
+    index: i,
+    duration: perDuration,
+  }));
+
+  const message = await getClient().messages.create({
+    model: 'claude-haiku-4-5',
+    max_tokens: 1024,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          ...imagePaths.map(fileToImageBlock),
+          {
+            type: 'text',
+            text: `위 ${n}장의 사진을 순서대로 사용하여 유튜브 쇼츠 영상 스크립트를 한국어로 작성해주세요.
+
+주제: ${topic}
+영상 길이: ${duration}초
+톤: ${tone}
+섹션 수: ${n}개 (사진 1장당 섹션 1개)
+
+다음 JSON 형식으로 응답해주세요 (코드 블록 없이 순수 JSON만):
+{
+  "title": "영상 제목 (30자 이내)",
+  "bgKeyword": "배경 Pexels 검색어 (영어 1-2단어, 사진 없을 때 대체용)",
+  "hashtags": ["해시태그1", "해시태그2", "해시태그3", "해시태그4", "해시태그5"],
+  "sections": [
+    ${sectionSpecs.map((s, i) => JSON.stringify({
+      type: s.type,
+      text: `사진 ${i + 1}에 어울리는 ${s.type === 'hook' ? '강렬한 훅 멘트' : s.type === 'cta' ? '마무리와 구독/좋아요 요청' : '핵심 설명'}`,
+      duration: s.duration,
+    })).join(',\n    ')}
+  ],
+  "totalDuration": ${duration}
+}
+
+중요:
+- 각 섹션의 text는 해당 사진(순서대로)의 내용/분위기와 자연스럽게 연결되도록
+- text는 TTS로 읽기 자연스러운 한국어 (음성으로 읽을 내용)
+- 사진들 사이에 이야기 흐름이 이어지도록`,
+          },
+        ],
+      },
+    ],
+  });
+
+  const content = message.content[0];
+  if (content.type !== 'text') throw new Error('Unexpected response type from Claude');
+
+  try {
     const raw = content.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
     return JSON.parse(raw) as VideoScript;
   } catch {

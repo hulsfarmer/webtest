@@ -131,7 +131,12 @@ export default function GeneratePage() {
   const [scriptDraft, setScriptDraft] = useState<VideoScript | null>(null);
   const [loadingScript, setLoadingScript] = useState(false);
 
-  // Per-section images
+  // Phase 1: photos uploaded before script generation
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [uploadedPreviews, setUploadedPreviews] = useState<string[]>([]);
+  const [uploadId, setUploadId] = useState<string | null>(null);
+
+  // Phase 2: per-section images (initialized from uploadedFiles)
   const [sectionImages, setSectionImages] = useState<(File | null)[]>([]);
   const [sectionPreviews, setSectionPreviews] = useState<(string | null)[]>([]);
 
@@ -149,13 +154,24 @@ export default function GeneratePage() {
     fetchUsage();
   }, []);
 
-  // Init section images when script changes
-  useEffect(() => {
-    if (scriptDraft) {
-      setSectionImages(scriptDraft.sections.map(() => null));
-      setSectionPreviews(scriptDraft.sections.map(() => null));
-    }
-  }, [scriptDraft?.sections.length]);
+  // Photo upload handlers (Phase 1)
+  function handleUploadPhotos(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    const remaining = 5 - uploadedFiles.length;
+    const newFiles = files.slice(0, remaining);
+    const newPreviews = newFiles.map(f => URL.createObjectURL(f));
+    setUploadedFiles(prev => [...prev, ...newFiles]);
+    setUploadedPreviews(prev => [...prev, ...newPreviews]);
+    e.target.value = '';
+  }
+
+  function removeUploadedPhoto(index: number) {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+    setUploadedPreviews(prev => {
+      URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
 
   async function fetchUsage() {
     try {
@@ -184,7 +200,7 @@ export default function GeneratePage() {
     });
   }
 
-  // Step 1: Generate script only
+  // Step 1: Upload photos (if any), then generate script
   async function generateScriptPreview() {
     if (!topic.trim()) return;
     setError(null);
@@ -192,14 +208,32 @@ export default function GeneratePage() {
     setScriptDraft(null);
 
     try {
+      // Upload photos first if any selected
+      let uid: string | undefined;
+      if (uploadedFiles.length > 0) {
+        const formData = new FormData();
+        uploadedFiles.forEach(f => formData.append('images', f));
+        const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
+        if (!uploadRes.ok) throw new Error('이미지 업로드 실패');
+        const uploadData = await uploadRes.json();
+        uid = uploadData.uploadId;
+        setUploadId(uid ?? null);
+      }
+
       const res = await fetch('/api/script', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: topic.trim(), duration, tone }),
+        body: JSON.stringify({ topic: topic.trim(), duration, tone, uploadId: uid }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '스크립트 생성에 실패했습니다.');
-      setScriptDraft(data.script);
+
+      const script = data.script;
+      setScriptDraft(script);
+
+      // Initialize section images from uploaded photos (index-matched)
+      setSectionImages(script.sections.map((_: ScriptSection, i: number) => uploadedFiles[i] ?? null));
+      setSectionPreviews(script.sections.map((_: ScriptSection, i: number) => uploadedPreviews[i] ?? null));
     } catch (err) {
       setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
     } finally {
@@ -300,6 +334,7 @@ export default function GeneratePage() {
     setJobId(null); setJobStatus(null); setLoading(false);
     setTopic(''); setError(null); setScriptDraft(null);
     setSectionImages([]); setSectionPreviews([]);
+    setUploadedFiles([]); setUploadedPreviews([]); setUploadId(null);
   }
 
   const isGenerating = loading && jobId;
@@ -407,6 +442,56 @@ export default function GeneratePage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Photo Upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                사진 업로드
+                <span className="text-gray-500 font-normal ml-1">(선택 · 최대 5장)</span>
+              </label>
+
+              {/* Thumbnails */}
+              {uploadedPreviews.length > 0 && (
+                <div className="flex gap-2 mb-2 flex-wrap">
+                  {uploadedPreviews.map((preview, i) => (
+                    <div key={i} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-white/15">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={preview} alt={`사진 ${i + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeUploadedPhoto(i)}
+                        className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-2.5 h-2.5 text-white" />
+                      </button>
+                      <div className="absolute bottom-0.5 left-0 right-0 text-center text-[9px] text-white/70">{i + 1}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload area */}
+              {uploadedFiles.length < 5 && (
+                <label className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-white/20 text-gray-500 hover:border-purple-500/40 hover:text-purple-400 transition-colors cursor-pointer text-xs w-full">
+                  <ImagePlus className="w-4 h-4 flex-shrink-0" />
+                  <span>
+                    {uploadedFiles.length === 0
+                      ? '사진을 업로드하면 사진 내용 기반으로 스크립트를 생성합니다'
+                      : `${uploadedFiles.length}장 선택됨 · 더 추가`}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleUploadPhotos}
+                  />
+                </label>
+              )}
+              {uploadedFiles.length > 0 && (
+                <p className="text-xs text-gray-600 mt-1">사진 순서대로 스크립트 섹션이 구성됩니다</p>
+              )}
             </div>
 
             {/* Advanced settings */}
@@ -551,40 +636,21 @@ export default function GeneratePage() {
                     <span className="text-xs text-gray-600">{section.duration}초</span>
                   </div>
 
-                  {/* Script text */}
-                  <textarea
-                    value={section.text}
-                    onChange={(e) => {
-                      const sections = [...scriptDraft.sections];
-                      sections[i] = { ...sections[i], text: e.target.value };
-                      setScriptDraft({ ...scriptDraft, sections });
-                    }}
-                    rows={3}
-                    className="w-full bg-transparent border border-white/10 rounded-lg px-3 py-2 text-gray-200 text-sm focus:outline-none focus:border-purple-500/40 transition-all resize-none"
-                  />
-
-                  {/* Image upload for this section */}
-                  <div>
-                    {sectionPreviews[i] ? (
-                      <div className="relative group w-full h-28 rounded-lg overflow-hidden border border-white/10">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={sectionPreviews[i]!}
-                          alt="섹션 이미지"
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleImageChange(i, null)}
-                          className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="w-3.5 h-3.5 text-white" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-white/20 text-gray-500 hover:border-purple-500/40 hover:text-purple-400 transition-colors cursor-pointer text-xs">
-                        <ImagePlus className="w-4 h-4 flex-shrink-0" />
-                        <span>이 섹션에 사진 추가 (선택)</span>
+                  {/* Photo for this section (shown first) */}
+                  {sectionPreviews[i] ? (
+                    <div className="relative group w-full h-36 rounded-lg overflow-hidden border border-white/10">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={sectionPreviews[i]!}
+                        alt={`섹션 ${i + 1} 사진`}
+                        className="w-full h-full object-cover"
+                      />
+                      {/* Replace button */}
+                      <label className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 transition-colors cursor-pointer group">
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 text-white text-xs">
+                          <ImagePlus className="w-3.5 h-3.5" />
+                          사진 교체
+                        </span>
                         <input
                           type="file"
                           accept="image/*"
@@ -596,8 +662,42 @@ export default function GeneratePage() {
                           }}
                         />
                       </label>
-                    )}
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => handleImageChange(i, null)}
+                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      >
+                        <X className="w-3.5 h-3.5 text-white" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-white/20 text-gray-500 hover:border-purple-500/40 hover:text-purple-400 transition-colors cursor-pointer text-xs">
+                      <ImagePlus className="w-4 h-4 flex-shrink-0" />
+                      <span>이 섹션에 사진 추가</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null;
+                          handleImageChange(i, file);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                  )}
+
+                  {/* Script text */}
+                  <textarea
+                    value={section.text}
+                    onChange={(e) => {
+                      const sections = [...scriptDraft.sections];
+                      sections[i] = { ...sections[i], text: e.target.value };
+                      setScriptDraft({ ...scriptDraft, sections });
+                    }}
+                    rows={3}
+                    className="w-full bg-transparent border border-white/10 rounded-lg px-3 py-2 text-gray-200 text-sm focus:outline-none focus:border-purple-500/40 transition-all resize-none"
+                  />
                 </div>
               ))}
 
