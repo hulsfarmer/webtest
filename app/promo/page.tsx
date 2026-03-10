@@ -63,10 +63,10 @@ const TONES = [
 ];
 
 const VOICES = [
-  { id: 'nova',    label: '지은',  desc: '여성 · 자연스러운', badge: '추천' },
-  { id: 'shimmer', label: '수아',  desc: '여성 · 부드러운',   badge: '' },
-  { id: 'echo',    label: '준호',  desc: '남성 · 명확한',     badge: '' },
-  { id: 'onyx',    label: '민준',  desc: '남성 · 중후한',     badge: '' },
+  { id: 'ko-KR-Journey-F', label: '지은', desc: '여성 · 자연스러운', badge: '추천' },
+  { id: 'ko-KR-Journey-O', label: '수아', desc: '여성 · 활기찬',     badge: '' },
+  { id: 'ko-KR-Journey-D', label: '민준', desc: '남성 · 자연스러운', badge: '' },
+  { id: 'ko-KR-Neural2-C', label: '준호', desc: '남성 · 명확한',     badge: '' },
 ];
 
 const SPEEDS = [
@@ -141,7 +141,7 @@ export default function PromoPage() {
   const [cta, setCta]                       = useState('');
   const [duration, setDuration]             = useState(60);
   const [tone, setTone]                     = useState('친근한');
-  const [voice, setVoice]                   = useState('nova');
+  const [voice, setVoice]                   = useState('ko-KR-Journey-F');
   const [speed, setSpeed]                   = useState(1.0);
   const [showAdvanced, setShowAdvanced]     = useState(false);
 
