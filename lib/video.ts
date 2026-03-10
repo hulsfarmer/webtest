@@ -629,6 +629,7 @@ export async function generateVideo(
   bottomInfo?: string,
   externalSentenceDurations?: number[],
   displayBusinessName?: string,
+  bgmPath?: string,
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const ffmpegPath = require('ffmpeg-static') as string;
@@ -724,12 +725,16 @@ export async function generateVideo(
     }
 
     // Build FFmpeg inputs:
-    // [0] = bg video (looped), [1..N] = overlay PNGs, [N+1] = audio
+    // [0] = bg video (looped), [1..N] = overlay PNGs, [N+1] = audio, [N+2] = BGM (optional)
     const bgLoopDuration = (audioDuration + 2).toFixed(3);
+    const bgmInputArg = bgmPath
+      ? `-stream_loop -1 -t ${bgLoopDuration} -i "${bgmPath}"`
+      : '';
     const inputArgs = [
       `-stream_loop -1 -t ${bgLoopDuration} -i "${videoPath}"`,
       ...overlayPaths.map(p => `-i "${p}"`),
       `-i "${audioPath}"`,
+      ...(bgmPath ? [bgmInputArg] : []),
     ].join(' ');
 
     // Build filter_complex:
@@ -756,15 +761,25 @@ export async function generateVideo(
       prevLabel = outLabel;
     }
 
-    const filterGraph = filterParts.join(';');
     const audioInputIdx = overlayPaths.length + 1;
+    const bgmInputIdx   = overlayPaths.length + 2;
+
+    // BGM audio mixing: narration at 100%, BGM at 15%
+    if (bgmPath) {
+      filterParts.push(
+        `[${bgmInputIdx}:a]volume=0.15[bgm_adj]`,
+        `[${audioInputIdx}:a][bgm_adj]amix=inputs=2:duration=first:dropout_transition=3[aout]`
+      );
+    }
+
+    const filterGraph = filterParts.join(';');
 
     const cmd = [
       `"${ffmpegPath}"`,
       inputArgs,
       `-filter_complex "${filterGraph}"`,
       `-map "[vout]"`,
-      `-map ${audioInputIdx}:a`,
+      bgmPath ? `-map "[aout]"` : `-map ${audioInputIdx}:a`,
       `-c:v libx264 -preset fast -crf 22`,
       `-c:a aac -b:a 128k`,
       `-pix_fmt yuv420p`,
@@ -812,18 +827,46 @@ export async function generateVideo(
       concatContent + `\nfile '${lastFrame.path.replace(/'/g, "'\\''")}'\n`
     );
 
-    const cmd = [
-      `"${ffmpegPath}"`,
-      `-f concat -safe 0 -i "${concatFile}"`,
-      `-i "${audioPath}"`,
-      `-vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1"`,
-      `-c:v libx264 -preset fast -crf 22`,
-      `-c:a aac -b:a 128k`,
-      `-pix_fmt yuv420p`,
-      `-movflags +faststart`,
-      `-shortest`,
-      `-y "${outputPath}"`,
-    ].join(' ');
+    // Mode 2: BGM mixing via filter_complex when bgmPath is set, otherwise use simple -vf
+    let cmd: string;
+    if (bgmPath) {
+      // [0]=concat frames [1]=narration [2]=BGM (looped)
+      const bgmLoopDur = (audioDuration + 2).toFixed(3);
+      const m2filter = [
+        `[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,` +
+        `pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1[vout]`,
+        `[2:a]volume=0.15[bgm_adj]`,
+        `[1:a][bgm_adj]amix=inputs=2:duration=first:dropout_transition=3[aout]`,
+      ].join(';');
+      cmd = [
+        `"${ffmpegPath}"`,
+        `-f concat -safe 0 -i "${concatFile}"`,
+        `-i "${audioPath}"`,
+        `-stream_loop -1 -t ${bgmLoopDur} -i "${bgmPath}"`,
+        `-filter_complex "${m2filter}"`,
+        `-map "[vout]"`,
+        `-map "[aout]"`,
+        `-c:v libx264 -preset fast -crf 22`,
+        `-c:a aac -b:a 128k`,
+        `-pix_fmt yuv420p`,
+        `-movflags +faststart`,
+        `-shortest`,
+        `-y "${outputPath}"`,
+      ].join(' ');
+    } else {
+      cmd = [
+        `"${ffmpegPath}"`,
+        `-f concat -safe 0 -i "${concatFile}"`,
+        `-i "${audioPath}"`,
+        `-vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1"`,
+        `-c:v libx264 -preset fast -crf 22`,
+        `-c:a aac -b:a 128k`,
+        `-pix_fmt yuv420p`,
+        `-movflags +faststart`,
+        `-shortest`,
+        `-y "${outputPath}"`,
+      ].join(' ');
+    }
 
     await execAsync(cmd, { maxBuffer: 1024 * 1024 * 50 });
 

@@ -7,6 +7,7 @@ import { canGenerate, incrementUsage } from '@/lib/usageStore';
 import { generatePromoScript, PromoInput, VideoScript } from '@/lib/anthropic';
 import { generateAudioWithTimepoints } from '@/lib/tts';
 import { generateVideo } from '@/lib/video';
+import { resolveBgmPath, BgmId } from '@/lib/bgm';
 
 /** Strip phone numbers / addresses from text so TTS doesn't read them awkwardly */
 function stripContactFromText(text: string): string {
@@ -29,6 +30,7 @@ async function processPromoJob(
   speed: number,
   userImagePaths: string[],
   prebuiltScript?: VideoScript,
+  bgmId?: BgmId,
 ) {
   const audioDir = path.join(process.cwd(), 'data', 'audio');
   const videoDir = path.join(process.cwd(), 'public', 'videos');
@@ -90,11 +92,21 @@ async function processPromoJob(
       status: 'generating_video',
     });
 
-    // Step 3: Generate video
+    // Step 3: Resolve BGM (download and cache if needed)
+    let bgmPath: string | null = null;
+    if (bgmId && bgmId !== 'none') {
+      bgmPath = await resolveBgmPath(bgmId);
+    }
+
+    // Step 4: Generate video
     // Pass businessName separately so the overlay shows:
     //   ① business name (small, top of title zone)
     //   ② catchy script title (large, gradient, below business name)
-    await generateVideo(script, audioPath, videoPath, userImagePaths, bottomInfo, sentenceDurations, input.businessName);
+    await generateVideo(
+      script, audioPath, videoPath, userImagePaths,
+      bottomInfo, sentenceDurations, input.businessName,
+      bgmPath ?? undefined,
+    );
 
     // Cleanup audio and uploaded images
     try { fs.unlinkSync(audioPath); } catch { /* ignore */ }
@@ -141,6 +153,7 @@ export async function POST(req: NextRequest) {
   let sessionId = '';
   let voice = 'nova';
   let speed = 1.0;
+  let bgmId: BgmId = 'none';
   let prebuiltScript: VideoScript | undefined;
   const userImagePaths: string[] = [];
 
@@ -158,6 +171,7 @@ export async function POST(req: NextRequest) {
     duration      = parseInt((formData.get('duration') as string | null) ?? '60', 10);
     tone          = (formData.get('tone')          as string | null) ?? '친근한';
     speed         = parseFloat((formData.get('speed') as string | null) ?? '1.0');
+    bgmId         = ((formData.get('bgmId') as string | null) ?? 'none') as BgmId;
     const prebuiltScriptRaw = formData.get('prebuiltScript') as string | null;
     if (prebuiltScriptRaw) {
       try { prebuiltScript = JSON.parse(prebuiltScriptRaw); } catch { /* ignore */ }
@@ -219,7 +233,7 @@ export async function POST(req: NextRequest) {
       tone,
     };
 
-    processPromoJob(jobId, input, voice, speed, userImagePaths, prebuiltScript).catch(console.error);
+    processPromoJob(jobId, input, voice, speed, userImagePaths, prebuiltScript, bgmId).catch(console.error);
     return NextResponse.json({ jobId });
 
   } else {
@@ -238,6 +252,7 @@ export async function POST(req: NextRequest) {
       voice = 'nova',
       speed = 1.0,
     } = body);
+    bgmId = (body.bgmId ?? 'none') as BgmId;
     prebuiltScript = body.prebuiltScript ?? undefined;
 
     if (!businessName?.trim()) {
@@ -276,7 +291,7 @@ export async function POST(req: NextRequest) {
       tone,
     };
 
-    processPromoJob(jobId, input, voice, Number(speed), [], prebuiltScript).catch(console.error);
+    processPromoJob(jobId, input, voice, Number(speed), [], prebuiltScript, bgmId).catch(console.error);
     return NextResponse.json({ jobId });
   }
 }

@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Sparkles, ImagePlus, X, Edit3, RefreshCw } from 'lucide-react';
+import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2 } from 'lucide-react';
 import RevisePanel from '@/components/RevisePanel';
+import { BGM_CATALOG, recommendBgm, type BgmId } from '@/lib/bgm';
 
 type VideoScript = {
   title: string;
@@ -144,6 +145,7 @@ export default function PromoPage() {
   const [voice, setVoice]                   = useState('ko-KR-Journey-F');
   const [speed, setSpeed]                   = useState(1.0);
   const [showAdvanced, setShowAdvanced]     = useState(false);
+  const [bgmId, setBgmId]                   = useState<BgmId>('cafe');
 
   // Image upload state
   const [images, setImages]                 = useState<File[]>([]);
@@ -180,6 +182,13 @@ export default function PromoPage() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 업종·톤 변경 시 배경음악 자동 추천
+  useEffect(() => {
+    if (businessType) {
+      setBgmId(recommendBgm(businessType, tone));
+    }
+  }, [businessType, tone]);
 
   async function fetchUsage() {
     try {
@@ -298,6 +307,7 @@ export default function PromoPage() {
       formData.append('tone',       tone);
       formData.append('voice',      voice);
       formData.append('speed',      String(speed));
+      formData.append('bgmId',      bgmId);
       formData.append('sessionId',  sessionId.current);
       if (scriptDraft) {
         formData.append('prebuiltScript', JSON.stringify(scriptDraft));
@@ -670,6 +680,39 @@ export default function PromoPage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* 배경음악 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-1.5">
+                <Music2 className="w-4 h-4 text-emerald-400" />
+                배경음악
+                {businessType && (
+                  <span className="text-[11px] text-emerald-400/70 ml-1 font-normal">· AI 자동추천</span>
+                )}
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {BGM_CATALOG.map((track) => (
+                  <button
+                    key={track.id}
+                    type="button"
+                    onClick={() => setBgmId(track.id)}
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-all border flex items-center gap-1.5 ${
+                      bgmId === track.id
+                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                        : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/20'
+                    }`}
+                  >
+                    <span>{track.emoji}</span>
+                    <span>{track.label}</span>
+                  </button>
+                ))}
+              </div>
+              {bgmId !== 'none' && (
+                <p className="text-gray-600 text-xs mt-1.5">
+                  {BGM_CATALOG.find(t => t.id === bgmId)?.desc} · 나레이션 대비 15% 음량으로 자동 조절
+                </p>
+              )}
             </div>
 
             {/* Advanced settings */}
