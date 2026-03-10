@@ -44,10 +44,10 @@ interface UsageInfo {
 const TONES = ['정보성', '재미있는', '감동적인', '동기부여', '교육적인'];
 
 const VOICES = [
-  { id: 'nova',    label: '지은',  desc: '여성 · 자연스러운', badge: '추천' },
-  { id: 'shimmer', label: '수아',  desc: '여성 · 부드러운',   badge: '' },
-  { id: 'echo',    label: '준호',  desc: '남성 · 명확한',     badge: '' },
-  { id: 'onyx',    label: '민준',  desc: '남성 · 중후한',     badge: '' },
+  { id: 'nova',    label: '지은',  desc: '여성 · 자연스러운 (Chirp3-HD)', badge: '추천' },
+  { id: 'shimmer', label: '수아',  desc: '여성 · 차분한 (Chirp3-HD)',     badge: '' },
+  { id: 'onyx',    label: '민준',  desc: '남성 · 안정적인 (Chirp3-HD)',   badge: '' },
+  { id: 'echo',    label: '준호',  desc: '남성 · 명확한 (Neural2)',       badge: '' },
 ];
 const SPEEDS = [
   { value: 0.9, label: '0.9×', desc: '천천히' },

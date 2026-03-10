@@ -58,7 +58,8 @@ export function incrementUsage(sessionId: string): void {
 
 export function upgradePlan(sessionId: string, plan: Plan): void {
   const usage = getOrCreate(sessionId);
-  usageStore.set(sessionId, { ...usage, plan });
+  // Reset count so the new plan's full quota is available immediately
+  usageStore.set(sessionId, { ...usage, plan, count: 0 });
 }
 
 export function resetUsage(sessionId?: string): void {

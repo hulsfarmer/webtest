@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { createJob, updateJob } from '@/lib/jobStore';
 import { reviseScript, VideoScript } from '@/lib/anthropic';
-import { generateAudio } from '@/lib/tts';
+import { generateAudioWithTimepoints } from '@/lib/tts';
 import { generateVideo } from '@/lib/video';
 
 async function processReviseJob(
@@ -40,9 +40,11 @@ async function processReviseJob(
       status: 'generating_audio',
     });
 
-    // Step 2: 음성 재생성
-    const fullText = revisedScript.sections.map((s) => s.text).join(' ');
-    await generateAudio(fullText, audioPath, revisedScript.totalDuration, voice, speed);
+    // Step 2: 음성 재생성 (SSML 타임포인트로 정확한 자막 타이밍)
+    const sentences = revisedScript.sections.flatMap((s) =>
+      s.text.split(/(?<=[.!?。！？])\s*/).map((x) => x.trim()).filter(Boolean),
+    );
+    const sentenceDurations = await generateAudioWithTimepoints(sentences, audioPath, voice, speed);
 
     updateJob(jobId, {
       progress: 65,
@@ -51,7 +53,7 @@ async function processReviseJob(
     });
 
     // Step 3: 영상 재합성
-    await generateVideo(revisedScript, audioPath, videoPath);
+    await generateVideo(revisedScript, audioPath, videoPath, [], undefined, sentenceDurations);
 
     try { fs.unlinkSync(audioPath); } catch { /* ignore */ }
 
