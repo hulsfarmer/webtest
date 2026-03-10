@@ -90,10 +90,11 @@ async function processPromoJob(
       status: 'generating_video',
     });
 
-    // Step 3: Generate video (with user images + bottom contact bar + accurate timing)
-    // Pass empty title so the title zone is suppressed in the promo video overlay —
-    // the business name belongs in the UI (script review header), not in the video itself.
-    await generateVideo({ ...script, title: '' }, audioPath, videoPath, userImagePaths, bottomInfo, sentenceDurations);
+    // Step 3: Generate video
+    // Pass businessName separately so the overlay shows:
+    //   ① business name (small, top of title zone)
+    //   ② catchy script title (large, gradient, below business name)
+    await generateVideo(script, audioPath, videoPath, userImagePaths, bottomInfo, sentenceDurations, input.businessName);
 
     // Cleanup audio and uploaded images
     try { fs.unlinkSync(audioPath); } catch { /* ignore */ }

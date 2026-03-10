@@ -233,7 +233,7 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
 
 다음 JSON 형식으로 응답해주세요 (코드 블록 없이 순수 JSON만):
 {
-  "title": "영상 제목 (30자 이내)",
+  "title": "캐치프레이즈 형식의 영상 제목 — 업체명을 그대로 반복하지 말고, 핵심 혜택·차별점을 임팩트 있게 20자 이내로 요약 (예: '지금 바로 경험하세요', '가격은 낮추고 효과는 높이고')",
   "bgKeyword": "배경으로 쓸 Pexels 스톡 영상 검색어 (영어 1-2단어, 예: coffee shop, gym workout, restaurant food)",
   "hashtags": ["해시태그1", "해시태그2", "해시태그3", "해시태그4", "해시태그5"],
   "sections": [
@@ -329,7 +329,7 @@ CTA: ${cta || '방문 또는 검색 유도'}
 
 다음 JSON 형식으로 응답해주세요 (코드 블록 없이 순수 JSON만):
 {
-  "title": "영상 제목 (30자 이내)",
+  "title": "캐치프레이즈 형식의 영상 제목 — 업체명을 그대로 반복하지 말고, 핵심 혜택·차별점을 임팩트 있게 20자 이내로 요약 (예: '지금 바로 경험하세요', '가격은 낮추고 효과는 높이고')",
   "bgKeyword": "배경 Pexels 검색어 (영어 1-2단어, 사진 없을 때 대체용)",
   "hashtags": ["해시태그1", "해시태그2", "해시태그3", "해시태그4", "해시태그5"],
   "sections": [

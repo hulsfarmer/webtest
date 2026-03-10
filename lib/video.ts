@@ -152,6 +152,7 @@ async function createTextOverlay(
   totalFrames: number,
   outputPath: string,
   bottomInfo?: string,
+  displayBusinessName?: string,
 ): Promise<void> {
   const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
 
@@ -197,29 +198,55 @@ async function createTextOverlay(
   ctx.fillText('ShortsAI', W / 2, 76);
   ctx.shadowBlur = 0;
 
-  // ── TITLE: fixed zone, gradient text, 78px, shadow only (no backing rect) ──
-  if (title) {
-    const titleWrapped = wrapKorean(title, 13);
-    const titleLines = titleWrapped.split('\n');
-    const titleFontSize = 78;
-    const titleLineH = 90;
-    const titleBlockH = titleLines.length * titleLineH;
-    const titleStartY = TITLE_ZONE_Y + (TITLE_ZONE_H - titleBlockH) / 2 + titleFontSize * 0.85;
+  // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
+  if (displayBusinessName || title) {
+    if (displayBusinessName) {
+      // Row 1 — business name: 38px, semi-transparent white
+      ctx.font = `bold 38px ${fontFamily}`;
+      ctx.fillStyle = 'rgba(255,255,255,0.72)';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 12;
+      ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 54);
+      ctx.shadowBlur = 0;
+      // Thin separator glow under business name
+      const sepGrad = ctx.createLinearGradient(200, 0, W - 200, 0);
+      sepGrad.addColorStop(0, 'transparent');
+      sepGrad.addColorStop(0.5, accentColor + '55');
+      sepGrad.addColorStop(1, 'transparent');
+      ctx.strokeStyle = sepGrad;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(200, TITLE_ZONE_Y + 72);
+      ctx.lineTo(W - 200, TITLE_ZONE_Y + 72);
+      ctx.stroke();
+    }
 
-    ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
-    // Gradient: accentColor → white, clean shadow (no double-draw)
-    const titleGrad = ctx.createLinearGradient(W / 2 - 380, 0, W / 2 + 380, 0);
-    titleGrad.addColorStop(0, accentColor);
-    titleGrad.addColorStop(1, 'white');
-    ctx.fillStyle = titleGrad;
-    ctx.shadowColor = 'rgba(0,0,0,0.85)';
-    ctx.shadowBlur = 18;
-    titleLines.forEach((line, i) => {
-      ctx.fillText(line, W / 2, titleStartY + i * titleLineH);
-    });
-    ctx.shadowBlur = 0;
+    if (title) {
+      // Row 2 — catchy title: gradient bold text
+      // When businessName is also shown, use the lower portion of the title zone
+      const catchyZoneTop = displayBusinessName ? TITLE_ZONE_Y + 82 : TITLE_ZONE_Y;
+      const catchyZoneH   = displayBusinessName ? TITLE_ZONE_H - 82 : TITLE_ZONE_H;
+      const titleFontSize = displayBusinessName ? 66 : 78;
+      const titleWrapped  = wrapKorean(title, 13);
+      const titleLines    = titleWrapped.split('\n');
+      const titleLineH    = titleFontSize + 14;
+      const titleBlockH   = titleLines.length * titleLineH;
+      const titleStartY   = catchyZoneTop + (catchyZoneH - titleBlockH) / 2 + titleFontSize * 0.85;
 
-    // Divider line (FIXED position)
+      ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
+      const titleGrad = ctx.createLinearGradient(W / 2 - 380, 0, W / 2 + 380, 0);
+      titleGrad.addColorStop(0, accentColor);
+      titleGrad.addColorStop(1, 'white');
+      ctx.fillStyle = titleGrad;
+      ctx.shadowColor = 'rgba(0,0,0,0.85)';
+      ctx.shadowBlur = 18;
+      titleLines.forEach((line, i) => {
+        ctx.fillText(line, W / 2, titleStartY + i * titleLineH);
+      });
+      ctx.shadowBlur = 0;
+    }
+
+    // Divider line between title zone and main text box (FIXED position)
     const divGrad = ctx.createLinearGradient(80, 0, W - 80, 0);
     divGrad.addColorStop(0, 'transparent');
     divGrad.addColorStop(0.5, accentColor);
@@ -232,9 +259,10 @@ async function createTextOverlay(
     ctx.stroke();
   }
 
-  // ── MAIN TEXT BOX: expands to fill title zone when title is hidden ──
-  const effectiveBOX_Y = title ? BOX_Y : TITLE_ZONE_Y + 20;
-  const effectiveBOX_H = title ? BOX_H : (BOX_Y + BOX_H) - (TITLE_ZONE_Y + 20);
+  // ── MAIN TEXT BOX: expands upward when title zone is fully empty ──
+  const hasTitleContent = !!(displayBusinessName || title);
+  const effectiveBOX_Y = hasTitleContent ? BOX_Y : TITLE_ZONE_Y + 20;
+  const effectiveBOX_H = hasTitleContent ? BOX_H : (BOX_Y + BOX_H) - (TITLE_ZONE_Y + 20);
   const boxX = BOX_W_MARGIN;
   const boxW = W - BOX_W_MARGIN * 2;
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
@@ -323,6 +351,7 @@ async function createFrameImage(
   outputPath: string,
   bgKeyword: string = 'lifestyle',
   bottomInfo?: string,
+  displayBusinessName?: string,
 ): Promise<void> {
   const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
 
@@ -414,28 +443,54 @@ async function createFrameImage(
   ctx.textAlign = 'center';
   ctx.fillText('ShortsAI', W / 2, 76);
 
-  // ── TITLE: fixed zone, gradient text, 78px ──
-  if (title) {
-    const titleWrapped = wrapKorean(title, 13);
-    const titleLines = titleWrapped.split('\n');
-    const titleFontSize = 78;
-    const titleLineH = 90;
-    const titleBlockH = titleLines.length * titleLineH;
-    const titleStartY = TITLE_ZONE_Y + (TITLE_ZONE_H - titleBlockH) / 2 + titleFontSize * 0.85;
+  // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
+  if (displayBusinessName || title) {
+    if (displayBusinessName) {
+      // Row 1 — business name: 38px, semi-transparent white
+      ctx.font = `bold 38px ${fontFamily}`;
+      ctx.fillStyle = 'rgba(255,255,255,0.72)';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 12;
+      ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 54);
+      ctx.shadowBlur = 0;
+      // Thin separator glow under business name
+      const sepGrad = ctx.createLinearGradient(200, 0, W - 200, 0);
+      sepGrad.addColorStop(0, 'transparent');
+      sepGrad.addColorStop(0.5, accentColor + '55');
+      sepGrad.addColorStop(1, 'transparent');
+      ctx.strokeStyle = sepGrad;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(200, TITLE_ZONE_Y + 72);
+      ctx.lineTo(W - 200, TITLE_ZONE_Y + 72);
+      ctx.stroke();
+    }
 
-    ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
-    const titleGrad = ctx.createLinearGradient(W / 2 - 380, 0, W / 2 + 380, 0);
-    titleGrad.addColorStop(0, accentColor);
-    titleGrad.addColorStop(1, 'white');
-    ctx.fillStyle = titleGrad;
-    ctx.shadowColor = 'rgba(0,0,0,0.85)';
-    ctx.shadowBlur = 18;
-    titleLines.forEach((line, i) => {
-      ctx.fillText(line, W / 2, titleStartY + i * titleLineH);
-    });
-    ctx.shadowBlur = 0;
+    if (title) {
+      // Row 2 — catchy title: gradient bold text
+      const catchyZoneTop = displayBusinessName ? TITLE_ZONE_Y + 82 : TITLE_ZONE_Y;
+      const catchyZoneH   = displayBusinessName ? TITLE_ZONE_H - 82 : TITLE_ZONE_H;
+      const titleFontSize = displayBusinessName ? 66 : 78;
+      const titleWrapped  = wrapKorean(title, 13);
+      const titleLines    = titleWrapped.split('\n');
+      const titleLineH    = titleFontSize + 14;
+      const titleBlockH   = titleLines.length * titleLineH;
+      const titleStartY   = catchyZoneTop + (catchyZoneH - titleBlockH) / 2 + titleFontSize * 0.85;
 
-    // Divider (FIXED position)
+      ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
+      const titleGrad = ctx.createLinearGradient(W / 2 - 380, 0, W / 2 + 380, 0);
+      titleGrad.addColorStop(0, accentColor);
+      titleGrad.addColorStop(1, 'white');
+      ctx.fillStyle = titleGrad;
+      ctx.shadowColor = 'rgba(0,0,0,0.85)';
+      ctx.shadowBlur = 18;
+      titleLines.forEach((line, i) => {
+        ctx.fillText(line, W / 2, titleStartY + i * titleLineH);
+      });
+      ctx.shadowBlur = 0;
+    }
+
+    // Divider line (FIXED position)
     const divGrad = ctx.createLinearGradient(80, 0, W - 80, 0);
     divGrad.addColorStop(0, 'transparent');
     divGrad.addColorStop(0.5, accentColor);
@@ -448,9 +503,10 @@ async function createFrameImage(
     ctx.stroke();
   }
 
-  // ── MAIN TEXT BOX: expands to fill title zone when title is hidden ──
-  const effectiveBOX_Y = title ? BOX_Y : TITLE_ZONE_Y + 20;
-  const effectiveBOX_H = title ? BOX_H : (BOX_Y + BOX_H) - (TITLE_ZONE_Y + 20);
+  // ── MAIN TEXT BOX: expands upward when title zone is fully empty ──
+  const hasTitleContent = !!(displayBusinessName || title);
+  const effectiveBOX_Y = hasTitleContent ? BOX_Y : TITLE_ZONE_Y + 20;
+  const effectiveBOX_H = hasTitleContent ? BOX_H : (BOX_Y + BOX_H) - (TITLE_ZONE_Y + 20);
   const boxX = BOX_W_MARGIN;
   const boxW = W - BOX_W_MARGIN * 2;
   ctx.fillStyle = 'rgba(0,0,0,0.38)';
@@ -572,6 +628,7 @@ export async function generateVideo(
   userImagePaths?: string[],
   bottomInfo?: string,
   externalSentenceDurations?: number[],
+  displayBusinessName?: string,
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const ffmpegPath = require('ffmpeg-static') as string;
@@ -661,7 +718,7 @@ export async function generateVideo(
       await createTextOverlay(
         script.title, sentence, sectionType,
         idx, allSentences.length, overlayPath,
-        bottomInfo,
+        bottomInfo, displayBusinessName,
       );
       overlayPaths.push(overlayPath);
     }
@@ -739,7 +796,7 @@ export async function generateVideo(
       await createFrameImage(
         script.title, sentence, sectionType,
         idx, allSentences.length, framePath, keyword,
-        bottomInfo,
+        bottomInfo, displayBusinessName,
       );
       framePaths.push({ path: framePath, duration: sentenceDurations[idx] });
     }

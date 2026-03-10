@@ -778,13 +778,16 @@ export default function PromoPage() {
                   <Megaphone className="w-5 h-5 text-emerald-400 flex-shrink-0" />
                   {businessName}
                 </h2>
-                <input
-                  type="text"
-                  value={scriptDraft.title}
-                  onChange={(e) => setScriptDraft({ ...scriptDraft, title: e.target.value })}
-                  className="mt-1.5 text-sm text-gray-400 bg-transparent border-b border-white/10 focus:outline-none focus:border-emerald-500/50 w-full transition-all placeholder-gray-600"
-                  placeholder="영상 제목"
-                />
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs text-gray-500 shrink-0">스크립트 제목</span>
+                  <input
+                    type="text"
+                    value={scriptDraft.title}
+                    onChange={(e) => setScriptDraft({ ...scriptDraft, title: e.target.value })}
+                    className="flex-1 text-sm text-gray-300 bg-transparent border-b border-white/10 focus:outline-none focus:border-emerald-500/50 transition-all placeholder-gray-600"
+                    placeholder="AI가 생성한 캐치프레이즈"
+                  />
+                </div>
               </div>
               <button
                 onClick={() => { setScriptDraft(null); setError(null); }}
