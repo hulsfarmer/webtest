@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2 } from 'lucide-react';
 import RevisePanel from '@/components/RevisePanel';
-import { BGM_CATALOG, recommendBgm, type BgmId } from '@/lib/bgm';
+import { BGM_CATALOG, recommendBgm, type BgmId } from '@/lib/bgm-catalog';
 
 type VideoScript = {
   title: string;
