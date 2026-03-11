@@ -335,20 +335,20 @@ async function getActualAudioDuration(audioPath: string): Promise<number> {
     } catch { /* fall through */ }
   }
 
-  // Fallback: parse Duration from ffmpeg stderr output
+  // Fallback: `ffmpeg -i file` (no output spec) always exits non-zero
+  // but always prints file info including Duration: to stderr
+  let ffmpegStderr = '';
   try {
-    let output = '';
-    try {
-      await execAsync(`"${ffmpegPath}" -i "${audioPath}" -f null -`);
-    } catch (e: unknown) {
-      output = (e as { stderr?: string }).stderr ?? '';
-    }
-    const match = output.match(/Duration:\s*(\d+):(\d+):(\d+\.?\d*)/);
-    if (match) {
-      const secs = parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseFloat(match[3]);
-      if (secs > 0) return secs;
-    }
-  } catch { /* ignore */ }
+    const r = await execAsync(`"${ffmpegPath}" -i "${audioPath}"`);
+    ffmpegStderr = r.stderr;
+  } catch (e: unknown) {
+    ffmpegStderr = (e as { stderr?: string }).stderr ?? '';
+  }
+  const match = ffmpegStderr.match(/Duration:\s*(\d+):(\d+):(\d+\.?\d*)/);
+  if (match) {
+    const secs = parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseFloat(match[3]);
+    if (secs > 0) return secs;
+  }
 
   return 60;
 }
