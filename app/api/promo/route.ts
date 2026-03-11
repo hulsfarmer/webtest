@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
   let duration = 60;
   let tone = '친근한';
   let sessionId = '';
-  let voice = 'nova';
+  let voice = 'ko-KR-Chirp3-HD-Aoede';
   let speed = 1.0;
   let bgmId: BgmId = 'none';
   let prebuiltScript: VideoScript | undefined;
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
     location      = (formData.get('location')      as string | null) ?? '';
     cta           = (formData.get('cta')           as string | null) ?? '';
     sessionId     = (formData.get('sessionId')     as string | null) ?? '';
-    voice         = (formData.get('voice')         as string | null) ?? 'nova';
+    voice         = (formData.get('voice')         as string | null) ?? 'ko-KR-Chirp3-HD-Aoede';
     duration      = parseInt((formData.get('duration') as string | null) ?? '60', 10);
     tone          = (formData.get('tone')          as string | null) ?? '친근한';
     speed         = parseFloat((formData.get('speed') as string | null) ?? '1.0');
@@ -249,7 +249,7 @@ export async function POST(req: NextRequest) {
       duration = 60,
       tone = '친근한',
       sessionId = '',
-      voice = 'nova',
+      voice = 'ko-KR-Chirp3-HD-Aoede',
       speed = 1.0,
     } = body);
     bgmId = (body.bgmId ?? 'none') as BgmId;

@@ -44,10 +44,9 @@ interface UsageInfo {
 const TONES = ['정보성', '재미있는', '감동적인', '동기부여', '교육적인'];
 
 const VOICES = [
-  { id: 'nova',    label: '지은',  desc: '여성 · 자연스러운 (Journey-F)', badge: '추천' },
-  { id: 'shimmer', label: '수아',  desc: '여성 · 활기찬 (Journey-O)',     badge: '' },
-  { id: 'onyx',    label: '민준',  desc: '남성 · 안정적인 (Journey-D)',   badge: '' },
-  { id: 'echo',    label: '준호',  desc: '남성 · 명확한 (Journey-D)',     badge: '' },
+  { id: 'ko-KR-Chirp3-HD-Aoede', label: '지은', desc: '여성 · 자연스러운', badge: '추천' },
+  { id: 'ko-KR-Chirp3-HD-Zephyr', label: '수아', desc: '여성 · 활기찬',     badge: '' },
+  { id: 'ko-KR-Chirp3-HD-Charon', label: '민준', desc: '남성 · 자연스러운', badge: '' },
 ];
 const SPEEDS = [
   { value: 0.9, label: '0.9×', desc: '천천히' },
@@ -123,7 +122,7 @@ export default function GeneratePage() {
   const [topic, setTopic] = useState('');
   const [duration, setDuration] = useState(60);
   const [tone, setTone] = useState('정보성');
-  const [voice, setVoice] = useState('nova');
+  const [voice, setVoice] = useState('ko-KR-Chirp3-HD-Aoede');
   const [speed, setSpeed] = useState(1.1);
   const [showAdvanced, setShowAdvanced] = useState(false);
 

@@ -7,25 +7,28 @@ import axios from 'axios';
 const execAsync = promisify(exec);
 
 // ── Voice mapping: UI ID → Google Cloud TTS voice name ───────────────────────
-// Google Neural2 (자연스러운 한국어)
-//   ko-KR-Neural2-A : 여성 · 자연스러운
-//   ko-KR-Neural2-B : 여성 · 부드러운
-//   ko-KR-Neural2-C : 남성 · 명확한
-//   ko-KR-Neural2-D : 남성 · 중후한
-// Google Journey (최신, 가장 자연스러운)
-//   ko-KR-Journey-D : 남성
-//   ko-KR-Journey-F : 여성
-//   ko-KR-Journey-O : 여성 · 활기찬
+// Google Chirp3-HD (최신, 가장 자연스러운 한국어)
+//   ko-KR-Chirp3-HD-Aoede    : 여성 · 자연스러운
+//   ko-KR-Chirp3-HD-Zephyr   : 여성 · 활기찬
+//   ko-KR-Chirp3-HD-Charon   : 남성 · 자연스러운
+// Google Neural2 (안정적인 한국어 - fallback)
+//   ko-KR-Neural2-A : 여성
+//   ko-KR-Neural2-C : 남성
 //
 // Google 음성 ID를 직접 전달할 때는 매핑 없이 그대로 사용.
-// 하위 호환용 OpenAI-style ID만 여기서 변환.
+// 하위 호환용 OpenAI-style ID 및 구버전 Journey ID 변환.
 const GOOGLE_VOICE_MAP: Record<string, string> = {
-  nova:    'ko-KR-Journey-F',  // 여성 · 자연스러운
-  shimmer: 'ko-KR-Journey-O',  // 여성 · 활기찬
-  echo:    'ko-KR-Journey-D',  // 남성 · 명확한
-  onyx:    'ko-KR-Journey-D',  // 남성 · 안정적인
-  alloy:   'ko-KR-Journey-F',
-  fable:   'ko-KR-Journey-D',
+  // OpenAI-style aliases
+  nova:    'ko-KR-Chirp3-HD-Aoede',   // 여성 · 자연스러운
+  shimmer: 'ko-KR-Chirp3-HD-Zephyr',  // 여성 · 활기찬
+  echo:    'ko-KR-Chirp3-HD-Charon',  // 남성 · 자연스러운
+  onyx:    'ko-KR-Chirp3-HD-Charon',  // 남성
+  alloy:   'ko-KR-Chirp3-HD-Aoede',
+  fable:   'ko-KR-Chirp3-HD-Charon',
+  // Journey → Chirp3-HD 변환 (구버전 호환)
+  'ko-KR-Journey-F': 'ko-KR-Chirp3-HD-Aoede',
+  'ko-KR-Journey-O': 'ko-KR-Chirp3-HD-Zephyr',
+  'ko-KR-Journey-D': 'ko-KR-Chirp3-HD-Charon',
 };
 
 /** Google 음성 이름 해석: 매핑 테이블에 있으면 변환, 없으면 그대로 사용 */
@@ -223,6 +226,15 @@ export async function generateAudioWithTimepoints(
       const timepoints: Array<{ markName: string; timeSeconds: number }> =
         response.data.timepoints ?? [];
 
+      // Chirp3-HD doesn't return timepoints — fall back to actual duration measurement
+      if (timepoints.length === 0) {
+        const actualDuration = await getActualAudioDuration(outputPath);
+        const totalCharsNoMark = sentences.reduce((a, s) => a + s.length, 0);
+        const durations = sentences.map(s => Math.max((s.length / totalCharsNoMark) * actualDuration, 0.4));
+        console.log('[TTS] Chirp3-HD (no timepoints) proportional:', durations.map(d => d.toFixed(2)).join(', '));
+        return durations;
+      }
+
       const durations: number[] = sentences.map((_, i) => {
         const start = timepoints.find(tp => tp.markName === `s${i}`)?.timeSeconds ?? null;
         const end   = timepoints.find(tp => tp.markName === `s${i + 1}`)?.timeSeconds ?? null;
@@ -243,6 +255,8 @@ export async function generateAudioWithTimepoints(
       console.log('[TTS] SSML timepoints:', durations.map(d => d.toFixed(2)).join(', '));
       return durations;
     } catch (err) {
+      const axiosErr = err as { response?: { data?: unknown } };
+      if (axiosErr?.response?.data) console.warn('[TTS] SSML error body:', JSON.stringify(axiosErr.response.data));
       console.warn('[TTS] SSML timepoints failed, falling back to generateAudio:', err);
     }
   }
@@ -295,6 +309,8 @@ export async function generateAudio(
       console.log('[TTS] Google Cloud TTS complete');
       return;
     } catch (err) {
+      const axiosErr = err as { response?: { data?: unknown } };
+      if (axiosErr?.response?.data) console.warn('[TTS] Google Cloud error body:', JSON.stringify(axiosErr.response.data));
       console.warn('[TTS] Google Cloud TTS failed, trying OpenAI fallback:', err);
     }
   }

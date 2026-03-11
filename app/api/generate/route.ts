@@ -105,7 +105,7 @@ async function processJob(
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  const { topic, duration = 60, tone = '정보성', sessionId, voice = 'nova', speed = 1.1, prebuiltScript, uploadId } = body;
+  const { topic, duration = 60, tone = '정보성', sessionId, voice = 'ko-KR-Chirp3-HD-Aoede', speed = 1.1, prebuiltScript, uploadId } = body;
 
   if (!topic || typeof topic !== 'string' || topic.trim().length === 0) {
     return NextResponse.json({ error: '주제를 입력해주세요.' }, { status: 400 });

@@ -64,10 +64,9 @@ const TONES = [
 ];
 
 const VOICES = [
-  { id: 'ko-KR-Journey-F', label: '지은', desc: '여성 · 자연스러운', badge: '추천' },
-  { id: 'ko-KR-Journey-O', label: '수아', desc: '여성 · 활기찬',     badge: '' },
-  { id: 'ko-KR-Journey-D', label: '민준', desc: '남성 · 자연스러운', badge: '' },
-  { id: 'ko-KR-Journey-D', label: '준호', desc: '남성 · 명확한',     badge: '' },
+  { id: 'ko-KR-Chirp3-HD-Aoede',  label: '지은', desc: '여성 · 자연스러운', badge: '추천' },
+  { id: 'ko-KR-Chirp3-HD-Zephyr', label: '수아', desc: '여성 · 활기찬',     badge: '' },
+  { id: 'ko-KR-Chirp3-HD-Charon', label: '민준', desc: '남성 · 자연스러운', badge: '' },
 ];
 
 const SPEEDS = [
@@ -142,7 +141,7 @@ export default function PromoPage() {
   const [cta, setCta]                       = useState('');
   const [duration, setDuration]             = useState(60);
   const [tone, setTone]                     = useState('친근한');
-  const [voice, setVoice]                   = useState('ko-KR-Journey-F');
+  const [voice, setVoice]                   = useState('ko-KR-Chirp3-HD-Aoede');
   const [speed, setSpeed]                   = useState(1.0);
   const [showAdvanced, setShowAdvanced]     = useState(false);
   const [bgmId, setBgmId]                   = useState<BgmId>('cafe');
