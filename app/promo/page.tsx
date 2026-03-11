@@ -67,7 +67,7 @@ const VOICES = [
   { id: 'ko-KR-Journey-F', label: '지은', desc: '여성 · 자연스러운', badge: '추천' },
   { id: 'ko-KR-Journey-O', label: '수아', desc: '여성 · 활기찬',     badge: '' },
   { id: 'ko-KR-Journey-D', label: '민준', desc: '남성 · 자연스러운', badge: '' },
-  { id: 'ko-KR-Neural2-C', label: '준호', desc: '남성 · 명확한',     badge: '' },
+  { id: 'ko-KR-Journey-D', label: '준호', desc: '남성 · 명확한',     badge: '' },
 ];
 
 const SPEEDS = [
@@ -736,7 +736,7 @@ export default function PromoPage() {
                     <div className="grid grid-cols-2 gap-2">
                       {VOICES.map((v) => (
                         <button
-                          key={v.id}
+                          key={v.label}
                           type="button"
                           onClick={() => setVoice(v.id)}
                           className={`relative p-3 rounded-xl text-left transition-all border ${

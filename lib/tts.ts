@@ -20,12 +20,12 @@ const execAsync = promisify(exec);
 // Google 음성 ID를 직접 전달할 때는 매핑 없이 그대로 사용.
 // 하위 호환용 OpenAI-style ID만 여기서 변환.
 const GOOGLE_VOICE_MAP: Record<string, string> = {
-  nova:    'ko-KR-Neural2-A',
-  shimmer: 'ko-KR-Neural2-B',
-  echo:    'ko-KR-Neural2-C',
-  onyx:    'ko-KR-Neural2-D',
-  alloy:   'ko-KR-Neural2-A',
-  fable:   'ko-KR-Neural2-C',
+  nova:    'ko-KR-Journey-F',  // 여성 · 자연스러운
+  shimmer: 'ko-KR-Journey-O',  // 여성 · 활기찬
+  echo:    'ko-KR-Journey-D',  // 남성 · 명확한
+  onyx:    'ko-KR-Journey-D',  // 남성 · 안정적인
+  alloy:   'ko-KR-Journey-F',
+  fable:   'ko-KR-Journey-D',
 };
 
 /** Google 음성 이름 해석: 매핑 테이블에 있으면 변환, 없으면 그대로 사용 */
@@ -56,7 +56,6 @@ async function generateGoogleCloudTTS(
       audioConfig: {
         audioEncoding: 'MP3',
         speakingRate: speed,  // 0.25 ~ 4.0
-        pitch: 0.0,
       },
     },
     { timeout: 30000 }
