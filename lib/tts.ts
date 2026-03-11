@@ -237,10 +237,12 @@ export async function generateAudioWithTimepoints(
         try {
           for (let i = 0; i < sentences.length; i++) {
             const segPath = path.join(tmpDir, `seg_${i}_${Date.now()}.mp3`);
+            // Add brief pauses after commas via SSML for natural pacing
+            const ssmlText = `<speak>${escapeXml(sentences[i]).replace(/,\s*/g, ',<break time="250ms"/>')}</speak>`;
             const segResp = await axios.post(
               `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
               {
-                input: { text: sentences[i] },
+                input: { ssml: ssmlText },
                 voice: { languageCode: 'ko-KR', name: voiceName },
                 audioConfig: { audioEncoding: 'MP3', speakingRate: speed },
               },
@@ -320,17 +322,35 @@ export async function generateAudioWithTimepoints(
 async function getActualAudioDuration(audioPath: string): Promise<number> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const ffmpegPath = require('ffmpeg-static') as string;
+
+  // Try ffprobe (may not be bundled with ffmpeg-static)
   const probePath = ffmpegPath.replace(/ffmpeg$/, 'ffprobe');
-  const probe = fs.existsSync(probePath) ? probePath : ffmpegPath.replace('ffmpeg', 'ffprobe');
-  try {
-    const { stdout } = await execAsync(
-      `"${probe}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${audioPath}"`
-    );
-    const d = parseFloat(stdout.trim());
-    return isNaN(d) ? 60 : d;
-  } catch {
-    return 60;
+  if (fs.existsSync(probePath)) {
+    try {
+      const { stdout } = await execAsync(
+        `"${probePath}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${audioPath}"`
+      );
+      const d = parseFloat(stdout.trim());
+      if (!isNaN(d) && d > 0) return d;
+    } catch { /* fall through */ }
   }
+
+  // Fallback: parse Duration from ffmpeg stderr output
+  try {
+    let output = '';
+    try {
+      await execAsync(`"${ffmpegPath}" -i "${audioPath}" -f null -`);
+    } catch (e: unknown) {
+      output = (e as { stderr?: string }).stderr ?? '';
+    }
+    const match = output.match(/Duration:\s*(\d+):(\d+):(\d+\.?\d*)/);
+    if (match) {
+      const secs = parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseFloat(match[3]);
+      if (secs > 0) return secs;
+    }
+  } catch { /* ignore */ }
+
+  return 60;
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
