@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2 } from 'lucide-react';
-import RevisePanel from '@/components/RevisePanel';
+import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2, Settings2 } from 'lucide-react';
 import { BGM_CATALOG, recommendBgm, type BgmId } from '@/lib/bgm-catalog';
 
 type VideoScript = {
@@ -366,14 +365,6 @@ export default function PromoPage() {
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
-
-  function startRevise(newJobId: string) {
-    setJobStatus(null);
-    setError(null);
-    setLoading(true);
-    setJobId(newJobId);
-    startPolling(newJobId);
-  }
 
   function goBackToScript() {
     setJobId(null);
@@ -955,6 +946,13 @@ export default function PromoPage() {
                 재생성
               </button>
               <button
+                onClick={() => { setScriptDraft(null); setError(null); }}
+                className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/15 transition-all border border-white/10 text-sm flex items-center justify-center gap-2"
+              >
+                <Settings2 className="w-4 h-4" />
+                수정
+              </button>
+              <button
                 onClick={startGeneration}
                 disabled={usage?.remaining === 0}
                 className="flex-2 flex-grow py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 transition-all disabled:opacity-40 flex items-center justify-center gap-2 px-6"
@@ -1063,18 +1061,6 @@ export default function PromoPage() {
                 새 영상 만들기
               </button>
             </div>
-
-            {/* AI 수정 패널 */}
-            {jobStatus.script && (
-              <RevisePanel
-                script={jobStatus.script}
-                sessionId={sessionId.current}
-                voice={voice}
-                speed={speed}
-                color="emerald"
-                onReviseStart={startRevise}
-              />
-            )}
 
             {jobStatus.script && (
               <div className="glass-card">

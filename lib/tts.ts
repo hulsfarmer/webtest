@@ -238,7 +238,7 @@ export async function generateAudioWithTimepoints(
           for (let i = 0; i < sentences.length; i++) {
             const segPath = path.join(tmpDir, `seg_${i}_${Date.now()}.mp3`);
             // Add brief pauses after commas via SSML for natural pacing
-            const ssmlText = `<speak>${escapeXml(sentences[i]).replace(/,\s*/g, ',<break time="250ms"/>')}</speak>`;
+            const ssmlText = `<speak>${escapeXml(sentences[i]).replace(/,\s*/g, ',<break time="150ms"/>')}</speak>`;
             const segResp = await axios.post(
               `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
               {
