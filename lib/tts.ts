@@ -226,13 +226,57 @@ export async function generateAudioWithTimepoints(
       const timepoints: Array<{ markName: string; timeSeconds: number }> =
         response.data.timepoints ?? [];
 
-      // Chirp3-HD doesn't return timepoints — fall back to actual duration measurement
+      // Chirp3-HD doesn't return timepoints — generate each sentence individually to measure exact duration
       if (timepoints.length === 0) {
-        const actualDuration = await getActualAudioDuration(outputPath);
-        const totalCharsNoMark = sentences.reduce((a, s) => a + s.length, 0);
-        const durations = sentences.map(s => Math.max((s.length / totalCharsNoMark) * actualDuration, 0.4));
-        console.log('[TTS] Chirp3-HD (no timepoints) proportional:', durations.map(d => d.toFixed(2)).join(', '));
-        return durations;
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const ffmpegPath = require('ffmpeg-static') as string;
+        const tmpDir = path.dirname(outputPath);
+        const segmentPaths: string[] = [];
+        const durations: number[] = [];
+
+        try {
+          for (let i = 0; i < sentences.length; i++) {
+            const segPath = path.join(tmpDir, `seg_${i}_${Date.now()}.mp3`);
+            const segResp = await axios.post(
+              `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
+              {
+                input: { text: sentences[i] },
+                voice: { languageCode: 'ko-KR', name: voiceName },
+                audioConfig: { audioEncoding: 'MP3', speakingRate: speed },
+              },
+              { timeout: 30000 }
+            );
+            fs.writeFileSync(segPath, Buffer.from(segResp.data.audioContent, 'base64'));
+            segmentPaths.push(segPath);
+            const dur = await getActualAudioDuration(segPath);
+            durations.push(Math.max(dur, 0.4));
+          }
+
+          // Concat all segments into final output (exact audio matches measured durations)
+          if (segmentPaths.length === 1) {
+            fs.copyFileSync(segmentPaths[0], outputPath);
+          } else {
+            const concatFile = path.join(tmpDir, `concat_${Date.now()}.txt`);
+            fs.writeFileSync(
+              concatFile,
+              segmentPaths.map(p => `file '${p.replace(/'/g, "'\\''")}'`).join('\n')
+            );
+            try {
+              await execAsync(
+                `"${ffmpegPath}" -f concat -safe 0 -i "${concatFile}" -c copy -y "${outputPath}"`
+              );
+            } finally {
+              try { fs.unlinkSync(concatFile); } catch { /* ignore */ }
+            }
+          }
+
+          console.log('[TTS] Chirp3-HD per-sentence measured:', durations.map(d => d.toFixed(2)).join(', '));
+          return durations;
+        } finally {
+          for (const p of segmentPaths) {
+            try { fs.unlinkSync(p); } catch { /* ignore */ }
+          }
+        }
       }
 
       const durations: number[] = sentences.map((_, i) => {
