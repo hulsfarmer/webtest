@@ -14,10 +14,11 @@ out/
 next-env.d.ts
 tsconfig.tsbuildinfo
 
-# video output, temp audio, user uploads
+# video output, temp audio, user uploads, bgm cache
 public/videos/
 data/audio/
 data/uploads/
+data/bgm/
 
 # misc
 .DS_Store
