@@ -17,7 +17,7 @@ export const BGM_CATALOG: BgmTrack[] = [
     label: '카페 감성',
     emoji: '☕',
     desc: '어쿠스틱 · 편안한',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+    url: 'https://assets.mixkit.co/music/292/292.mp3',
     filename: 'bgm_cafe.mp3',
   },
   {
@@ -25,7 +25,7 @@ export const BGM_CATALOG: BgmTrack[] = [
     label: '전문 비즈니스',
     emoji: '💼',
     desc: '깔끔한 · 신뢰감',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+    url: 'https://assets.mixkit.co/music/480/480.mp3',
     filename: 'bgm_professional.mp3',
   },
   {
@@ -33,7 +33,7 @@ export const BGM_CATALOG: BgmTrack[] = [
     label: '활기찬',
     emoji: '⚡',
     desc: '업비트 · 파워풀',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    url: 'https://assets.mixkit.co/music/349/349.mp3',
     filename: 'bgm_energetic.mp3',
   },
   {
@@ -41,7 +41,7 @@ export const BGM_CATALOG: BgmTrack[] = [
     label: '따뜻한',
     emoji: '💕',
     desc: '소프트 · 감성적',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3',
+    url: 'https://assets.mixkit.co/music/22/22.mp3',
     filename: 'bgm_warm.mp3',
   },
   {
@@ -49,7 +49,7 @@ export const BGM_CATALOG: BgmTrack[] = [
     label: '트렌디',
     emoji: '👗',
     desc: '팝 · 세련된',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3',
+    url: 'https://assets.mixkit.co/music/228/228.mp3',
     filename: 'bgm_trendy.mp3',
   },
   {
@@ -57,7 +57,7 @@ export const BGM_CATALOG: BgmTrack[] = [
     label: '차분한',
     emoji: '🌿',
     desc: '앰비언트 · 힐링',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
+    url: 'https://assets.mixkit.co/music/443/443.mp3',
     filename: 'bgm_calm.mp3',
   },
   {
