@@ -1,28 +1,43 @@
 import { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
-import KakaoProvider from 'next-auth/providers/kakao';
-import { SupabaseAdapter } from '@auth/supabase-adapter';
-import type { Adapter } from 'next-auth/adapters';
+import { CustomSupabaseAdapter } from './supabase-adapter';
+
+const providers = [
+  GoogleProvider({
+    clientId: process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+  }),
+];
+
+// Kakao는 credentials가 있을 때만 활성화
+if (process.env.KAKAO_CLIENT_ID && process.env.KAKAO_CLIENT_SECRET) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const KakaoProvider = require('next-auth/providers/kakao').default;
+  providers.push(
+    KakaoProvider({
+      clientId: process.env.KAKAO_CLIENT_ID,
+      clientSecret: process.env.KAKAO_CLIENT_SECRET,
+    })
+  );
+}
 
 export const authOptions: NextAuthOptions = {
-  adapter: SupabaseAdapter({
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    secret: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  }) as Adapter,
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    KakaoProvider({
-      clientId: process.env.KAKAO_CLIENT_ID!,
-      clientSecret: process.env.KAKAO_CLIENT_SECRET!,
-    }),
-  ],
+  adapter: CustomSupabaseAdapter(),
+  providers,
+  session: {
+    strategy: 'jwt',
+  },
   callbacks: {
-    async session({ session, user }) {
+    async jwt({ token, user }) {
+      // 최초 로그인 시 user 객체에서 id를 토큰에 저장
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    async session({ session, token }) {
       if (session.user) {
-        session.user.id = user.id;
+        session.user.id = token.id as string;
       }
       return session;
     },
@@ -30,4 +45,5 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: '/login',
   },
+  debug: process.env.NODE_ENV === 'development',
 };

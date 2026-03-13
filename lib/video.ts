@@ -273,10 +273,10 @@ async function createTextOverlay(
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  // Text centered vertically within the fixed box
+  // Text centered vertically within the fixed box — fixed font size for consistency
   const wrapped = wrapKorean(text, 12);
   const textLines = wrapped.split('\n');
-  const fontSize = textLines.length > 3 ? 68 : textLines.length > 1 ? 76 : 84;
+  const fontSize = 72;
   const lineHeight = fontSize + 22;
   const textBlockH = textLines.length * lineHeight;
   const textStartY = effectiveBOX_Y + (effectiveBOX_H - textBlockH) / 2 + fontSize * 0.85;
@@ -517,9 +517,10 @@ async function createFrameImage(
   ctx.lineWidth = 2;
   ctx.stroke();
 
+  // Fixed font size for consistency across all frames
   const wrapped = wrapKorean(text, 12);
   const textLines = wrapped.split('\n');
-  const fontSize = textLines.length > 3 ? 68 : textLines.length > 1 ? 76 : 84;
+  const fontSize = 72;
   const lineHeight = fontSize + 22;
   const textBlockH = textLines.length * lineHeight;
   const textStartY = effectiveBOX_Y + (effectiveBOX_H - textBlockH) / 2 + fontSize * 0.85;
@@ -630,9 +631,16 @@ export async function generateVideo(
   externalSentenceDurations?: number[],
   displayBusinessName?: string,
   bgmPath?: string,
+  bgmId?: string,
+  externalBgmVolume?: number,
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const ffmpegPath = require('ffmpeg-static') as string;
+
+  // BGM volume: use user-specified value, or auto (calm/trendy louder, others softer)
+  const bgmVolume = externalBgmVolume !== undefined
+    ? externalBgmVolume.toFixed(2)
+    : (bgmId === 'calm' || bgmId === 'trendy') ? '0.45' : '0.20';
 
   const outputDir = path.dirname(outputPath);
   if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
@@ -641,6 +649,36 @@ export async function generateVideo(
   if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
 
   const audioDuration = await getAudioDuration(audioPath);
+
+  // ── 마무리 효과음(딩) 생성 후 나레이션 오디오 끝에 합성 ──
+  const chimeFile = path.join(tmpDir, 'chime.wav');
+  const narrationWithChime = path.join(tmpDir, 'narration_chime.mp3');
+  try {
+    // 부드러운 2-tone 차임: C6(1047Hz) 0.15s → E6(1319Hz) 0.25s, 볼륨 fade
+    await execAsync(
+      `"${ffmpegPath}" -f lavfi -i "sine=frequency=1047:duration=0.15:sample_rate=44100" ` +
+      `-f lavfi -i "sine=frequency=1319:duration=0.25:sample_rate=44100" ` +
+      `-filter_complex "[0:a]afade=t=out:st=0.1:d=0.05[a0];[1:a]adelay=150|150,afade=t=out:st=0.15:d=0.1[a1];` +
+      `[a0][a1]amix=inputs=2:duration=longest,volume=0.5[chime]" ` +
+      `-map "[chime]" -y "${chimeFile}"`
+    );
+    // 나레이션 끝에 0.3초 간격 후 효과음 추가
+    const chimeDelay = Math.round((audioDuration + 0.3) * 1000); // ms
+    await execAsync(
+      `"${ffmpegPath}" -i "${audioPath}" -i "${chimeFile}" ` +
+      `-filter_complex "[1:a]adelay=${chimeDelay}|${chimeDelay}[chime_d];` +
+      `[0:a][chime_d]amix=inputs=2:duration=longest[aout]" ` +
+      `-map "[aout]" -c:a libmp3lame -q:a 3 -y "${narrationWithChime}"`
+    );
+    // 이후 audioPath 대신 narrationWithChime 사용
+    // (audioPath는 원본 유지 — 나중에 정리)
+    console.log('[Video] Chime appended to narration');
+  } catch (e) {
+    console.warn('[Video] Chime generation failed, continuing without:', e);
+  }
+  // 효과음이 합성된 오디오 경로 (실패 시 원본 사용)
+  const finalAudioPath = fs.existsSync(narrationWithChime) ? narrationWithChime : audioPath;
+
   const sections = script.sections;
   // Claude가 생성한 bgKeyword 우선 사용, 없으면 하드코딩 매핑 fallback
   const fullScriptText = script.title + ' ' + script.sections.map(s => s.text).join(' ');
@@ -726,14 +764,14 @@ export async function generateVideo(
 
     // Build FFmpeg inputs:
     // [0] = bg video (looped), [1..N] = overlay PNGs, [N+1] = audio, [N+2] = BGM (optional)
-    const bgLoopDuration = (audioDuration + 2).toFixed(3);
+    const bgLoopDuration = (audioDuration + 1.5 + 1).toFixed(3); // audioDuration + fadeOut + buffer
     const bgmInputArg = bgmPath
       ? `-stream_loop -1 -t ${bgLoopDuration} -i "${bgmPath}"`
       : '';
     const inputArgs = [
       `-stream_loop -1 -t ${bgLoopDuration} -i "${videoPath}"`,
       ...overlayPaths.map(p => `-i "${p}"`),
-      `-i "${audioPath}"`,
+      `-i "${finalAudioPath}"`,
       ...(bgmPath ? [bgmInputArg] : []),
     ].join(' ');
 
@@ -764,11 +802,26 @@ export async function generateVideo(
     const audioInputIdx = overlayPaths.length + 1;
     const bgmInputIdx   = overlayPaths.length + 2;
 
-    // BGM audio mixing: narration at 100%, BGM at 15%
+    // 페이드아웃: 영상 끝 1.5초 + BGM 여운 1.5초
+    const fadeOutDur = 1.5;
+    const totalDur = audioDuration + fadeOutDur;
+    const fadeStart = totalDur - fadeOutDur;
+
+    // 비디오 페이드아웃 추가 (vout → vfaded)
+    filterParts.push(
+      `[vout]fade=t=out:st=${fadeStart.toFixed(3)}:d=${fadeOutDur.toFixed(3)}[vfaded]`
+    );
+
+    // BGM audio mixing + BGM 여운 페이드아웃
     if (bgmPath) {
       filterParts.push(
-        `[${bgmInputIdx}:a]volume=0.15[bgm_adj]`,
-        `[${audioInputIdx}:a][bgm_adj]amix=inputs=2:duration=first:dropout_transition=3[aout]`
+        `[${bgmInputIdx}:a]volume=${bgmVolume},afade=t=out:st=${fadeStart.toFixed(3)}:d=${fadeOutDur.toFixed(3)}[bgm_adj]`,
+        `[${audioInputIdx}:a][bgm_adj]amix=inputs=2:duration=longest:dropout_transition=2[aout]`
+      );
+    } else {
+      // BGM 없으면 나레이션에도 페이드아웃
+      filterParts.push(
+        `[${audioInputIdx}:a]afade=t=out:st=${fadeStart.toFixed(3)}:d=${fadeOutDur.toFixed(3)}[aout]`
       );
     }
 
@@ -778,13 +831,13 @@ export async function generateVideo(
       `"${ffmpegPath}"`,
       inputArgs,
       `-filter_complex "${filterGraph}"`,
-      `-map "[vout]"`,
-      bgmPath ? `-map "[aout]"` : `-map ${audioInputIdx}:a`,
+      `-map "[vfaded]"`,
+      `-map "[aout]"`,
       `-c:v libx264 -preset fast -crf 22`,
       `-c:a aac -b:a 128k`,
       `-pix_fmt yuv420p`,
       `-movflags +faststart`,
-      `-t ${audioDuration.toFixed(3)}`,
+      `-t ${totalDur.toFixed(3)}`,
       `-y "${outputPath}"`,
     ].join(' ');
 
@@ -827,21 +880,25 @@ export async function generateVideo(
       concatContent + `\nfile '${lastFrame.path.replace(/'/g, "'\\''")}'\n`
     );
 
-    // Mode 2: BGM mixing via filter_complex when bgmPath is set, otherwise use simple -vf
+    // Mode 2: BGM mixing + 페이드아웃
+    const m2FadeOutDur = 1.5;
+    const m2TotalDur = audioDuration + m2FadeOutDur;
+    const m2FadeStart = m2TotalDur - m2FadeOutDur;
     let cmd: string;
     if (bgmPath) {
       // [0]=concat frames [1]=narration [2]=BGM (looped)
-      const bgmLoopDur = (audioDuration + 2).toFixed(3);
+      const bgmLoopDur = (m2TotalDur + 1).toFixed(3);
       const m2filter = [
         `[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,` +
-        `pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1[vout]`,
-        `[2:a]volume=0.15[bgm_adj]`,
-        `[1:a][bgm_adj]amix=inputs=2:duration=first:dropout_transition=3[aout]`,
+        `pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,` +
+        `fade=t=out:st=${m2FadeStart.toFixed(3)}:d=${m2FadeOutDur.toFixed(3)}[vout]`,
+        `[2:a]volume=${bgmVolume},afade=t=out:st=${m2FadeStart.toFixed(3)}:d=${m2FadeOutDur.toFixed(3)}[bgm_adj]`,
+        `[1:a][bgm_adj]amix=inputs=2:duration=longest:dropout_transition=2[aout]`,
       ].join(';');
       cmd = [
         `"${ffmpegPath}"`,
         `-f concat -safe 0 -i "${concatFile}"`,
-        `-i "${audioPath}"`,
+        `-i "${finalAudioPath}"`,
         `-stream_loop -1 -t ${bgmLoopDur} -i "${bgmPath}"`,
         `-filter_complex "${m2filter}"`,
         `-map "[vout]"`,
@@ -850,20 +907,28 @@ export async function generateVideo(
         `-c:a aac -b:a 128k`,
         `-pix_fmt yuv420p`,
         `-movflags +faststart`,
-        `-shortest`,
+        `-t ${m2TotalDur.toFixed(3)}`,
         `-y "${outputPath}"`,
       ].join(' ');
     } else {
+      const m2filterNoB = [
+        `[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,` +
+        `pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,` +
+        `fade=t=out:st=${m2FadeStart.toFixed(3)}:d=${m2FadeOutDur.toFixed(3)}[vout]`,
+        `[1:a]afade=t=out:st=${m2FadeStart.toFixed(3)}:d=${m2FadeOutDur.toFixed(3)}[aout]`,
+      ].join(';');
       cmd = [
         `"${ffmpegPath}"`,
         `-f concat -safe 0 -i "${concatFile}"`,
-        `-i "${audioPath}"`,
-        `-vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1"`,
+        `-i "${finalAudioPath}"`,
+        `-filter_complex "${m2filterNoB}"`,
+        `-map "[vout]"`,
+        `-map "[aout]"`,
         `-c:v libx264 -preset fast -crf 22`,
         `-c:a aac -b:a 128k`,
         `-pix_fmt yuv420p`,
         `-movflags +faststart`,
-        `-shortest`,
+        `-t ${m2TotalDur.toFixed(3)}`,
         `-y "${outputPath}"`,
       ].join(' ');
     }

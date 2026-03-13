@@ -13,7 +13,7 @@ export interface VideoScript {
   hashtags: string[];
   sections: ScriptSection[];
   totalDuration: number;
-  bgKeyword: string; // Pexels 검색용 영어 키워드 (예: "dog", "cooking", "mountain")
+  bgKeyword: string; // Pexels 검색용 영어 키워드
 }
 
 let client: Anthropic | null = null;
@@ -25,91 +25,6 @@ function getClient(): Anthropic {
   return client;
 }
 
-export async function generateScript(
-  topic: string,
-  duration: number = 60,
-  tone: string = '정보성'
-): Promise<VideoScript> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    // Return mock script for development without API key
-    return getMockScript(topic, duration);
-  }
-
-  const message = await getClient().messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: 1024,
-    messages: [
-      {
-        role: 'user',
-        content: `유튜브 쇼츠 영상 스크립트를 한국어로 작성해주세요.
-
-주제: ${topic}
-영상 길이: ${duration}초
-톤: ${tone}
-
-다음 JSON 형식으로 응답해주세요 (코드 블록 없이 순수 JSON만):
-{
-  "title": "영상 제목 (30자 이내)",
-  "bgKeyword": "영상 배경으로 쓸 Pexels 스톡 영상 검색어 (영어 단어 1-2개, 예: dog, cooking food, mountain hiking)",
-  "hashtags": ["해시태그1", "해시태그2", "해시태그3", "해시태그4", "해시태그5"],
-  "sections": [
-    {
-      "type": "hook",
-      "text": "처음 3-5초 안에 시청자를 사로잡는 강력한 훅. 질문이나 놀라운 사실로 시작.",
-      "duration": 5
-    },
-    {
-      "type": "main",
-      "text": "핵심 내용 포인트 1 (구체적이고 실용적인 정보)",
-      "duration": ${Math.floor(duration * 0.25)}
-    },
-    {
-      "type": "main",
-      "text": "핵심 내용 포인트 2",
-      "duration": ${Math.floor(duration * 0.25)}
-    },
-    {
-      "type": "main",
-      "text": "핵심 내용 포인트 3",
-      "duration": ${Math.floor(duration * 0.2)}
-    },
-    {
-      "type": "cta",
-      "text": "마무리 멘트와 구독/좋아요 요청",
-      "duration": ${Math.floor(duration * 0.1)}
-    }
-  ],
-  "totalDuration": ${duration}
-}
-
-중요:
-- 각 section의 text는 TTS로 읽기 자연스럽게 작성 (음성으로 읽을 내용)
-- 훅은 강렬하고 호기심을 유발하는 문장
-- 각 포인트는 짧고 명확하게
-- 총 duration이 ${duration}초에 맞도록 조정
-- bgKeyword는 반드시 영어로, 주제와 시각적으로 어울리는 배경 영상 검색어 (예: 강아지→"dog puppy", 요리→"cooking kitchen", 여행→"travel landscape")`,
-      },
-    ],
-  });
-
-  const content = message.content[0];
-  if (content.type !== 'text') {
-    throw new Error('Unexpected response type from Claude');
-  }
-
-  try {
-    // Strip markdown code block if present (e.g. ```json ... ```)
-    const raw = content.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    return JSON.parse(raw) as VideoScript;
-  } catch {
-    throw new Error('Claude returned invalid JSON: ' + content.text.slice(0, 200));
-  }
-}
-
-// ─────────────────────────────────────────────
-// 사진 기반 스크립트 생성 (Claude Vision)
-// ─────────────────────────────────────────────
-
 function fileToImageBlock(imgPath: string): { type: 'image'; source: { type: 'base64'; media_type: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'; data: string } } {
   const buffer = fs.readFileSync(imgPath);
   const base64 = buffer.toString('base64');
@@ -120,78 +35,6 @@ function fileToImageBlock(imgPath: string): { type: 'image'; source: { type: 'ba
     ext === 'gif' ? 'image/gif' :
     'image/jpeg';
   return { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } };
-}
-
-export async function generateScriptFromImages(
-  imagePaths: string[],
-  topic: string,
-  duration: number,
-  tone: string,
-): Promise<VideoScript> {
-  if (!process.env.ANTHROPIC_API_KEY || imagePaths.length === 0) {
-    return getMockScript(topic, duration);
-  }
-
-  const n = imagePaths.length;
-  const perDuration = Math.floor(duration / n);
-
-  const sectionSpecs = imagePaths.map((_, i) => ({
-    type: i === 0 ? 'hook' : i === n - 1 && n > 1 ? 'cta' : 'main',
-    index: i,
-    duration: perDuration,
-  }));
-
-  const message = await getClient().messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: 1024,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          ...imagePaths.map(fileToImageBlock),
-          {
-            type: 'text',
-            text: `위 ${n}장의 사진을 순서대로 사용하여 유튜브 쇼츠 영상 스크립트를 한국어로 작성해주세요.
-
-주제: ${topic}
-영상 길이: ${duration}초
-톤: ${tone}
-섹션 수: ${n}개 (사진 1장당 섹션 1개)
-
-다음 JSON 형식으로 응답해주세요 (코드 블록 없이 순수 JSON만):
-{
-  "title": "영상 제목 (30자 이내)",
-  "bgKeyword": "배경 Pexels 검색어 (영어 1-2단어, 사진 없을 때 대체용)",
-  "hashtags": ["해시태그1", "해시태그2", "해시태그3", "해시태그4", "해시태그5"],
-  "sections": [
-    ${sectionSpecs.map((s, i) => JSON.stringify({
-      type: s.type,
-      text: `사진 ${i + 1}에 어울리는 ${s.type === 'hook' ? '강렬한 훅 멘트' : s.type === 'cta' ? '마무리와 구독/좋아요 요청' : '핵심 설명'}`,
-      duration: s.duration,
-    })).join(',\n    ')}
-  ],
-  "totalDuration": ${duration}
-}
-
-중요:
-- 각 섹션의 text는 해당 사진(순서대로)의 내용/분위기와 자연스럽게 연결되도록
-- text는 TTS로 읽기 자연스러운 한국어 (음성으로 읽을 내용)
-- 사진들 사이에 이야기 흐름이 이어지도록`,
-          },
-        ],
-      },
-    ],
-  });
-
-  const content = message.content[0];
-  if (content.type !== 'text') throw new Error('Unexpected response type from Claude');
-
-  try {
-    const raw = content.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    return JSON.parse(raw) as VideoScript;
-  } catch {
-    throw new Error('Claude returned invalid JSON: ' + content.text.slice(0, 200));
-  }
 }
 
 // ─────────────────────────────────────────────
@@ -214,7 +57,7 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
     return getMockPromoScript(input);
   }
 
-  const { businessName, businessType, sellingPoints, contact, location, cta, duration, tone } = input;
+  const { businessName, businessType, sellingPoints, cta, duration, tone } = input;
 
   const message = await getClient().messages.create({
     model: 'claude-haiku-4-5',
@@ -411,7 +254,6 @@ export async function reviseScript(
   feedback: string,
 ): Promise<VideoScript> {
   if (!process.env.ANTHROPIC_API_KEY) {
-    // Mock: append feedback note to title
     return {
       ...originalScript,
       title: originalScript.title + ' (수정)',
@@ -427,7 +269,7 @@ export async function reviseScript(
     messages: [
       {
         role: 'user',
-        content: `다음 영상 스크립트를 수정 요청에 따라 수정해주세요.
+        content: `다음 홍보 영상 스크립트를 수정 요청에 따라 수정해주세요.
 
 원본 스크립트 (JSON):
 ${JSON.stringify(originalScript, null, 2)}
@@ -439,7 +281,8 @@ ${JSON.stringify(originalScript, null, 2)}
 - 수정 요청에 해당하는 부분만 바꾸고, 나머지는 최대한 유지
 - bgKeyword는 영어로 유지
 - totalDuration은 원본과 같거나 비슷하게 유지
-- 모든 text는 TTS로 읽기 자연스러운 한국어로 작성`,
+- 모든 text는 TTS로 읽기 자연스러운 한국어로 작성
+- 전화번호, 주소 등 연락 정보는 스크립트에 포함하지 마세요`,
       },
     ],
   });
@@ -453,42 +296,4 @@ ${JSON.stringify(originalScript, null, 2)}
   } catch {
     throw new Error('Claude returned invalid JSON: ' + content.text.slice(0, 200));
   }
-}
-
-// ─────────────────────────────────────────────
-
-function getMockScript(topic: string, duration: number): VideoScript {
-  return {
-    title: `${topic}에 대한 놀라운 사실`,
-    bgKeyword: 'lifestyle nature',
-    hashtags: ['#쇼츠', '#유튜브쇼츠', '#꿀팁', '#정보', '#shorts'],
-    sections: [
-      {
-        type: 'hook',
-        text: `${topic}에 대해 알고 계셨나요? 오늘 정말 놀라운 사실을 알려드릴게요!`,
-        duration: 5,
-      },
-      {
-        type: 'main',
-        text: `첫 번째 포인트입니다. ${topic}의 핵심은 바로 꾸준함입니다. 매일 조금씩 실천하는 것이 중요해요.`,
-        duration: Math.floor(duration * 0.25),
-      },
-      {
-        type: 'main',
-        text: `두 번째 포인트! 많은 분들이 ${topic}을 시작할 때 이 실수를 합니다. 절대 처음부터 너무 무리하지 마세요.`,
-        duration: Math.floor(duration * 0.25),
-      },
-      {
-        type: 'main',
-        text: `세 번째이자 가장 중요한 포인트입니다. ${topic}에서 성공하려면 올바른 방법을 먼저 배워야 합니다.`,
-        duration: Math.floor(duration * 0.2),
-      },
-      {
-        type: 'cta',
-        text: `오늘 영상이 도움이 되셨다면 구독과 좋아요 부탁드립니다. 다음 영상에서 더 유용한 정보로 찾아올게요!`,
-        duration: Math.floor(duration * 0.1),
-      },
-    ],
-    totalDuration: duration,
-  };
 }

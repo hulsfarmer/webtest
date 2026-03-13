@@ -33,6 +33,8 @@ async function processPromoJob(
   userImagePaths: string[],
   prebuiltScript?: VideoScript,
   bgmId?: BgmId,
+  customBgmPath?: string,
+  bgmVolume?: number,
 ) {
   const audioDir = path.join(process.cwd(), 'data', 'audio');
   const videoDir = path.join(process.cwd(), 'public', 'videos');
@@ -96,8 +98,15 @@ async function processPromoJob(
 
     // Step 3: Resolve BGM (download and cache if needed)
     let bgmPath: string | null = null;
-    if (bgmId && bgmId !== 'none') {
+    console.log(`[Promo] BGM requested: bgmId="${bgmId}", customBgm=${!!customBgmPath}`);
+    if (customBgmPath) {
+      bgmPath = customBgmPath;
+      console.log(`[Promo] Using custom BGM: "${bgmPath}"`);
+    } else if (bgmId && bgmId !== 'none') {
       bgmPath = await resolveBgmPath(bgmId);
+      console.log(`[Promo] BGM resolved: path="${bgmPath}"`);
+    } else {
+      console.log(`[Promo] BGM skipped (none or empty)`);
     }
 
     // Step 4: Generate video
@@ -107,11 +116,12 @@ async function processPromoJob(
     await generateVideo(
       script, audioPath, videoPath, userImagePaths,
       bottomInfo, sentenceDurations, input.businessName,
-      bgmPath ?? undefined,
+      bgmPath ?? undefined, bgmId, bgmVolume,
     );
 
-    // Cleanup audio and uploaded images
+    // Cleanup audio, custom BGM, and uploaded images
     try { fs.unlinkSync(audioPath); } catch { /* ignore */ }
+    if (customBgmPath) { try { fs.unlinkSync(customBgmPath); } catch { /* ignore */ } }
     for (const imgPath of userImagePaths) {
       try { fs.unlinkSync(imgPath); } catch { /* ignore */ }
     }
@@ -162,6 +172,8 @@ export async function POST(req: NextRequest) {
   let voice = 'ko-KR-Chirp3-HD-Aoede';
   let speed = 1.0;
   let bgmId: BgmId = 'none';
+  let bgmVolume: number | undefined;
+  let customBgmPath: string | undefined;
   let prebuiltScript: VideoScript | undefined;
   const userImagePaths: string[] = [];
 
@@ -179,6 +191,8 @@ export async function POST(req: NextRequest) {
     tone          = (formData.get('tone')          as string | null) ?? '친근한';
     speed         = parseFloat((formData.get('speed') as string | null) ?? '1.0');
     bgmId         = ((formData.get('bgmId') as string | null) ?? 'none') as BgmId;
+    const bgmVolumeRaw = formData.get('bgmVolume') as string | null;
+    if (bgmVolumeRaw) bgmVolume = parseFloat(bgmVolumeRaw);
     const prebuiltScriptRaw = formData.get('prebuiltScript') as string | null;
     if (prebuiltScriptRaw) {
       try { prebuiltScript = JSON.parse(prebuiltScriptRaw); } catch { /* ignore */ }
@@ -202,6 +216,19 @@ export async function POST(req: NextRequest) {
         userImagePaths.push(savePath);
       }
       console.log(`[Promo] Saved ${userImagePaths.length} user images for job ${jobId}`);
+    }
+
+    // Save custom BGM file if uploaded
+    const customBgmFile = formData.get('customBgm') as File | null;
+    if (customBgmFile && customBgmFile instanceof File && customBgmFile.size > 0) {
+      const bgmDir = path.join(process.cwd(), 'data', 'bgm');
+      if (!fs.existsSync(bgmDir)) fs.mkdirSync(bgmDir, { recursive: true });
+      const ext = customBgmFile.name.split('.').pop()?.toLowerCase() || 'mp3';
+      const savePath = path.join(bgmDir, `custom_${jobId}.${ext}`);
+      const arrayBuffer = await customBgmFile.arrayBuffer();
+      fs.writeFileSync(savePath, Buffer.from(arrayBuffer));
+      customBgmPath = savePath;
+      console.log(`[Promo] Saved custom BGM: ${savePath}`);
     }
 
     // Validate required fields
@@ -237,7 +264,7 @@ export async function POST(req: NextRequest) {
       tone,
     };
 
-    processPromoJob(jobId, input, voice, speed, userImagePaths, prebuiltScript, bgmId).catch(console.error);
+    processPromoJob(jobId, input, voice, speed, userImagePaths, prebuiltScript, bgmId, customBgmPath, bgmVolume).catch(console.error);
     return NextResponse.json({ jobId });
 
   } else {

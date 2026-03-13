@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2, Settings2 } from 'lucide-react';
+import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2, Settings2, Upload, Volume2 } from 'lucide-react';
 import { BGM_CATALOG, recommendBgm, type BgmId } from '@/lib/bgm-catalog';
 
 type VideoScript = {
@@ -64,8 +64,8 @@ const TONES = [
 ];
 
 const VOICES = [
-  { id: 'ko-KR-Chirp3-HD-Aoede',  label: '지은', desc: '여성 · 자연스러운', badge: '추천' },
-  { id: 'ko-KR-Chirp3-HD-Zephyr', label: '수아', desc: '여성 · 활기찬',     badge: '' },
+  { id: 'ko-KR-Chirp3-HD-Zephyr', label: '수아', desc: '여성 · 활기찬',     badge: '추천' },
+  { id: 'ko-KR-Chirp3-HD-Aoede',  label: '지은', desc: '여성 · 자연스러운', badge: '' },
   { id: 'ko-KR-Chirp3-HD-Charon', label: '민준', desc: '남성 · 자연스러운', badge: '' },
 ];
 
@@ -132,10 +132,14 @@ export default function PromoPage() {
   const [cta, setCta]                       = useState('');
   const [duration, setDuration]             = useState(60);
   const [tone, setTone]                     = useState('친근한');
-  const [voice, setVoice]                   = useState('ko-KR-Chirp3-HD-Aoede');
+  const [voice, setVoice]                   = useState('ko-KR-Chirp3-HD-Zephyr');
   const [speed, setSpeed]                   = useState(1.0);
   const [showAdvanced, setShowAdvanced]     = useState(false);
   const [bgmId, setBgmId]                   = useState<BgmId>('cafe');
+  const [bgmVolume, setBgmVolume]           = useState(20);
+  const [customBgm, setCustomBgm]           = useState<File | null>(null);
+  const [customBgmName, setCustomBgmName]   = useState('');
+  const bgmInputRef                         = useRef<HTMLInputElement>(null);
 
   // Image upload state
   const [images, setImages]                 = useState<File[]>([]);
@@ -173,10 +177,15 @@ export default function PromoPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // BGM별 기본 볼륨 (calm/trendy는 소리가 작아서 높게)
+  const getDefaultVolume = (id: string) => (id === 'calm' || id === 'trendy') ? 45 : 20;
+
   // 업종·톤 변경 시 배경음악 자동 추천
   useEffect(() => {
     if (businessType) {
-      setBgmId(recommendBgm(businessType, tone));
+      const recommended = recommendBgm(businessType, tone);
+      setBgmId(recommended);
+      setBgmVolume(getDefaultVolume(recommended));
     }
   }, [businessType, tone]);
 
@@ -228,7 +237,9 @@ export default function PromoPage() {
   async function generateScriptPreview() {
     if (!businessName.trim() || !businessType || !sellingPoints.trim()) return;
     setError(null);
+    // loadingScript를 먼저 설정해서 form이 깜빡이지 않도록
     setLoadingScript(true);
+    // 같은 batch 안에서 scriptDraft도 null로 — React 18 auto-batching 덕분에 깜빡임 없음
     setScriptDraft(null);
     try {
       // Upload images first (if any) to get uploadId
@@ -297,7 +308,11 @@ export default function PromoPage() {
       formData.append('tone',       tone);
       formData.append('voice',      voice);
       formData.append('speed',      String(speed));
-      formData.append('bgmId',      bgmId);
+      formData.append('bgmId',      customBgm ? 'custom' : bgmId);
+      formData.append('bgmVolume',   String(bgmVolume / 100));
+      if (customBgm) {
+        formData.append('customBgm', customBgm);
+      }
       if (scriptDraft) {
         formData.append('prebuiltScript', JSON.stringify(scriptDraft));
       }
@@ -387,7 +402,7 @@ export default function PromoPage() {
   const isDone          = jobStatus?.status === 'done';
   const isFailed        = jobStatus?.status === 'failed';
   const isScriptReview  = !loading && !loadingScript && !jobId && scriptDraft !== null && !isDone && !isFailed;
-  const showForm        = !isGenerating && !isDone && !isFailed && !isScriptReview && !loadingScript;
+  const showForm        = !loading && !isGenerating && !isDone && !isFailed && !isScriptReview && !loadingScript;
   const canStart        = businessName.trim().length > 0 && businessType.length > 0 && sellingPoints.trim().length > 0 && !loading && !loadingScript;
 
   return (
@@ -668,7 +683,7 @@ export default function PromoPage() {
               <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-1.5">
                 <Music2 className="w-4 h-4 text-emerald-400" />
                 배경음악
-                {businessType && (
+                {businessType && !customBgm && (
                   <span className="text-[11px] text-emerald-400/70 ml-1 font-normal">· AI 자동추천</span>
                 )}
               </label>
@@ -677,9 +692,9 @@ export default function PromoPage() {
                   <button
                     key={track.id}
                     type="button"
-                    onClick={() => setBgmId(track.id)}
+                    onClick={() => { setBgmId(track.id); setCustomBgm(null); setCustomBgmName(''); setBgmVolume(getDefaultVolume(track.id)); }}
                     className={`px-3 py-1.5 rounded-lg text-sm transition-all border flex items-center gap-1.5 ${
-                      bgmId === track.id
+                      bgmId === track.id && !customBgm
                         ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
                         : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/20'
                     }`}
@@ -688,10 +703,61 @@ export default function PromoPage() {
                     <span>{track.label}</span>
                   </button>
                 ))}
+                {/* 직접 업로드 버튼 */}
+                <button
+                  type="button"
+                  onClick={() => bgmInputRef.current?.click()}
+                  className={`px-3 py-1.5 rounded-lg text-sm transition-all border flex items-center gap-1.5 ${
+                    customBgm
+                      ? 'bg-purple-500/20 border-purple-500/40 text-purple-300'
+                      : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/20'
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>{customBgm ? customBgmName : '직접 업로드'}</span>
+                  {customBgm && (
+                    <X
+                      className="w-3 h-3 ml-1 hover:text-red-400 cursor-pointer"
+                      onClick={(e) => { e.stopPropagation(); setCustomBgm(null); setCustomBgmName(''); }}
+                    />
+                  )}
+                </button>
+                <input
+                  ref={bgmInputRef}
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setCustomBgm(file);
+                      setCustomBgmName(file.name.length > 15 ? file.name.slice(0, 12) + '...' : file.name);
+                      setBgmId('none');
+                      setBgmVolume(30);
+                    }
+                    e.target.value = '';
+                  }}
+                />
               </div>
-              {bgmId !== 'none' && (
+
+              {/* 볼륨 슬라이더 */}
+              {(bgmId !== 'none' || customBgm) && (
+                <div className="mt-3 flex items-center gap-3">
+                  <Volume2 className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <input
+                    type="range"
+                    min={5}
+                    max={80}
+                    value={bgmVolume}
+                    onChange={(e) => setBgmVolume(Number(e.target.value))}
+                    className="flex-1 h-1.5 rounded-full appearance-none bg-white/10 accent-emerald-500 cursor-pointer"
+                  />
+                  <span className="text-xs text-gray-400 w-10 text-right">{bgmVolume}%</span>
+                </div>
+              )}
+              {bgmId !== 'none' && !customBgm && (
                 <p className="text-gray-600 text-xs mt-1.5">
-                  {BGM_CATALOG.find(t => t.id === bgmId)?.desc} · 나레이션 대비 15% 음량으로 자동 조절
+                  {BGM_CATALOG.find(t => t.id === bgmId)?.desc}
                 </p>
               )}
             </div>
@@ -842,7 +908,8 @@ export default function PromoPage() {
                           <img
                             src={sectionPreviews[i]!}
                             alt={`섹션 ${i + 1}`}
-                            className="w-24 h-24 object-cover rounded-lg border border-white/10"
+                            className="w-24 h-24 object-cover rounded-lg border border-white/10 cursor-pointer hover:border-emerald-500/50 hover:opacity-80 transition-all"
+                            onClick={() => setPickerSection(pickerSection === i ? -1 : i)}
                           />
                           <button
                             type="button"
@@ -940,8 +1007,8 @@ export default function PromoPage() {
                 onClick={() => { setScriptDraft(null); setError(null); }}
                 className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/15 transition-all border border-white/10 text-sm flex items-center justify-center gap-2"
               >
-                <Settings2 className="w-4 h-4" />
-                수정
+                <ArrowLeft className="w-4 h-4" />
+                이전
               </button>
               <button
                 onClick={startGeneration}
@@ -1083,12 +1150,6 @@ export default function PromoPage() {
               </div>
             )}
 
-            <div className="text-center pt-2">
-              <Link href="/generate" className="text-xs text-gray-500 hover:text-gray-300 flex items-center justify-center gap-1 transition-colors">
-                <Sparkles className="w-3 h-3" />
-                유튜브 쇼츠도 만들어보기
-              </Link>
-            </div>
           </div>
         )}
       </div>
