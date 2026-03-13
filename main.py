@@ -12,7 +12,11 @@ from telegram_bot import (
     notify_buy, notify_sell, notify_daily_report,
     notify_no_trade, notify_error, send_message
 )
-from config import FORCE_SELL_TIME, MAX_TRADES_PER_DAY, DAILY_BUDGET
+from config import (
+    FORCE_SELL_TIME, MAX_TRADES_PER_DAY, DAILY_BUDGET,
+    KOSPI_CRASH_RATE, CRASH_STOP_LOSS_RATE,
+    GRADUAL_SELL_TIME, GRADUAL_SELL_RATIO
+)
 
 TRADES_FILE = "trades.json"
 KST = pytz.timezone("Asia/Seoul")
@@ -213,7 +217,33 @@ def trading_loop():
             pos = update_trailing_stop(pos, current_price)
             state["position"] = pos
 
-            sell_flag, reason = should_sell(current_price, pos["buy_price"], pos["target"], pos["stop"])
+            # KOSPI 급락 시 보유 포지션 대응
+            kospi_ma = get_kospi_minute_ma()
+            sell_flag = False
+            reason = ""
+
+            if kospi_ma["score_threshold"] >= 999:
+                # 시장 급락 (MA20 하단 + 일간 -1%) → 즉시 청산
+                sell_flag = True
+                reason = f"시장 급락 긴급 청산 (KOSPI {kospi_ma['change_rate']:+.2f}%)"
+                print(f"[{now()}] 시장 급락 감지 (KOSPI {kospi_ma['change_rate']:+.2f}%) → 긴급 청산")
+                send_message(f"🚨 <b>시장 급락 긴급 청산</b>\n"
+                             f"KOSPI: {kospi_ma['change_rate']:+.2f}%\n"
+                             f"{pos['name']} 즉시 매도")
+            else:
+                if kospi_ma["change_rate"] <= KOSPI_CRASH_RATE:
+                    # 코스피 -2% 이하 → 손절가 타이트닝 (-0.5%)
+                    tight_stop = int(pos["buy_price"] * (1 - CRASH_STOP_LOSS_RATE))
+                    if tight_stop > pos["stop"]:
+                        old_stop = pos["stop"]
+                        pos["stop"] = tight_stop
+                        state["position"] = pos
+                        print(f"[{now()}] KOSPI 급락 ({kospi_ma['change_rate']:+.2f}%) → "
+                              f"손절가 타이트닝: {old_stop:,} → {tight_stop:,}")
+                        send_message(f"⚠️ <b>KOSPI 급락 대응</b>\n"
+                                     f"KOSPI: {kospi_ma['change_rate']:+.2f}%\n"
+                                     f"손절가 조정: {old_stop:,} → {tight_stop:,}원")
+                sell_flag, reason = should_sell(current_price, pos["buy_price"], pos["target"], pos["stop"])
 
             if sell_flag:
                 result = sell_market_order(pos["code"], pos["qty"])
@@ -262,6 +292,57 @@ def trading_loop():
         notify_error(str(e))
 
 
+def gradual_sell():
+    """15:15 분할 매도 — 보유 수량의 50% 선매도 (슬리피지 방지)"""
+    if state["position"] is None:
+        return
+
+    pos = state["position"]
+    sell_qty = int(pos["qty"] * GRADUAL_SELL_RATIO)
+    if sell_qty < 1:
+        print(f"[{now()}] 분할 매도: 수량 부족 ({pos['qty']}주) → 15:20 일괄 매도로 대기")
+        return
+
+    print(f"[{now()}] 분할 매도 시작: {pos['name']} {sell_qty}/{pos['qty']}주")
+    result = sell_market_order(pos["code"], sell_qty)
+    if result["success"]:
+        sell_order_no = result["order_no"]
+        filled_sell_price = get_filled_price(sell_order_no, pos["code"], max_wait=10)
+        if filled_sell_price is None:
+            filled_sell_price = get_stock_price(pos["code"])["price"]
+
+        profit = (filled_sell_price - pos["buy_price"]) * sell_qty
+        profit_rate = (filled_sell_price - pos["buy_price"]) / pos["buy_price"] * 100
+        state["daily_profit"] += profit
+
+        trade = {
+            "date": state["today"],
+            "name": pos["name"],
+            "code": pos["code"],
+            "qty": sell_qty,
+            "buy_price": pos["buy_price"],
+            "sell_price": filled_sell_price,
+            "profit": profit,
+            "profit_rate": round(profit_rate, 2),
+            "buy_time": pos["buy_time"],
+            "sell_time": now(),
+            "reason": "15:15 분할 매도 (1차)",
+            "trailing_used": pos.get("trailing_active", False),
+            "budget": DAILY_BUDGET
+        }
+        state["trades"].append(trade)
+        save_trade(trade)
+
+        # 잔여 수량 업데이트
+        pos["qty"] -= sell_qty
+        state["position"] = pos
+
+        notify_sell(pos["name"], pos["code"], pos["buy_price"],
+                    filled_sell_price, sell_qty, "15:15 분할 매도")
+        print(f"[{now()}] 분할 매도 완료: {sell_qty}주 @ {filled_sell_price:,}원 | "
+              f"잔여: {pos['qty']}주")
+
+
 def force_sell_all():
     """장 마감 전 강제 매도 (15:20)"""
     if state["position"] is None:
@@ -291,13 +372,13 @@ def force_sell_all():
             "profit_rate": round(profit_rate, 2),
             "buy_time": pos["buy_time"],
             "sell_time": now(),
-            "reason": "장 마감 강제 매도",
+            "reason": "15:20 잔여 강제 매도",
             "trailing_used": pos.get("trailing_active", False),
             "budget": DAILY_BUDGET
         }
         state["trades"].append(trade)
         save_trade(trade)
-        notify_sell(pos["name"], pos["code"], pos["buy_price"], filled_sell_price, pos["qty"], "장 마감 강제 매도")
+        notify_sell(pos["name"], pos["code"], pos["buy_price"], filled_sell_price, pos["qty"], "15:20 잔여 강제 매도")
         state["position"] = None
 
 
@@ -357,6 +438,7 @@ def run():
     schedule.every().day.at("08:45").do(reset_daily_state)
     schedule.every().day.at("08:50").do(morning_scan)
     schedule.every(1).minutes.do(trading_loop)
+    schedule.every().day.at(GRADUAL_SELL_TIME).do(gradual_sell)
     schedule.every().day.at(FORCE_SELL_TIME).do(force_sell_all)
     schedule.every().day.at("15:35").do(end_of_day_report)
     schedule.every().day.at("15:40").do(weekly_analysis)
@@ -365,6 +447,8 @@ def run():
     print("  KIS 자동매매 봇 실행 중")
     print(f"  목표: +2.5% / 손절: -1.0%")
     print(f"  진입 시간: 09:30 이후 (개장 초 변동성 회피)")
+    print(f"  분할 매도: 15:15 (50%) → 15:20 (잔여)")
+    print(f"  KOSPI 급락 대응: -2% 손절 타이트닝 / 999 긴급 청산")
     print("=" * 50)
     send_message("✅ <b>자동매매 봇 서버 시작</b>\n스케줄 등록 완료")
 

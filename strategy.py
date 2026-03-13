@@ -39,6 +39,32 @@ def calc_bollinger(prices: pd.Series, period: int = 20):
     return upper.iloc[-1], mid.iloc[-1], lower.iloc[-1], pct_b
 
 
+def _get_volume_cum_weight(hour: int, minute: int) -> float:
+    """
+    시간대별 누적 거래량 비중 (한국 시장 특성 반영).
+    장 초반(09:00-10:00)에 전체 거래량의 ~30%가 집중되므로,
+    단순 시간 비례 추정 대신 실제 분포 기반으로 하루 거래량을 추정.
+    """
+    elapsed = (hour - 9) * 60 + minute  # 09:00 기준 경과 분
+    # (경과분, 누적비중) — 한국 시장 평균 거래량 분포
+    breakpoints = [
+        (0,   0.00),   # 09:00
+        (60,  0.30),   # 10:00 (30%)
+        (120, 0.45),   # 11:00 (+15%)
+        (180, 0.55),   # 12:00 (+10%)
+        (240, 0.63),   # 13:00 (+8%)
+        (300, 0.75),   # 14:00 (+12%)
+        (360, 0.90),   # 15:00 (+15%)
+        (390, 1.00),   # 15:30 (+10%)
+    ]
+    for i in range(len(breakpoints) - 1):
+        if elapsed <= breakpoints[i + 1][0]:
+            t0, w0 = breakpoints[i]
+            t1, w1 = breakpoints[i + 1]
+            return w0 + (w1 - w0) * (elapsed - t0) / (t1 - t0)
+    return 1.0
+
+
 def score_stock(stock_code: str, today_acml_vol: int = 0, avg_daily_vol: float = 0) -> dict:
     """
     종목 점수 산출 (0~100점).
@@ -88,8 +114,8 @@ def score_stock(stock_code: str, today_acml_vol: int = 0, avg_daily_vol: float =
         from datetime import datetime as _dt
         kst = pytz.timezone("Asia/Seoul")
         now_kst = _dt.now(kst)
-        minutes_elapsed = max(1, (now_kst.hour * 60 + now_kst.minute) - (9 * 60))
-        proj_daily_vol = today_acml_vol * (390 / minutes_elapsed)  # 390분 = 09:00~15:30
+        cum_weight = _get_volume_cum_weight(now_kst.hour, now_kst.minute)
+        proj_daily_vol = today_acml_vol / max(0.01, cum_weight)
         vol_ratio = proj_daily_vol / avg_daily_vol
         vol_label = "일간"
     else:
@@ -133,6 +159,14 @@ def score_stock(stock_code: str, today_acml_vol: int = 0, avg_daily_vol: float =
     elif current > session_high * 0.995:
         score += 8
         reasons.append(f"고점 근접")
+
+    # 4-1. 윗꼬리 저항 감점 — 당일 고가 대비 2% 이상 밀린 경우
+    day_high = df["high"].astype(float).max()
+    if day_high > 0:
+        pullback_rate = (day_high - current) / day_high
+        if pullback_rate >= 0.02:
+            score -= 15
+            reasons.append(f"윗꼬리 저항(-{pullback_rate*100:.1f}% 밀림)")
 
     # 5. RSI (0~5점, 과매수 시 감점)
     rsi = calc_rsi(prices)
