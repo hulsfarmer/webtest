@@ -26,10 +26,10 @@ export async function POST(req: NextRequest) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
-    const { sessionId, plan } = session.metadata || {};
-    if (sessionId && plan) {
-      upgradePlan(sessionId, plan as Plan);
-      console.log(`[Stripe] Upgraded ${sessionId} to ${plan}`);
+    const { userId, plan } = session.metadata || {};
+    if (userId && plan) {
+      await upgradePlan(userId, plan as Plan);
+      console.log(`[Stripe] Upgraded user ${userId} to ${plan}`);
     }
   }
 

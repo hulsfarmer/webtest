@@ -1,9 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, LogOut, User } from 'lucide-react';
+import { useSession, signOut } from 'next-auth/react';
 
 export default function Header() {
+  const { data: session, status } = useSession();
+
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -29,13 +32,37 @@ export default function Header() {
           </button>
         </nav>
 
-        {/* CTA */}
-        <Link
-          href="/generate"
-          className="px-4 py-2 rounded-lg bg-gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-        >
-          무료로 시작하기
-        </Link>
+        {/* Auth */}
+        <div className="flex items-center gap-3">
+          {status === 'loading' ? (
+            <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
+          ) : session?.user ? (
+            <>
+              <div className="hidden sm:flex items-center gap-2 text-sm text-gray-300">
+                {session.user.image ? (
+                  <img src={session.user.image} alt="" className="w-7 h-7 rounded-full" />
+                ) : (
+                  <User className="w-4 h-4" />
+                )}
+                <span className="max-w-[120px] truncate">{session.user.name || session.user.email}</span>
+              </div>
+              <button
+                onClick={() => signOut({ callbackUrl: '/' })}
+                className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                title="로그아웃"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/login"
+              className="px-4 py-2 rounded-lg bg-gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
+              무료로 시작하기
+            </Link>
+          )}
+        </div>
       </div>
     </header>
   );

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
@@ -138,6 +140,13 @@ async function processPromoJob(
 }
 
 export async function POST(req: NextRequest) {
+  // Auth check
+  const authSession = await getServerSession(authOptions);
+  if (!authSession?.user?.id) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  }
+  const userId = authSession.user.id;
+
   // Detect content type: FormData (with images) or JSON (no images)
   const contentType = req.headers.get('content-type') ?? '';
   const isFormData = contentType.includes('multipart/form-data');
@@ -150,7 +159,6 @@ export async function POST(req: NextRequest) {
   let cta = '';
   let duration = 60;
   let tone = '친근한';
-  let sessionId = '';
   let voice = 'ko-KR-Chirp3-HD-Aoede';
   let speed = 1.0;
   let bgmId: BgmId = 'none';
@@ -166,7 +174,6 @@ export async function POST(req: NextRequest) {
     contact       = (formData.get('contact')       as string | null) ?? '';
     location      = (formData.get('location')      as string | null) ?? '';
     cta           = (formData.get('cta')           as string | null) ?? '';
-    sessionId     = (formData.get('sessionId')     as string | null) ?? '';
     voice         = (formData.get('voice')         as string | null) ?? 'ko-KR-Chirp3-HD-Aoede';
     duration      = parseInt((formData.get('duration') as string | null) ?? '60', 10);
     tone          = (formData.get('tone')          as string | null) ?? '친근한';
@@ -207,11 +214,8 @@ export async function POST(req: NextRequest) {
     if (!sellingPoints?.trim()) {
       return NextResponse.json({ error: '홍보 포인트를 입력해주세요.' }, { status: 400 });
     }
-    if (!sessionId) {
-      return NextResponse.json({ error: 'sessionId가 필요합니다.' }, { status: 400 });
-    }
 
-    if (!canGenerate(sessionId)) {
+    if (!(await canGenerate(userId))) {
       return NextResponse.json(
         { error: '이번 달 생성 한도를 초과했습니다. 플랜을 업그레이드해주세요.' },
         { status: 429 }
@@ -219,8 +223,8 @@ export async function POST(req: NextRequest) {
     }
 
     const topic = `${businessName} ${businessType} 홍보`;
-    createJob({ id: jobId, sessionId, topic, duration, tone });
-    incrementUsage(sessionId);
+    createJob({ id: jobId, sessionId: userId, topic, duration, tone });
+    await incrementUsage(userId);
 
     const input: PromoInput = {
       businessName: businessName.trim(),
@@ -248,7 +252,6 @@ export async function POST(req: NextRequest) {
       cta = '',
       duration = 60,
       tone = '친근한',
-      sessionId = '',
       voice = 'ko-KR-Chirp3-HD-Aoede',
       speed = 1.0,
     } = body);
@@ -264,11 +267,8 @@ export async function POST(req: NextRequest) {
     if (!sellingPoints?.trim()) {
       return NextResponse.json({ error: '홍보 포인트를 입력해주세요.' }, { status: 400 });
     }
-    if (!sessionId) {
-      return NextResponse.json({ error: 'sessionId가 필요합니다.' }, { status: 400 });
-    }
 
-    if (!canGenerate(sessionId)) {
+    if (!(await canGenerate(userId))) {
       return NextResponse.json(
         { error: '이번 달 생성 한도를 초과했습니다. 플랜을 업그레이드해주세요.' },
         { status: 429 }
@@ -277,8 +277,8 @@ export async function POST(req: NextRequest) {
 
     const jobId = uuidv4();
     const topic = `${businessName} ${businessType} 홍보`;
-    createJob({ id: jobId, sessionId, topic, duration, tone });
-    incrementUsage(sessionId);
+    createJob({ id: jobId, sessionId: userId, topic, duration, tone });
+    await incrementUsage(userId);
 
     const input: PromoInput = {
       businessName: businessName.trim(),

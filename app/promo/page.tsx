@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2, Settings2 } from 'lucide-react';
 import { BGM_CATALOG, recommendBgm, type BgmId } from '@/lib/bgm-catalog';
@@ -121,17 +122,8 @@ function StepIndicator({ label, status }: { label: string; status: StepStatus })
   );
 }
 
-function getOrCreateSessionId(): string {
-  if (typeof window === 'undefined') return 'ssr';
-  let id = localStorage.getItem('shortsai_session');
-  if (!id) {
-    id = Math.random().toString(36).slice(2) + Date.now().toString(36);
-    localStorage.setItem('shortsai_session', id);
-  }
-  return id;
-}
-
 export default function PromoPage() {
+  const { data: authSession } = useSession();
   const [businessName, setBusinessName]     = useState('');
   const [businessType, setBusinessType]     = useState('');
   const [sellingPoints, setSellingPoints]   = useState('');
@@ -166,12 +158,12 @@ export default function PromoPage() {
   const [scriptDraft, setScriptDraft]       = useState<VideoScript | null>(null);
   const [loadingScript, setLoadingScript]   = useState(false);
   const pollRef   = useRef<NodeJS.Timeout | null>(null);
-  const sessionId = useRef<string>('');
 
   useEffect(() => {
-    sessionId.current = getOrCreateSessionId();
-    fetchUsage();
-  }, []);
+    if (authSession?.user?.id) {
+      fetchUsage();
+    }
+  }, [authSession]);
 
   // Clean up object URLs on unmount
   useEffect(() => {
@@ -190,7 +182,7 @@ export default function PromoPage() {
 
   async function fetchUsage() {
     try {
-      const res  = await fetch(`/api/usage?sessionId=${sessionId.current}`);
+      const res  = await fetch('/api/usage');
       const data = await res.json();
       setUsage(data);
     } catch { /* ignore */ }
@@ -306,7 +298,6 @@ export default function PromoPage() {
       formData.append('voice',      voice);
       formData.append('speed',      String(speed));
       formData.append('bgmId',      bgmId);
-      formData.append('sessionId',  sessionId.current);
       if (scriptDraft) {
         formData.append('prebuiltScript', JSON.stringify(scriptDraft));
       }

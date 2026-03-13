@@ -2,42 +2,47 @@
 
 import { Check, Zap } from 'lucide-react';
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 
 const plans = [
   {
     name: '무료',
     nameEn: 'Free',
     price: 0,
+    priceDisplay: '₩0',
     period: '영원히 무료',
-    description: '시작해보기 딱 좋아요',
+    description: '먼저 체험해보세요',
     features: [
-      '월 5개 영상',
+      '월 3개 홍보영상',
       '1080×1920 쇼츠 포맷',
-      'AI 스크립트 생성',
-      '한국어 TTS',
+      'AI 홍보 스크립트 생성',
+      '한국어 TTS 내레이션',
+      'BGM 자동 추천',
       'MP4 다운로드',
     ],
     cta: '무료로 시작',
-    href: '/generate',
+    href: '/promo',
     highlighted: false,
     badge: null,
   },
   {
-    name: '기본',
+    name: '베이직',
     nameEn: 'Basic',
-    price: 19,
+    price: 19900,
+    priceDisplay: '₩19,900',
     period: '월',
-    description: '꾸준히 채널을 키우는 분께',
+    description: '매달 꾸준히 홍보하는 사장님께',
     features: [
-      '월 30개 영상',
+      '월 30개 홍보영상',
       '1080×1920 쇼츠 포맷',
-      'AI 스크립트 생성',
+      'AI 홍보 스크립트 생성',
       '한국어 TTS 고품질',
+      'BGM 자동 추천',
       'MP4 다운로드',
       '해시태그 자동 추천',
       '이메일 지원',
     ],
-    cta: '기본 시작',
+    cta: '베이직 시작',
     plan: 'basic',
     highlighted: true,
     badge: '인기',
@@ -45,14 +50,16 @@ const plans = [
   {
     name: '프로',
     nameEn: 'Pro',
-    price: 49,
+    price: 49900,
+    priceDisplay: '₩49,900',
     period: '월',
-    description: '매일 콘텐츠를 올리는 크리에이터',
+    description: '여러 매장을 운영하거나 매일 홍보하는 분께',
     features: [
-      '무제한 영상',
+      '월 100개 홍보영상',
       '1080×1920 쇼츠 포맷',
-      'AI 스크립트 생성',
+      'AI 홍보 스크립트 생성',
       '한국어 TTS 프리미엄',
+      'BGM 자동 추천',
       'MP4 다운로드',
       '해시태그 자동 추천',
       '우선 처리 (빠른 생성)',
@@ -66,28 +73,33 @@ const plans = [
 ];
 
 const competitorComparison = [
-  { name: 'Pictory', price: '$23~99/월', weakness: '영어만 지원, 비쌈' },
-  { name: 'InVideo', price: '$15~30/월', weakness: '한국어 부족' },
-  { name: 'Opus Clip', price: '$15~29/월', weakness: '기존 영상 편집만 가능' },
-  { name: 'ShortsAI', price: '$0~49/월', weakness: '한국어 완벽, 처음부터 생성 가능', isUs: true },
+  { name: '영상 제작 의뢰', price: '50~100만원/건', weakness: '비용 높음, 수정 어려움' },
+  { name: 'Pictory', price: '$23~99/월', weakness: '영어만 지원' },
+  { name: 'InVideo', price: '$15~30/월', weakness: '한국어 부족, 홍보 특화 아님' },
+  { name: 'ShortsAI', price: '₩0~49,900/월', weakness: '한국어 완벽, 사업장 홍보 특화', isUs: true },
 ];
 
 export default function PricingSection() {
+  const { data: session } = useSession();
   const [loading, setLoading] = useState<string | null>(null);
 
   const handleUpgrade = async (plan: string) => {
     if (plan === 'free') {
-      window.location.href = '/generate';
+      window.location.href = session ? '/promo' : '/login';
+      return;
+    }
+
+    if (!session) {
+      window.location.href = '/login';
       return;
     }
 
     setLoading(plan);
     try {
-      const sessionId = localStorage.getItem('shortsai_session') || 'demo';
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, sessionId }),
+        body: JSON.stringify({ plan }),
       });
       const data = await res.json();
       if (data.url) {
@@ -110,10 +122,10 @@ export default function PricingSection() {
             합리적인 가격
           </div>
           <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            경쟁사보다{' '}
-            <span className="gradient-text">저렴하고 더 좋은</span>
+            영상 제작사보다{' '}
+            <span className="gradient-text">100배 저렴한</span>
           </h2>
-          <p className="text-gray-400 text-lg">한국어 완벽 지원 + 처음부터 쇼츠 생성</p>
+          <p className="text-gray-400 text-lg">사업장 홍보영상, 이제 직접 만드세요</p>
         </div>
 
         {/* Pricing cards */}
@@ -140,7 +152,7 @@ export default function PricingSection() {
                 </div>
                 <p className="text-gray-400 text-sm mb-4">{plan.description}</p>
                 <div className="flex items-end gap-1">
-                  <span className="text-4xl font-bold">${plan.price}</span>
+                  <span className="text-4xl font-bold">{plan.priceDisplay}</span>
                   {plan.price > 0 && <span className="text-gray-400 mb-1">/{plan.period}</span>}
                   {plan.price === 0 && <span className="text-gray-400 mb-1 text-sm">{plan.period}</span>}
                 </div>
@@ -174,15 +186,15 @@ export default function PricingSection() {
         <div className="glass-card p-6">
           <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
             <Zap className="w-5 h-5 text-yellow-400" />
-            경쟁 서비스 비교
+            비용 비교
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="text-left py-2 text-gray-400 font-medium">서비스</th>
+                  <th className="text-left py-2 text-gray-400 font-medium">방법</th>
                   <th className="text-left py-2 text-gray-400 font-medium">가격</th>
-                  <th className="text-left py-2 text-gray-400 font-medium">약점/특징</th>
+                  <th className="text-left py-2 text-gray-400 font-medium">특징</th>
                 </tr>
               </thead>
               <tbody>
@@ -203,15 +215,6 @@ export default function PricingSection() {
               </tbody>
             </table>
           </div>
-        </div>
-
-        {/* Revenue potential */}
-        <div className="mt-8 text-center p-6 rounded-2xl bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-500/20">
-          <p className="text-gray-300 text-lg">
-            구독자 <span className="text-white font-bold">100명</span>만 모이면 →{' '}
-            <span className="gradient-text font-bold text-xl">월 $2,000 ~ $5,000</span>
-          </p>
-          <p className="text-gray-500 text-sm mt-2">내가 자는 동안에도 서버가 영상을 만들고, 사용자는 돈을 냅니다</p>
         </div>
       </div>
     </section>

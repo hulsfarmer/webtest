@@ -11,12 +11,12 @@ export default function Footer() {
               <Sparkles className="w-3.5 h-3.5 text-white" />
             </div>
             <span className="font-bold gradient-text">ShortsAI</span>
-            <span className="text-gray-600 text-sm ml-2">유튜브 쇼츠 자동 생성</span>
+            <span className="text-gray-600 text-sm ml-2">사업장 홍보영상 자동 생성</span>
           </div>
 
           <nav className="flex gap-6 text-sm text-gray-500">
-            <Link href="/generate" className="hover:text-gray-300 transition-colors">
-              영상 생성
+            <Link href="/promo" className="hover:text-gray-300 transition-colors">
+              홍보영상 만들기
             </Link>
             <a href="#pricing" className="hover:text-gray-300 transition-colors">
               가격
