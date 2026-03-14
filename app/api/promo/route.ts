@@ -250,7 +250,7 @@ export async function POST(req: NextRequest) {
     }
 
     const topic = `${businessName} ${businessType} 홍보`;
-    createJob({ id: jobId, sessionId: userId, topic, duration, tone });
+    await createJob({ id: jobId, sessionId: userId, topic, duration, tone });
     await incrementUsage(userId);
 
     const input: PromoInput = {
@@ -304,7 +304,7 @@ export async function POST(req: NextRequest) {
 
     const jobId = uuidv4();
     const topic = `${businessName} ${businessType} 홍보`;
-    createJob({ id: jobId, sessionId: userId, topic, duration, tone });
+    await createJob({ id: jobId, sessionId: userId, topic, duration, tone });
     await incrementUsage(userId);
 
     const input: PromoInput = {
