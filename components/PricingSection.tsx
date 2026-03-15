@@ -134,6 +134,15 @@ export default function PricingSection() {
   };
 
   return (
+    <>
+      {loading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 size={40} className="animate-spin text-purple-400" />
+            <p className="text-white text-lg font-medium">결제 페이지로 이동 중...</p>
+          </div>
+        </div>
+      )}
     <section id="pricing" className="py-24 px-6">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
@@ -280,5 +289,6 @@ export default function PricingSection() {
         </div>
       </div>
     </section>
+    </>
   );
 }
