@@ -49,7 +49,7 @@ async function generateGoogleCloudTTS(
   const voiceName = resolveGoogleVoice(voice);
 
   // 쉼표 뒤에 짧은 쉼(300ms) 삽입
-  const ssmlText = `<speak>${escapeXml(text).replace(/,/g, ',<break time="300ms"/>')}</speak>`;
+  const ssmlText = `<speak>${escapeXml(text).replace(/,/g, ',<break time="200ms"/>')}</speak>`;
 
   const response = await axios.post(
     `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
@@ -209,7 +209,7 @@ export async function generateAudioWithTimepoints(
 
       // Build SSML with <mark> between sentences + comma breaks
       const ssmlParts = sentences.map((s, i) => {
-        const withBreaks = escapeXml(s).replace(/,/g, ',<break time="300ms"/>');
+        const withBreaks = escapeXml(s).replace(/,/g, ',<break time="200ms"/>');
         return `<mark name="s${i}"/>${withBreaks}`;
       });
       const ssml = `<speak>${ssmlParts.join(' ')}<mark name="s${sentences.length}"/></speak>`;
@@ -244,7 +244,7 @@ export async function generateAudioWithTimepoints(
           for (let i = 0; i < sentences.length; i++) {
             const segPath = path.join(tmpDir, `seg_${i}_${Date.now()}.mp3`);
             // 쉼표 뒤에 짧은 쉼(300ms) 삽입하여 자연스러운 호흡 부여
-            const textWithBreaks = escapeXml(sentences[i]).replace(/,/g, ',<break time="300ms"/>');
+            const textWithBreaks = escapeXml(sentences[i]).replace(/,/g, ',<break time="200ms"/>');
             const ssmlText = `<speak>${textWithBreaks}</speak>`;
             const segResp = await axios.post(
               `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
