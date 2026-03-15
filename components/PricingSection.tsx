@@ -2,6 +2,7 @@
 
 import { Check, Zap, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { useSession } from 'next-auth/react';
 
 const plans = [
@@ -112,7 +113,7 @@ export default function PricingSection() {
 
     if (!variantId) return;
 
-    setLoading(planId);
+    flushSync(() => setLoading(planId));
     try {
       const res = await fetch('/api/checkout', {
         method: 'POST',
