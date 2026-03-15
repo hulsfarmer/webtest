@@ -150,6 +150,8 @@ export default function PricingSection() {
         <div className="grid md:grid-cols-3 gap-6 mb-16">
           {plans.map((plan) => {
             const isCurrentPlan = currentPlan === plan.planId;
+            const planOrder = ['free', 'pro', 'business'];
+            const isLowerPlan = planOrder.indexOf(plan.planId) < planOrder.indexOf(currentPlan);
 
             return (
               <div
@@ -185,7 +187,7 @@ export default function PricingSection() {
                   <div className="mb-6 space-y-2">
                     <button
                       disabled
-                      className="w-full py-3 rounded-xl bg-white/5 text-gray-500 text-sm font-semibold cursor-default"
+                      className="w-full py-3 rounded-xl bg-purple-500/20 text-purple-400 text-sm font-semibold cursor-default border border-purple-500/30"
                     >
                       현재 플랜
                     </button>
@@ -200,6 +202,13 @@ export default function PricingSection() {
                       </a>
                     )}
                   </div>
+                ) : isLowerPlan ? (
+                  <button
+                    disabled
+                    className="w-full py-3 rounded-xl bg-white/5 text-gray-500 text-sm font-semibold cursor-default mb-6"
+                  >
+                    현재 플랜보다 낮음
+                  </button>
                 ) : (
                   <button
                     onClick={() => handleUpgrade(plan.planId, plan.variantId)}
