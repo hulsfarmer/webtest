@@ -62,7 +62,7 @@ function extractKeywords(text: string): string {
 // Find a Korean-capable font
 function findFont(): string {
   const candidates = [
-    path.join(process.cwd(), 'public/fonts/BlackHanSans-Regular.ttf'),
+    '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc',
     path.join(process.cwd(), 'public/fonts/NotoSansKR-Regular.ttf'),
     '/Library/Fonts/AppleSDGothicNeo.ttc',
     '/System/Library/Fonts/AppleSDGothicNeo.ttc',
