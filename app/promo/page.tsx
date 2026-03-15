@@ -68,13 +68,10 @@ const VOICES = [
   { id: 'ko-KR-Chirp3-HD-Zephyr', label: '수아',   desc: '여성 · 활기찬',     badge: '추천' },
   { id: 'ko-KR-Chirp3-HD-Aoede',  label: '지은',   desc: '여성 · 자연스러운', badge: '' },
   { id: 'ko-KR-Chirp3-HD-Charon', label: '민준',   desc: '남성 · 자연스러운', badge: '' },
-  // Studio (전문 내레이션)
-  { id: 'ko-KR-Studio-A',         label: '하나',   desc: '여성 · 전문 내레이션', badge: '' },
-  { id: 'ko-KR-Studio-B',         label: '준서',   desc: '남성 · 전문 내레이션', badge: '' },
   // Neural2 (안정적, 경제적)
   { id: 'ko-KR-Neural2-A',        label: '서연',   desc: '여성 · 차분한',     badge: '' },
-  { id: 'ko-KR-Neural2-B',        label: '도윤',   desc: '남성 · 차분한',     badge: '' },
-  { id: 'ko-KR-Neural2-C',        label: '유진',   desc: '남성 · 밝은',       badge: '' },
+  { id: 'ko-KR-Neural2-B',        label: '하나',   desc: '여성 · 부드러운',   badge: '' },
+  { id: 'ko-KR-Neural2-C',        label: '도윤',   desc: '남성 · 밝은',       badge: '' },
 ];
 
 const SPEEDS = [
