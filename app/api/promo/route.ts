@@ -137,7 +137,7 @@ async function processPromoJob(
       status: 'done',
       progress: 100,
       steps: { script: 'done', audio: 'done', video: 'done' },
-      videoUrl: `/videos/${jobId}.mp4`,
+      videoUrl: `/api/video/${jobId}`,
     });
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);

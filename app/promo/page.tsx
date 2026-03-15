@@ -1037,9 +1037,11 @@ export default function PromoPage() {
               />
             </div>
             <div className="space-y-2 mt-4">
-              {(Object.entries(jobStatus.steps ?? {}) as Array<[string, StepStatus]>).map(([key, status]) => (
-                <StepIndicator key={key} label={STEP_LABELS[key]} status={status} />
-              ))}
+              {(['script', 'audio', 'video'] as const).map((key) => {
+                const status = (jobStatus.steps ?? {})[key] as StepStatus | undefined;
+                if (!status) return null;
+                return <StepIndicator key={key} label={STEP_LABELS[key]} status={status} />;
+              })}
             </div>
             <p className="text-center text-gray-500 text-xs mt-4">보통 1-2분 소요됩니다. 잠시만 기다려주세요 ☕</p>
           </div>
