@@ -154,6 +154,7 @@ async function createTextOverlay(
   outputPath: string,
   bottomInfo?: string,
   displayBusinessName?: string,
+  showWatermark?: boolean,
 ): Promise<void> {
   const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
 
@@ -190,13 +191,15 @@ async function createTextOverlay(
   ctx.fillStyle = topGrad;
   ctx.fillRect(0, 0, W, 8);
 
-  // Brand watermark
-  ctx.fillStyle = 'rgba(255,255,255,0.35)';
-  ctx.font = `bold 34px ${fontFamily}`;
-  ctx.textAlign = 'center';
-  ctx.shadowColor = 'rgba(0,0,0,0.8)';
-  ctx.shadowBlur = 12;
-  ctx.fillText('ShortsAI', W / 2, 76);
+  // Brand watermark (무료 플랜만)
+  if (showWatermark) {
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.font = `bold 34px ${fontFamily}`;
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 12;
+    ctx.fillText('PromoAI', W / 2, 76);
+  }
   ctx.shadowBlur = 0;
 
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
@@ -353,6 +356,7 @@ async function createFrameImage(
   bgKeyword: string = 'lifestyle',
   bottomInfo?: string,
   displayBusinessName?: string,
+  showWatermark?: boolean,
 ): Promise<void> {
   const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
 
@@ -438,11 +442,13 @@ async function createFrameImage(
   ctx.fillStyle = topGrad;
   ctx.fillRect(0, 0, W, 8);
 
-  // Brand watermark
-  ctx.fillStyle = 'rgba(255,255,255,0.18)';
-  ctx.font = `bold 34px ${fontFamily}`;
-  ctx.textAlign = 'center';
-  ctx.fillText('ShortsAI', W / 2, 76);
+  // Brand watermark (무료 플랜만)
+  if (showWatermark) {
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.font = `bold 34px ${fontFamily}`;
+    ctx.textAlign = 'center';
+    ctx.fillText('PromoAI', W / 2, 76);
+  }
 
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
   if (displayBusinessName || title) {
@@ -634,6 +640,7 @@ export async function generateVideo(
   bgmPath?: string,
   bgmId?: string,
   externalBgmVolume?: number,
+  showWatermark?: boolean,
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const ffmpegPath = require('ffmpeg-static') as string;
@@ -759,7 +766,7 @@ export async function generateVideo(
       await createTextOverlay(
         script.title, sentence, sectionType,
         idx, allSentences.length, overlayPath,
-        bottomInfo, displayBusinessName,
+        bottomInfo, displayBusinessName, showWatermark,
       );
       overlayPaths.push(overlayPath);
     }
@@ -866,7 +873,7 @@ export async function generateVideo(
       await createFrameImage(
         script.title, sentence, sectionType,
         idx, allSentences.length, framePath, keyword,
-        bottomInfo, displayBusinessName,
+        bottomInfo, displayBusinessName, showWatermark,
       );
       framePaths.push({ path: framePath, duration: sentenceDurations[idx] });
     }

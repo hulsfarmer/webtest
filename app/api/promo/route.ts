@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
 import { createJob, updateJob } from '@/lib/jobStore';
-import { canGenerate, incrementUsage } from '@/lib/usageStore';
+import { canGenerate, incrementUsage, getUsage } from '@/lib/usageStore';
 import { generatePromoScript, PromoInput, VideoScript } from '@/lib/anthropic';
 import { generateAudioWithTimepoints } from '@/lib/tts';
 import { generateVideo } from '@/lib/video';
@@ -35,6 +35,7 @@ async function processPromoJob(
   bgmId?: BgmId,
   customBgmPath?: string,
   bgmVolume?: number,
+  showWatermark?: boolean,
 ) {
   const audioDir = path.join(process.cwd(), 'data', 'audio');
   const videoDir = path.join(process.cwd(), 'public', 'videos');
@@ -116,7 +117,7 @@ async function processPromoJob(
     await generateVideo(
       script, audioPath, videoPath, userImagePaths,
       bottomInfo, sentenceDurations, input.businessName,
-      bgmPath ?? undefined, bgmId, bgmVolume,
+      bgmPath ?? undefined, bgmId, bgmVolume, showWatermark,
     );
 
     // Cleanup audio, custom BGM, and uploaded images
@@ -249,6 +250,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const usage = await getUsage(userId);
+    const showWatermark = usage.plan === 'free';
+
     const topic = `${businessName} ${businessType} 홍보`;
     await createJob({ id: jobId, sessionId: userId, topic, duration, tone });
     await incrementUsage(userId);
@@ -264,7 +268,7 @@ export async function POST(req: NextRequest) {
       tone,
     };
 
-    processPromoJob(jobId, input, voice, speed, userImagePaths, prebuiltScript, bgmId, customBgmPath, bgmVolume).catch(console.error);
+    processPromoJob(jobId, input, voice, speed, userImagePaths, prebuiltScript, bgmId, customBgmPath, bgmVolume, showWatermark).catch(console.error);
     return NextResponse.json({ jobId });
 
   } else {
@@ -302,6 +306,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const usage2 = await getUsage(userId);
+    const showWatermark2 = usage2.plan === 'free';
+
     const jobId = uuidv4();
     const topic = `${businessName} ${businessType} 홍보`;
     await createJob({ id: jobId, sessionId: userId, topic, duration, tone });
@@ -318,7 +325,7 @@ export async function POST(req: NextRequest) {
       tone,
     };
 
-    processPromoJob(jobId, input, voice, Number(speed), [], prebuiltScript, bgmId).catch(console.error);
+    processPromoJob(jobId, input, voice, Number(speed), [], prebuiltScript, bgmId, undefined, undefined, showWatermark2).catch(console.error);
     return NextResponse.json({ jobId });
   }
 }
