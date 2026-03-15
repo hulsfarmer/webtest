@@ -84,12 +84,17 @@ export default function PricingSection() {
   const { data: session } = useSession();
   const [loading, setLoading] = useState<string | null>(null);
   const [currentPlan, setCurrentPlan] = useState('free');
+  const [portalUrl, setPortalUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (session?.user) {
       fetch('/api/usage')
         .then(r => r.json())
         .then(d => setCurrentPlan(d.plan || 'free'))
+        .catch(() => {});
+      fetch('/api/subscription')
+        .then(r => r.json())
+        .then(d => setPortalUrl(d.portalUrl || null))
         .catch(() => {});
     }
   }, [session]);
@@ -177,12 +182,24 @@ export default function PricingSection() {
                 </div>
 
                 {isCurrentPlan ? (
-                  <button
-                    disabled
-                    className="w-full py-3 rounded-xl bg-white/5 text-gray-500 text-sm font-semibold mb-6 cursor-default"
-                  >
-                    현재 플랜
-                  </button>
+                  <div className="mb-6 space-y-2">
+                    <button
+                      disabled
+                      className="w-full py-3 rounded-xl bg-white/5 text-gray-500 text-sm font-semibold cursor-default"
+                    >
+                      현재 플랜
+                    </button>
+                    {portalUrl && plan.planId !== 'free' && (
+                      <a
+                        href={portalUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full py-2 rounded-xl bg-white/5 text-gray-400 text-xs text-center hover:text-white hover:bg-white/10 transition-all"
+                      >
+                        구독 관리
+                      </a>
+                    )}
+                  </div>
                 ) : (
                   <button
                     onClick={() => handleUpgrade(plan.planId, plan.variantId)}
