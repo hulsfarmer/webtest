@@ -1,7 +1,7 @@
 'use client';
 
-import { Check, Zap } from 'lucide-react';
-import { useState } from 'react';
+import { Check, Zap, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 
 const plans = [
@@ -13,7 +13,7 @@ const plans = [
     period: '영원히 무료',
     description: '먼저 체험해보세요',
     features: [
-      '월 3개 홍보영상',
+      '월 3회 홍보영상',
       '1080×1920 쇼츠 포맷',
       'AI 홍보 스크립트 생성',
       '한국어 TTS 내레이션',
@@ -21,52 +21,53 @@ const plans = [
       'MP4 다운로드',
     ],
     cta: '무료로 시작',
-    href: '/promo',
+    planId: 'free',
+    variantId: null as number | null,
     highlighted: false,
-    badge: null,
+    badge: null as string | null,
   },
   {
-    name: '베이직',
-    nameEn: 'Basic',
-    price: 19900,
-    priceDisplay: '₩19,900',
+    name: 'Pro',
+    nameEn: 'Pro',
+    price: 9900,
+    priceDisplay: '₩9,900',
     period: '월',
     description: '매달 꾸준히 홍보하는 사장님께',
     features: [
-      '월 30개 홍보영상',
-      '1080×1920 쇼츠 포맷',
-      'AI 홍보 스크립트 생성',
-      '한국어 TTS 고품질',
-      'BGM 자동 추천',
+      '월 30회 홍보영상',
+      '워터마크 없음',
+      '모든 나래이터 (Chirp3-HD + Neural2)',
+      '모든 BGM + 커스텀 BGM',
+      '고급 음성 속도 조절',
       'MP4 다운로드',
-      '해시태그 자동 추천',
       '이메일 지원',
     ],
-    cta: '베이직 시작',
-    plan: 'basic',
+    cta: 'Pro 시작',
+    planId: 'pro',
+    variantId: 1405743,
     highlighted: true,
     badge: '인기',
   },
   {
-    name: '프로',
-    nameEn: 'Pro',
-    price: 49900,
-    priceDisplay: '₩49,900',
+    name: 'Business',
+    nameEn: 'Business',
+    price: 29900,
+    priceDisplay: '₩29,900',
     period: '월',
     description: '여러 매장을 운영하거나 매일 홍보하는 분께',
     features: [
-      '월 100개 홍보영상',
-      '1080×1920 쇼츠 포맷',
-      'AI 홍보 스크립트 생성',
-      '한국어 TTS 프리미엄',
-      'BGM 자동 추천',
+      '월 100회 홍보영상',
+      '워터마크 없음',
+      '모든 나래이터 (Chirp3-HD + Neural2)',
+      '모든 BGM + 커스텀 BGM',
+      '고급 음성 속도 조절',
       'MP4 다운로드',
-      '해시태그 자동 추천',
       '우선 처리 (빠른 생성)',
       '우선 고객 지원',
     ],
-    cta: '프로 시작',
-    plan: 'pro',
+    cta: 'Business 시작',
+    planId: 'business',
+    variantId: 1405749,
     highlighted: false,
     badge: null,
   },
@@ -76,36 +77,48 @@ const competitorComparison = [
   { name: '영상 제작 의뢰', price: '50~100만원/건', weakness: '비용 높음, 수정 어려움' },
   { name: 'Pictory', price: '$23~99/월', weakness: '영어만 지원' },
   { name: 'InVideo', price: '$15~30/월', weakness: '한국어 부족, 홍보 특화 아님' },
-  { name: 'ShortsAI', price: '₩0~49,900/월', weakness: '한국어 완벽, 사업장 홍보 특화', isUs: true },
+  { name: 'PromoAI', price: '₩0~29,900/월', weakness: '한국어 완벽, 사업장 홍보 특화', isUs: true },
 ];
 
 export default function PricingSection() {
   const { data: session } = useSession();
   const [loading, setLoading] = useState<string | null>(null);
+  const [currentPlan, setCurrentPlan] = useState('free');
 
-  const handleUpgrade = async (plan: string) => {
-    if (plan === 'free') {
-      window.location.href = session ? '/promo' : '/login';
+  useEffect(() => {
+    if (session?.user) {
+      fetch('/api/usage')
+        .then(r => r.json())
+        .then(d => setCurrentPlan(d.plan || 'free'))
+        .catch(() => {});
+    }
+  }, [session]);
+
+  const handleUpgrade = async (planId: string, variantId: number | null) => {
+    if (planId === 'free') {
+      window.location.href = session ? '/promo' : '/api/auth/signin';
       return;
     }
 
     if (!session) {
-      window.location.href = '/login';
+      window.location.href = '/api/auth/signin';
       return;
     }
 
-    setLoading(plan);
+    if (!variantId) return;
+
+    setLoading(planId);
     try {
-      const res = await fetch('/api/stripe/checkout', {
+      const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ variantId }),
       });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
       } else {
-        alert('결제 설정이 필요합니다. .env.local에 Stripe 키를 추가해주세요.');
+        alert('결제 페이지를 열 수 없습니다.');
       }
     } catch {
       alert('결제 처리 중 오류가 발생했습니다.');
@@ -130,56 +143,78 @@ export default function PricingSection() {
 
         {/* Pricing cards */}
         <div className="grid md:grid-cols-3 gap-6 mb-16">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`relative rounded-2xl p-6 border transition-all ${
-                plan.highlighted
-                  ? 'bg-gradient-to-b from-purple-900/40 to-brand-card border-purple-500/50 glow-purple'
-                  : 'bg-brand-card border-white/10 hover:border-purple-500/30'
-              }`}
-            >
-              {plan.badge && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-brand text-white text-xs font-bold">
-                  {plan.badge}
-                </div>
-              )}
+          {plans.map((plan) => {
+            const isCurrentPlan = currentPlan === plan.planId;
 
-              <div className="mb-6">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-xl font-bold">{plan.name}</h3>
-                  <span className="text-gray-500 text-sm">{plan.nameEn}</span>
-                </div>
-                <p className="text-gray-400 text-sm mb-4">{plan.description}</p>
-                <div className="flex items-end gap-1">
-                  <span className="text-4xl font-bold">{plan.priceDisplay}</span>
-                  {plan.price > 0 && <span className="text-gray-400 mb-1">/{plan.period}</span>}
-                  {plan.price === 0 && <span className="text-gray-400 mb-1 text-sm">{plan.period}</span>}
-                </div>
-              </div>
-
-              <button
-                onClick={() => handleUpgrade(plan.plan || 'free')}
-                disabled={loading === plan.plan}
-                className={`w-full py-3 rounded-xl font-semibold text-sm mb-6 transition-all ${
+            return (
+              <div
+                key={plan.name}
+                className={`relative rounded-2xl p-6 border transition-all ${
                   plan.highlighted
-                    ? 'bg-gradient-brand text-white hover:opacity-90'
-                    : 'bg-white/10 text-white hover:bg-white/15 border border-white/10'
-                } disabled:opacity-50`}
+                    ? 'bg-gradient-to-b from-purple-900/40 to-brand-card border-purple-500/50 glow-purple'
+                    : 'bg-brand-card border-white/10 hover:border-purple-500/30'
+                }`}
               >
-                {loading === plan.plan ? '처리 중...' : plan.cta}
-              </button>
+                {plan.badge && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-brand text-white text-xs font-bold">
+                    {plan.badge}
+                  </div>
+                )}
 
-              <ul className="space-y-3">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-3 text-sm text-gray-300">
-                    <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-xl font-bold">{plan.name}</h3>
+                    {plan.name !== plan.nameEn && (
+                      <span className="text-gray-500 text-sm">{plan.nameEn}</span>
+                    )}
+                  </div>
+                  <p className="text-gray-400 text-sm mb-4">{plan.description}</p>
+                  <div className="flex items-end gap-1">
+                    <span className="text-4xl font-bold">{plan.priceDisplay}</span>
+                    {plan.price > 0 && <span className="text-gray-400 mb-1">/{plan.period}</span>}
+                    {plan.price === 0 && <span className="text-gray-400 mb-1 text-sm">{plan.period}</span>}
+                  </div>
+                </div>
+
+                {isCurrentPlan ? (
+                  <button
+                    disabled
+                    className="w-full py-3 rounded-xl bg-white/5 text-gray-500 text-sm font-semibold mb-6 cursor-default"
+                  >
+                    현재 플랜
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleUpgrade(plan.planId, plan.variantId)}
+                    disabled={loading !== null}
+                    className={`w-full py-3 rounded-xl font-semibold text-sm mb-6 transition-all ${
+                      plan.highlighted
+                        ? 'bg-gradient-brand text-white hover:opacity-90'
+                        : 'bg-white/10 text-white hover:bg-white/15 border border-white/10'
+                    } disabled:opacity-50`}
+                  >
+                    {loading === plan.planId ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 size={16} className="animate-spin" />
+                        처리 중...
+                      </span>
+                    ) : (
+                      plan.cta
+                    )}
+                  </button>
+                )}
+
+                <ul className="space-y-3">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-center gap-3 text-sm text-gray-300">
+                      <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </div>
 
         {/* Competitor comparison */}

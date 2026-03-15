@@ -1,17 +1,23 @@
 import { supabase } from './supabase';
 
-export type Plan = 'free' | 'basic' | 'pro';
+export type Plan = 'free' | 'pro' | 'business';
 
 export const PLAN_LIMITS: Record<Plan, number> = {
   free: 3,
-  basic: 30,
-  pro: 100,
+  pro: 30,
+  business: 100,
 };
 
 export const PLAN_PRICES: Record<Plan, number> = {
   free: 0,
-  basic: 19900,
-  pro: 49900,
+  pro: 9900,
+  business: 29900,
+};
+
+// LemonSqueezy variant ID → Plan 매핑
+export const VARIANT_TO_PLAN: Record<string, Plan> = {
+  '1405743': 'pro',
+  '1405749': 'business',
 };
 
 function getCurrentMonth(): string {
