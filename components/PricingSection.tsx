@@ -123,14 +123,14 @@ export default function PricingSection() {
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
+        return; // 로딩 오버레이 유지한 채 이동
       } else {
         alert('결제 페이지를 열 수 없습니다.');
       }
     } catch {
       alert('결제 처리 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(null);
     }
+    setLoading(null);
   };
 
   return (
