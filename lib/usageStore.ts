@@ -11,7 +11,7 @@ export const PLAN_LIMITS: Record<Plan, number> = {
 export const PLAN_PRICES: Record<Plan, number> = {
   free: 0,
   pro: 9900,
-  business: 29900,
+  business: 49000,
 };
 
 // LemonSqueezy variant ID → Plan 매핑
