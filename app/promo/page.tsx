@@ -908,9 +908,9 @@ export default function PromoPage() {
             {/* Header — business name + editable script title */}
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <h2 className="font-bold text-2xl flex items-center gap-2">
-                  <Megaphone className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-                  <span className="text-yellow-400">{businessName}</span>
+                <h2 className="font-bold text-3xl flex items-center gap-2">
+                  <Megaphone className="w-6 h-6 text-emerald-400 flex-shrink-0" />
+                  <span className="text-amber-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">{businessName}</span>
                 </h2>
                 <div className="mt-3 flex items-center gap-3">
                   <span className="text-sm text-gray-500 shrink-0">스크립트 제목</span>
@@ -918,7 +918,7 @@ export default function PromoPage() {
                     type="text"
                     value={scriptDraft.title}
                     onChange={(e) => setScriptDraft({ ...scriptDraft, title: e.target.value })}
-                    className="flex-1 text-lg font-semibold text-white bg-transparent border-b border-white/10 focus:outline-none focus:border-emerald-500/50 transition-all placeholder-gray-600 px-3 py-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+                    className="flex-1 text-lg font-semibold text-emerald-300 bg-transparent border-b border-white/10 focus:outline-none focus:border-emerald-500/50 transition-all placeholder-gray-600 px-3 py-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
                     placeholder="AI가 생성한 캐치프레이즈"
                   />
                 </div>
