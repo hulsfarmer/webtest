@@ -204,17 +204,49 @@ export default function PromoPage() {
     } catch { /* ignore */ }
   }
 
-  const addImages = useCallback((files: FileList | File[]) => {
+  const resizeImage = useCallback((file: File, maxW = 1920, maxH = 1920, quality = 0.85): Promise<File> => {
+    return new Promise((resolve) => {
+      // 2MB 이하면 리사이즈 불필요
+      if (file.size <= 2 * 1024 * 1024) { resolve(file); return; }
+      const img = new Image();
+      img.onload = () => {
+        let { width: w, height: h } = img;
+        if (w <= maxW && h <= maxH) { URL.revokeObjectURL(img.src); resolve(file); return; }
+        const ratio = Math.min(maxW / w, maxH / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => {
+            URL.revokeObjectURL(img.src);
+            resolve(blob ? new File([blob], file.name, { type: 'image/jpeg' }) : file);
+          },
+          'image/jpeg',
+          quality,
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = URL.createObjectURL(file);
+    });
+  }, []);
+
+  const addImages = useCallback(async (files: FileList | File[]) => {
     const fileArr = Array.from(files).filter(f => f.type.startsWith('image/'));
     const remaining = MAX_IMAGES - images.length;
     const toAdd = fileArr.slice(0, remaining);
     if (toAdd.length === 0) return;
 
-    const newPreviews = toAdd.map(f => URL.createObjectURL(f));
-    setImages(prev => [...prev, ...toAdd]);
+    // 큰 이미지 자동 리사이즈 (모바일 대응)
+    const resized = await Promise.all(toAdd.map(f => resizeImage(f)));
+
+    const newPreviews = resized.map(f => URL.createObjectURL(f));
+    setImages(prev => [...prev, ...resized]);
     setImagePreviews(prev => [...prev, ...newPreviews]);
     setUploadId(null); // force re-upload on next script generation
-  }, [images.length]);
+  }, [images.length, resizeImage]);
 
   function removeImage(idx: number) {
     URL.revokeObjectURL(imagePreviews[idx]);
