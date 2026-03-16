@@ -410,6 +410,17 @@ export default function PromoPage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
+  // 영상 생성 후 다운로드 안 하고 페이지 이탈 시 경고
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (jobStatus?.videoUrl) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [jobStatus?.videoUrl]);
+
   function goBackToScript() {
     setJobId(null);
     setJobStatus(null);
