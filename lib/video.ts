@@ -276,10 +276,10 @@ async function createTextOverlay(
   ctx.stroke();
 
   // Text centered vertically within the fixed box — fixed font size for consistency
-  const wrapped = wrapKorean(text, 12);
+  const wrapped = wrapKorean(text, 14);
   const textLines = wrapped.split('\n');
-  const fontSize = 72;
-  const lineHeight = fontSize + 22;
+  const fontSize = 62;
+  const lineHeight = fontSize + 18;
   const textBlockH = textLines.length * lineHeight;
   const textStartY = effectiveBOX_Y + (effectiveBOX_H - textBlockH) / 2 + fontSize * 0.85;
 
@@ -308,10 +308,10 @@ async function createTextOverlay(
     ctx.lineTo(boxX + boxW - 40, infoY);
     ctx.stroke();
     // Text with strong shadow for legibility (no background rect)
-    ctx.font = `bold 30px ${fontFamily}`;
-    ctx.fillStyle = 'white';
+    ctx.font = `bold 26px ${fontFamily}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
     ctx.shadowColor = 'rgba(0,0,0,1)';
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = 12;
     ctx.fillText(bottomInfo, W / 2, infoY + INFO_H * 0.7);
     ctx.shadowBlur = 0;
   }
@@ -520,10 +520,10 @@ async function createFrameImage(
   ctx.stroke();
 
   // Fixed font size for consistency across all frames
-  const wrapped = wrapKorean(text, 12);
+  const wrapped = wrapKorean(text, 14);
   const textLines = wrapped.split('\n');
-  const fontSize = 72;
-  const lineHeight = fontSize + 22;
+  const fontSize = 62;
+  const lineHeight = fontSize + 18;
   const textBlockH = textLines.length * lineHeight;
   const textStartY = effectiveBOX_Y + (effectiveBOX_H - textBlockH) / 2 + fontSize * 0.85;
 
@@ -552,10 +552,10 @@ async function createFrameImage(
     ctx.lineTo(boxX + boxW - 40, infoY);
     ctx.stroke();
     // Text with strong shadow for legibility (no background rect)
-    ctx.font = `bold 30px ${fontFamily}`;
-    ctx.fillStyle = 'white';
+    ctx.font = `bold 26px ${fontFamily}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
     ctx.shadowColor = 'rgba(0,0,0,1)';
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = 12;
     ctx.fillText(bottomInfo, W / 2, infoY + INFO_H * 0.7);
     ctx.shadowBlur = 0;
   }
