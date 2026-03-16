@@ -168,6 +168,7 @@ export default function PromoPage() {
   const [scriptDraft, setScriptDraft]       = useState<VideoScript | null>(null);
   const [loadingScript, setLoadingScript]   = useState(false);
   const pollRef   = useRef<NodeJS.Timeout | null>(null);
+  const [downloaded, setDownloaded] = useState(false);
 
   useEffect(() => {
     if (authSession?.user?.id) {
@@ -373,6 +374,7 @@ export default function PromoPage() {
       if (!res.ok) throw new Error(data.error || '영상 생성에 실패했습니다.');
 
       setJobId(data.jobId);
+      setDownloaded(false);
       startPolling(data.jobId);
       fetchUsage();
     } catch (err) {
@@ -413,13 +415,13 @@ export default function PromoPage() {
   // 영상 생성 후 다운로드 안 하고 페이지 이탈 시 경고
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (jobStatus?.videoUrl) {
+      if (jobStatus?.videoUrl && !downloaded) {
         e.preventDefault();
       }
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [jobStatus?.videoUrl]);
+  }, [jobStatus?.videoUrl, downloaded]);
 
   function goBackToScript() {
     setJobId(null);
@@ -1153,6 +1155,7 @@ export default function PromoPage() {
                 <a
                   href={jobStatus.videoUrl}
                   download={`promo_${Date.now()}.mp4`}
+                  onClick={() => setDownloaded(true)}
                   className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-white font-bold hover:opacity-90 transition-all"
                   style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
                 >
