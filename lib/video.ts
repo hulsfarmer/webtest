@@ -290,11 +290,10 @@ async function createTextOverlay(
   });
   ctx.shadowBlur = 0;
 
-  // ── BOTTOM INFO BAR: phone / location – no dark backing, text + shadow only ──
+  // ── BOTTOM INFO BAR: 본문 박스 바로 아래 ──
   if (bottomInfo) {
-    const infoY = H - INFO_BOTTOM_MARGIN - INFO_H;
-    // Thin accent divider line
-    const lineGrad = ctx.createLinearGradient(boxX + 40, 0, boxX + boxW - 40, 0);
+    const infoY = effectiveBOX_Y + effectiveBOX_H + 10;
+    const lineGrad = ctx.createLinearGradient(120, 0, W - 120, 0);
     lineGrad.addColorStop(0, 'transparent');
     lineGrad.addColorStop(0.3, accentColor + 'BB');
     lineGrad.addColorStop(0.7, accentColor + 'BB');
@@ -302,15 +301,14 @@ async function createTextOverlay(
     ctx.strokeStyle = lineGrad;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(boxX + 40, infoY);
-    ctx.lineTo(boxX + boxW - 40, infoY);
+    ctx.moveTo(120, infoY);
+    ctx.lineTo(W - 120, infoY);
     ctx.stroke();
-    // Text with strong shadow for legibility (no background rect)
     ctx.font = `bold 26px ${fontFamily}`;
     ctx.fillStyle = 'rgba(255,255,255,0.75)';
     ctx.shadowColor = 'rgba(0,0,0,1)';
     ctx.shadowBlur = 12;
-    ctx.fillText(bottomInfo, W / 2, infoY + INFO_H * 0.7);
+    ctx.fillText(bottomInfo, W / 2, infoY + 40);
     ctx.shadowBlur = 0;
   }
 
@@ -528,11 +526,10 @@ async function createFrameImage(
   });
   ctx.shadowBlur = 0;
 
-  // ── BOTTOM INFO BAR: phone / location – no dark backing, text + shadow only ──
+  // ── BOTTOM INFO BAR: 본문 박스 바로 아래 ──
   if (bottomInfo) {
-    const infoY = H - INFO_BOTTOM_MARGIN - INFO_H;
-    // Thin accent divider line
-    const lineGrad = ctx.createLinearGradient(boxX + 40, 0, boxX + boxW - 40, 0);
+    const infoY = effectiveBOX_Y + effectiveBOX_H + 10;
+    const lineGrad = ctx.createLinearGradient(120, 0, W - 120, 0);
     lineGrad.addColorStop(0, 'transparent');
     lineGrad.addColorStop(0.3, accentColor + 'BB');
     lineGrad.addColorStop(0.7, accentColor + 'BB');
@@ -540,15 +537,14 @@ async function createFrameImage(
     ctx.strokeStyle = lineGrad;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(boxX + 40, infoY);
-    ctx.lineTo(boxX + boxW - 40, infoY);
+    ctx.moveTo(120, infoY);
+    ctx.lineTo(W - 120, infoY);
     ctx.stroke();
-    // Text with strong shadow for legibility (no background rect)
     ctx.font = `bold 26px ${fontFamily}`;
     ctx.fillStyle = 'rgba(255,255,255,0.75)';
     ctx.shadowColor = 'rgba(0,0,0,1)';
     ctx.shadowBlur = 12;
-    ctx.fillText(bottomInfo, W / 2, infoY + INFO_H * 0.7);
+    ctx.fillText(bottomInfo, W / 2, infoY + 40);
     ctx.shadowBlur = 0;
   }
 
