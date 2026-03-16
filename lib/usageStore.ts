@@ -16,8 +16,8 @@ export const PLAN_PRICES: Record<Plan, number> = {
 
 // LemonSqueezy variant ID → Plan 매핑
 export const VARIANT_TO_PLAN: Record<string, Plan> = {
-  '1405743': 'pro',
-  '1405749': 'business',
+  '895986': 'pro',
+  '896058': 'business',
 };
 
 function getCurrentMonth(): string {
