@@ -212,10 +212,10 @@ async function createTextOverlay(
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
   if (displayBusinessName || title) {
     if (displayBusinessName) {
-      // Row 1 — business name: 66px, golden yellow + thin black outline
-      ctx.font = `bold 66px ${fontFamily}`;
-      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-      ctx.lineWidth = 2;
+      // Row 1 — business name: 80px, golden yellow + bold black outline
+      ctx.font = `bold 80px ${fontFamily}`;
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.lineWidth = 5;
       ctx.strokeText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
       ctx.fillStyle = '#FBBF24';
       ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
@@ -227,15 +227,15 @@ async function createTextOverlay(
       ctx.strokeStyle = sepGrad;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(200, TITLE_ZONE_Y + 90);
-      ctx.lineTo(W - 200, TITLE_ZONE_Y + 90);
+      ctx.moveTo(200, TITLE_ZONE_Y + 96);
+      ctx.lineTo(W - 200, TITLE_ZONE_Y + 96);
       ctx.stroke();
     }
 
     if (title) {
       // Row 2 — catchy title: gradient bold text
       // When businessName is also shown, use the lower portion of the title zone
-      const catchyZoneTop = displayBusinessName ? TITLE_ZONE_Y + 80 : TITLE_ZONE_Y;
+      const catchyZoneTop = displayBusinessName ? TITLE_ZONE_Y + 86 : TITLE_ZONE_Y;
       const catchyZoneH   = displayBusinessName ? TITLE_ZONE_H - 80 : TITLE_ZONE_H;
       const titleFontSize = displayBusinessName ? 66 : 78;
       const titleWrapped  = wrapKorean(title, 13);
@@ -453,10 +453,10 @@ async function createFrameImage(
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
   if (displayBusinessName || title) {
     if (displayBusinessName) {
-      // Row 1 — business name: 66px, golden yellow + thin black outline
-      ctx.font = `bold 66px ${fontFamily}`;
-      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-      ctx.lineWidth = 2;
+      // Row 1 — business name: 80px, golden yellow + bold black outline
+      ctx.font = `bold 80px ${fontFamily}`;
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.lineWidth = 5;
       ctx.strokeText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
       ctx.fillStyle = '#FBBF24';
       ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
@@ -468,14 +468,14 @@ async function createFrameImage(
       ctx.strokeStyle = sepGrad;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(200, TITLE_ZONE_Y + 72);
-      ctx.lineTo(W - 200, TITLE_ZONE_Y + 72);
+      ctx.moveTo(200, TITLE_ZONE_Y + 96);
+      ctx.lineTo(W - 200, TITLE_ZONE_Y + 96);
       ctx.stroke();
     }
 
     if (title) {
       // Row 2 — catchy title: gradient bold text
-      const catchyZoneTop = displayBusinessName ? TITLE_ZONE_Y + 82 : TITLE_ZONE_Y;
+      const catchyZoneTop = displayBusinessName ? TITLE_ZONE_Y + 86 : TITLE_ZONE_Y;
       const catchyZoneH   = displayBusinessName ? TITLE_ZONE_H - 110 : TITLE_ZONE_H;
       const titleFontSize = displayBusinessName ? 66 : 78;
       const titleWrapped  = wrapKorean(title, 13);
