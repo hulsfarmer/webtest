@@ -93,6 +93,7 @@ const STEP_LABELS: Record<string, string> = {
 };
 
 const MAX_IMAGES = 5;
+const MIN_IMAGES = 4;
 
 function StepIndicator({ label, status }: { label: string; status: StepStatus }) {
   return (
@@ -442,7 +443,7 @@ export default function PromoPage() {
   const isFailed        = jobStatus?.status === 'failed';
   const isScriptReview  = !loading && !loadingScript && !jobId && scriptDraft !== null && !isDone && !isFailed;
   const showForm        = !loading && !isGenerating && !isDone && !isFailed && !isScriptReview && !loadingScript;
-  const canStart        = businessName.trim().length > 0 && businessType.length > 0 && sellingPoints.trim().length > 0 && !loading && !loadingScript;
+  const canStart        = businessName.trim().length > 0 && businessType.length > 0 && sellingPoints.trim().length > 0 && images.length >= MIN_IMAGES && !loading && !loadingScript;
 
   return (
     <main className="min-h-screen bg-[#0B0A14] text-white">
@@ -552,7 +553,7 @@ export default function PromoPage() {
               <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-1.5">
                 <ImagePlus className="w-4 h-4 text-emerald-400" />
                 매장 사진
-                <span className="text-gray-600 text-xs ml-1">(선택 — 최대 {MAX_IMAGES}장, 업로드 시 사진이 영상 배경으로 사용됩니다)</span>
+                <span className="text-red-400 text-xs ml-1">* 필수 — {MIN_IMAGES}~{MAX_IMAGES}장 (영상 배경으로 사용)</span>
               </label>
 
               {/* Drop zone */}
@@ -623,7 +624,13 @@ export default function PromoPage() {
                 </div>
               )}
 
-              {images.length > 0 && (
+              {images.length > 0 && images.length < MIN_IMAGES && (
+                <p className="text-amber-400/70 text-xs mt-2 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {images.length}장 선택됨 — 최소 {MIN_IMAGES}장 필요합니다 ({MIN_IMAGES - images.length}장 더 추가)
+                </p>
+              )}
+              {images.length >= MIN_IMAGES && (
                 <p className="text-emerald-400/70 text-xs mt-2 flex items-center gap-1">
                   <Check className="w-3 h-3" />
                   {images.length}장 선택됨 — 업로드된 사진이 영상 배경으로 사용됩니다
@@ -907,13 +914,13 @@ export default function PromoPage() {
                   <Megaphone className="w-5 h-5 text-emerald-400 flex-shrink-0" />
                   {businessName}
                 </h2>
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="text-xs text-gray-500 shrink-0">스크립트 제목</span>
+                <div className="mt-3 flex items-center gap-3">
+                  <span className="text-sm text-gray-500 shrink-0">스크립트 제목</span>
                   <input
                     type="text"
                     value={scriptDraft.title}
                     onChange={(e) => setScriptDraft({ ...scriptDraft, title: e.target.value })}
-                    className="flex-1 text-sm text-gray-300 bg-transparent border-b border-white/10 focus:outline-none focus:border-emerald-500/50 transition-all placeholder-gray-600"
+                    className="flex-1 text-base text-gray-200 bg-transparent border-b border-white/10 focus:outline-none focus:border-emerald-500/50 transition-all placeholder-gray-600 px-2 py-1"
                     placeholder="AI가 생성한 캐치프레이즈"
                   />
                 </div>
