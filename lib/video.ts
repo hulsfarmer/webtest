@@ -138,11 +138,12 @@ function wrapKorean(text: string, maxChars = 14): string {
 const TITLE_ZONE_Y = 178;   // top of title zone
 const TITLE_ZONE_H = 260;   // height of title zone (fits up to 3-line title)
 const DIV_Y = TITLE_ZONE_Y + TITLE_ZONE_H + 16; // divider at y=454 (fixed)
-const BOX_Y = DIV_Y + 24;   // main text box top at y=478 (FIXED – no overlap with title)
-const BOX_H = 480;           // main text box height (FIXED – no trembling!)
 const BOX_W_MARGIN = 40;     // horizontal margin
 const INFO_H = 84;           // contact info bar height
 const INFO_BOTTOM_MARGIN = 100; // gap from bottom
+// Lower Third: 본문 자막을 하단 1/3에 배치
+const BOX_H = 420;           // main text box height
+const BOX_Y = 1920 - INFO_BOTTOM_MARGIN - INFO_H - BOX_H - 20; // 하단에서 위로 계산
 
 // ── Text overlay PNG (transparent background) for Pexels video mode ──
 async function createTextOverlay(
@@ -259,23 +260,11 @@ async function createTextOverlay(
       ctx.shadowBlur = 0;
     }
 
-    // Divider line between title zone and main text box (FIXED position)
-    const divGrad = ctx.createLinearGradient(80, 0, W - 80, 0);
-    divGrad.addColorStop(0, 'transparent');
-    divGrad.addColorStop(0.5, accentColor);
-    divGrad.addColorStop(1, 'transparent');
-    ctx.strokeStyle = divGrad;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(80, DIV_Y);
-    ctx.lineTo(W - 80, DIV_Y);
-    ctx.stroke();
   }
 
-  // ── MAIN TEXT BOX: expands upward when title zone is fully empty ──
-  const hasTitleContent = !!(displayBusinessName || title);
-  const effectiveBOX_Y = hasTitleContent ? BOX_Y : TITLE_ZONE_Y + 20;
-  const effectiveBOX_H = hasTitleContent ? BOX_H : (BOX_Y + BOX_H) - (TITLE_ZONE_Y + 20);
+  // ── MAIN TEXT BOX (Lower Third): always at bottom area ──
+  const effectiveBOX_Y = BOX_Y;
+  const effectiveBOX_H = BOX_H;
   const boxX = BOX_W_MARGIN;
   const boxW = W - BOX_W_MARGIN * 2;
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
@@ -515,23 +504,11 @@ async function createFrameImage(
       ctx.shadowBlur = 0;
     }
 
-    // Divider line (FIXED position)
-    const divGrad = ctx.createLinearGradient(80, 0, W - 80, 0);
-    divGrad.addColorStop(0, 'transparent');
-    divGrad.addColorStop(0.5, accentColor);
-    divGrad.addColorStop(1, 'transparent');
-    ctx.strokeStyle = divGrad;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(80, DIV_Y);
-    ctx.lineTo(W - 80, DIV_Y);
-    ctx.stroke();
   }
 
-  // ── MAIN TEXT BOX: expands upward when title zone is fully empty ──
-  const hasTitleContent = !!(displayBusinessName || title);
-  const effectiveBOX_Y = hasTitleContent ? BOX_Y : TITLE_ZONE_Y + 20;
-  const effectiveBOX_H = hasTitleContent ? BOX_H : (BOX_Y + BOX_H) - (TITLE_ZONE_Y + 20);
+  // ── MAIN TEXT BOX (Lower Third): always at bottom area ──
+  const effectiveBOX_Y = BOX_Y;
+  const effectiveBOX_H = BOX_H;
   const boxX = BOX_W_MARGIN;
   const boxW = W - BOX_W_MARGIN * 2;
   ctx.fillStyle = 'rgba(0,0,0,0.38)';
