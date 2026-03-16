@@ -9,14 +9,14 @@ const providers = [
   }),
 ];
 
-// Kakao는 credentials가 있을 때만 활성화
-if (process.env.KAKAO_CLIENT_ID && process.env.KAKAO_CLIENT_SECRET) {
+// Kakao는 REST API 키가 있을 때만 활성화
+if (process.env.KAKAO_CLIENT_ID) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const KakaoProvider = require('next-auth/providers/kakao').default;
   providers.push(
     KakaoProvider({
       clientId: process.env.KAKAO_CLIENT_ID,
-      clientSecret: process.env.KAKAO_CLIENT_SECRET,
+      clientSecret: process.env.KAKAO_CLIENT_SECRET || '',
     })
   );
 }
