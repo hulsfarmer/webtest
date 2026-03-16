@@ -448,6 +448,10 @@ export default function PromoPage() {
   }, [jobStatus?.videoUrl, downloaded]);
 
   function goBackToScript() {
+    if (jobStatus?.videoUrl && !downloaded) {
+      const leave = window.confirm('생성된 영상이 아직 저장되지 않았습니다. 그래도 스크립트 수정으로 돌아가시겠습니까?');
+      if (!leave) return;
+    }
     setJobId(null);
     setJobStatus(null);
     setLoading(false);
@@ -456,6 +460,10 @@ export default function PromoPage() {
   }
 
   function resetForm() {
+    if (jobStatus?.videoUrl && !downloaded) {
+      const leave = window.confirm('생성된 영상이 아직 저장되지 않았습니다. 그래도 새로 시작하시겠습니까?');
+      if (!leave) return;
+    }
     setJobId(null);
     setJobStatus(null);
     setLoading(false);
