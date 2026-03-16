@@ -414,13 +414,37 @@ export default function PromoPage() {
 
   // 영상 생성 후 다운로드 안 하고 페이지 이탈 시 경고
   useEffect(() => {
-    const handler = (e: BeforeUnloadEvent) => {
-      if (jobStatus?.videoUrl && !downloaded) {
+    const shouldWarn = jobStatus?.videoUrl && !downloaded;
+
+    // 탭 닫기, 새 URL 입력 시
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (shouldWarn) {
         e.preventDefault();
+        e.returnValue = '생성된 영상이 아직 저장되지 않았습니다.';
+        return e.returnValue;
       }
     };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
+
+    // 브라우저 뒤로가기 감지
+    const handlePopState = () => {
+      if (shouldWarn) {
+        const leave = window.confirm('생성된 영상이 아직 저장되지 않았습니다. 그래도 페이지를 나가시겠습니까?');
+        if (!leave) {
+          window.history.pushState(null, '', window.location.href);
+        }
+      }
+    };
+
+    if (shouldWarn) {
+      window.history.pushState(null, '', window.location.href);
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, [jobStatus?.videoUrl, downloaded]);
 
   function goBackToScript() {
