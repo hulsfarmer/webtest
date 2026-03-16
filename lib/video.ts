@@ -191,11 +191,13 @@ async function createTextOverlay(
   ctx.fillStyle = topGrad;
   ctx.fillRect(0, 0, W, 8);
 
+  // 모든 텍스트 중앙 정렬
+  ctx.textAlign = 'center';
+
   // Brand watermark (무료 플랜만)
   if (showWatermark) {
     ctx.fillStyle = 'rgba(255,255,255,0.35)';
     ctx.font = `bold 34px ${fontFamily}`;
-    ctx.textAlign = 'center';
     ctx.shadowColor = 'rgba(0,0,0,0.8)';
     ctx.shadowBlur = 12;
     ctx.fillText('ShortsAI', W / 2, 76);
@@ -442,11 +444,13 @@ async function createFrameImage(
   ctx.fillStyle = topGrad;
   ctx.fillRect(0, 0, W, 8);
 
+  // 모든 텍스트 중앙 정렬
+  ctx.textAlign = 'center';
+
   // Brand watermark (무료 플랜만)
   if (showWatermark) {
     ctx.fillStyle = 'rgba(255,255,255,0.18)';
     ctx.font = `bold 34px ${fontFamily}`;
-    ctx.textAlign = 'center';
     ctx.fillText('ShortsAI', W / 2, 76);
   }
 
