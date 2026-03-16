@@ -78,7 +78,7 @@ const competitorComparison = [
   { name: '영상 제작 의뢰', price: '50~100만원/건', weakness: '비용 높음, 수정 어려움' },
   { name: 'Pictory', price: '$23~99/월', weakness: '영어만 지원' },
   { name: 'InVideo', price: '$15~30/월', weakness: '한국어 부족, 홍보 특화 아님' },
-  { name: 'PromoAI', price: '₩0~29,000/월', weakness: '한국어 완벽, 사업장 홍보 특화', isUs: true },
+  { name: 'ShortsAI', price: '₩0~29,000/월', weakness: '한국어 완벽, 사업장 홍보 특화', isUs: true },
 ];
 
 export default function PricingSection() {

@@ -424,7 +424,7 @@ export default function PromoPage() {
           <div className="flex items-center gap-2 font-bold">
             <Megaphone className="w-4 h-4 text-emerald-400" />
             <span className="text-sm" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              PromoAI
+              ShortsAI
             </span>
           </div>
           {usage && (

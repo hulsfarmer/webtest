@@ -198,7 +198,7 @@ async function createTextOverlay(
     ctx.textAlign = 'center';
     ctx.shadowColor = 'rgba(0,0,0,0.8)';
     ctx.shadowBlur = 12;
-    ctx.fillText('PromoAI', W / 2, 76);
+    ctx.fillText('ShortsAI', W / 2, 76);
   }
   ctx.shadowBlur = 0;
 
@@ -447,7 +447,7 @@ async function createFrameImage(
     ctx.fillStyle = 'rgba(255,255,255,0.18)';
     ctx.font = `bold 34px ${fontFamily}`;
     ctx.textAlign = 'center';
-    ctx.fillText('PromoAI', W / 2, 76);
+    ctx.fillText('ShortsAI', W / 2, 76);
   }
 
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
