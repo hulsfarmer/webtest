@@ -208,12 +208,12 @@ async function createTextOverlay(
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
   if (displayBusinessName || title) {
     if (displayBusinessName) {
-      // Row 1 — business name: 38px, semi-transparent white
-      ctx.font = `bold 38px ${fontFamily}`;
-      ctx.fillStyle = 'rgba(255,255,255,0.72)';
-      ctx.shadowColor = 'rgba(0,0,0,0.9)';
-      ctx.shadowBlur = 12;
-      ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 54);
+      // Row 1 — business name: 46px, golden yellow
+      ctx.font = `bold 46px ${fontFamily}`;
+      ctx.fillStyle = '#FBBF24';
+      ctx.shadowColor = 'rgba(0,0,0,0.95)';
+      ctx.shadowBlur = 16;
+      ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 56);
       ctx.shadowBlur = 0;
       // Thin separator glow under business name
       const sepGrad = ctx.createLinearGradient(200, 0, W - 200, 0);
@@ -242,11 +242,11 @@ async function createTextOverlay(
 
       ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
       const titleGrad = ctx.createLinearGradient(W / 2 - 380, 0, W / 2 + 380, 0);
-      titleGrad.addColorStop(0, accentColor);
-      titleGrad.addColorStop(1, 'white');
+      titleGrad.addColorStop(0, 'white');
+      titleGrad.addColorStop(1, accentColor);
       ctx.fillStyle = titleGrad;
-      ctx.shadowColor = 'rgba(0,0,0,0.85)';
-      ctx.shadowBlur = 18;
+      ctx.shadowColor = 'rgba(0,0,0,0.95)';
+      ctx.shadowBlur = 22;
       titleLines.forEach((line, i) => {
         ctx.fillText(line, W / 2, titleStartY + i * titleLineH);
       });
@@ -459,12 +459,12 @@ async function createFrameImage(
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
   if (displayBusinessName || title) {
     if (displayBusinessName) {
-      // Row 1 — business name: 38px, semi-transparent white
-      ctx.font = `bold 38px ${fontFamily}`;
-      ctx.fillStyle = 'rgba(255,255,255,0.72)';
-      ctx.shadowColor = 'rgba(0,0,0,0.9)';
-      ctx.shadowBlur = 12;
-      ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 54);
+      // Row 1 — business name: 46px, golden yellow
+      ctx.font = `bold 46px ${fontFamily}`;
+      ctx.fillStyle = '#FBBF24';
+      ctx.shadowColor = 'rgba(0,0,0,0.95)';
+      ctx.shadowBlur = 16;
+      ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 56);
       ctx.shadowBlur = 0;
       // Thin separator glow under business name
       const sepGrad = ctx.createLinearGradient(200, 0, W - 200, 0);
@@ -492,11 +492,11 @@ async function createFrameImage(
 
       ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
       const titleGrad = ctx.createLinearGradient(W / 2 - 380, 0, W / 2 + 380, 0);
-      titleGrad.addColorStop(0, accentColor);
-      titleGrad.addColorStop(1, 'white');
+      titleGrad.addColorStop(0, 'white');
+      titleGrad.addColorStop(1, accentColor);
       ctx.fillStyle = titleGrad;
-      ctx.shadowColor = 'rgba(0,0,0,0.85)';
-      ctx.shadowBlur = 18;
+      ctx.shadowColor = 'rgba(0,0,0,0.95)';
+      ctx.shadowBlur = 22;
       titleLines.forEach((line, i) => {
         ctx.fillText(line, W / 2, titleStartY + i * titleLineH);
       });
