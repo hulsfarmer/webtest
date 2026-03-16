@@ -136,7 +136,7 @@ function wrapKorean(text: string, maxChars = 14): string {
 // ── Fixed layout constants (shared by both overlay functions) ──
 // These NEVER change between frames → eliminates trembling
 const TITLE_ZONE_Y = 178;   // top of title zone
-const TITLE_ZONE_H = 260;   // height of title zone (fits up to 3-line title)
+const TITLE_ZONE_H = 380;   // height of title zone — 업체명 + 여백 + 캐치프레이즈
 const DIV_Y = TITLE_ZONE_Y + TITLE_ZONE_H + 16; // divider at y=454 (fixed)
 const BOX_W_MARGIN = 40;     // horizontal margin
 const INFO_H = 84;           // contact info bar height
