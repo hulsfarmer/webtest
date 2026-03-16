@@ -207,12 +207,10 @@ export default function PromoPage() {
 
   const resizeImage = useCallback((file: File, maxW = 1920, maxH = 1920, quality = 0.85): Promise<File> => {
     return new Promise((resolve) => {
-      // 2MB 이하면 리사이즈 불필요
-      if (file.size <= 2 * 1024 * 1024) { resolve(file); return; }
       const img = new Image();
       img.onload = () => {
         let { width: w, height: h } = img;
-        if (w <= maxW && h <= maxH) { URL.revokeObjectURL(img.src); resolve(file); return; }
+        if (w <= maxW && h <= maxH && file.size <= 1 * 1024 * 1024) { URL.revokeObjectURL(img.src); resolve(file); return; }
         const ratio = Math.min(maxW / w, maxH / h);
         w = Math.round(w * ratio);
         h = Math.round(h * ratio);
@@ -910,7 +908,7 @@ export default function PromoPage() {
             {/* Header — business name + editable script title */}
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <h2 className="font-bold text-lg flex items-center gap-2">
+                <h2 className="font-bold text-2xl flex items-center gap-2">
                   <Megaphone className="w-5 h-5 text-emerald-400 flex-shrink-0" />
                   {businessName}
                 </h2>
@@ -920,7 +918,7 @@ export default function PromoPage() {
                     type="text"
                     value={scriptDraft.title}
                     onChange={(e) => setScriptDraft({ ...scriptDraft, title: e.target.value })}
-                    className="flex-1 text-base text-gray-200 bg-transparent border-b border-white/10 focus:outline-none focus:border-emerald-500/50 transition-all placeholder-gray-600 px-2 py-1"
+                    className="flex-1 text-lg font-semibold text-gray-200 bg-transparent border-b border-white/10 focus:outline-none focus:border-emerald-500/50 transition-all placeholder-gray-600 px-3 py-1"
                     placeholder="AI가 생성한 캐치프레이즈"
                   />
                 </div>

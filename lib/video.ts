@@ -193,6 +193,7 @@ async function createTextOverlay(
 
   // 모든 텍스트 중앙 정렬
   ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
 
   // Brand watermark (무료 플랜만)
   if (showWatermark) {
@@ -446,6 +447,7 @@ async function createFrameImage(
 
   // 모든 텍스트 중앙 정렬
   ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
 
   // Brand watermark (무료 플랜만)
   if (showWatermark) {
