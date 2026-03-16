@@ -209,16 +209,10 @@ async function createTextOverlay(
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
   if (displayBusinessName || title) {
     if (displayBusinessName) {
-      // Row 1 — business name: 54px, golden yellow with strong outline
+      // Row 1 — business name: 54px, golden yellow, clean (no shadow)
       ctx.font = `bold 54px ${fontFamily}`;
       ctx.fillStyle = '#FBBF24';
-      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-      ctx.lineWidth = 4;
-      ctx.shadowColor = 'rgba(0,0,0,1)';
-      ctx.shadowBlur = 20;
-      ctx.strokeText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
       ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
-      ctx.shadowBlur = 0;
       // Thin separator glow under business name
       const sepGrad = ctx.createLinearGradient(200, 0, W - 200, 0);
       sepGrad.addColorStop(0, 'transparent');
@@ -454,16 +448,10 @@ async function createFrameImage(
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
   if (displayBusinessName || title) {
     if (displayBusinessName) {
-      // Row 1 — business name: 54px, golden yellow with strong outline
+      // Row 1 — business name: 54px, golden yellow, clean (no shadow)
       ctx.font = `bold 54px ${fontFamily}`;
       ctx.fillStyle = '#FBBF24';
-      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-      ctx.lineWidth = 4;
-      ctx.shadowColor = 'rgba(0,0,0,1)';
-      ctx.shadowBlur = 20;
-      ctx.strokeText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
       ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
-      ctx.shadowBlur = 0;
       // Thin separator glow under business name
       const sepGrad = ctx.createLinearGradient(200, 0, W - 200, 0);
       sepGrad.addColorStop(0, 'transparent');
