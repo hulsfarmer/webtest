@@ -133,17 +133,20 @@ function wrapKorean(text: string, maxChars = 14): string {
   return lines.join('\n');
 }
 
-// ── Fixed layout constants (shared by both overlay functions) ──
-// These NEVER change between frames → eliminates trembling
-const TITLE_ZONE_Y = 178;   // top of title zone
-const TITLE_ZONE_H = 380;   // height of title zone — 업체명 + 여백 + 캐치프레이즈
-const DIV_Y = TITLE_ZONE_Y + TITLE_ZONE_H + 16; // divider at y=454 (fixed)
-const BOX_W_MARGIN = 40;     // horizontal margin
-const INFO_H = 84;           // contact info bar height
-const INFO_BOTTOM_MARGIN = 100; // gap from bottom
-// Lower Third: 본문 자막을 하단 1/3에 배치
-const BOX_H = 420;           // main text box height
-const BOX_Y = 1920 - INFO_BOTTOM_MARGIN - INFO_H - BOX_H - 20; // 하단에서 위로 계산
+// ── Fixed layout constants — Safe Zone 기반 (shared by both overlay functions) ──
+// 쇼츠 Safe Zone: 상단 15% (288px), 하단 25% (480px) 확보
+const H_FULL = 1920;
+const SAFE_TOP = Math.round(H_FULL * 0.15);     // 288px — 상단 UI 영역
+const SAFE_BOTTOM = Math.round(H_FULL * 0.25);  // 480px — 하단 UI 영역
+const TITLE_ZONE_Y = SAFE_TOP;                   // 288px부터 시작
+const TITLE_ZONE_H = 340;                        // 업체명 + 여백 + 캐치프레이즈
+const DIV_Y = TITLE_ZONE_Y + TITLE_ZONE_H + 16;
+const BOX_W_MARGIN = 40;
+const INFO_H = 84;
+const INFO_BOTTOM_MARGIN = 60;
+// Lower Third: 하단 Safe Zone 위에 배치
+const BOX_H = 380;
+const BOX_Y = H_FULL - SAFE_BOTTOM - BOX_H + 60; // Safe Zone 바로 위
 
 // ── Text overlay PNG (transparent background) for Pexels video mode ──
 async function createTextOverlay(
@@ -256,18 +259,19 @@ async function createTextOverlay(
 
   }
 
-  // ── MAIN TEXT BOX (Lower Third): always at bottom area ──
+  // ── MAIN TEXT BOX (Lower Third): 반투명 그라데이션 배경 ──
   const effectiveBOX_Y = BOX_Y;
   const effectiveBOX_H = BOX_H;
-  const boxX = BOX_W_MARGIN;
-  const boxW = W - BOX_W_MARGIN * 2;
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  ctx.beginPath();
-  ctx.roundRect(boxX, effectiveBOX_Y, boxW, effectiveBOX_H, 28);
-  ctx.fill();
-  ctx.strokeStyle = accentColor + '55';
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  const boxX = 0;
+  const boxW = W;
+  // 하단 그라데이션 오버레이 (위: 투명 → 아래: 반투명 검정)
+  const boxGrad = ctx.createLinearGradient(0, effectiveBOX_Y - 60, 0, effectiveBOX_Y + effectiveBOX_H);
+  boxGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  boxGrad.addColorStop(0.15, 'rgba(0,0,0,0.3)');
+  boxGrad.addColorStop(0.5, 'rgba(0,0,0,0.55)');
+  boxGrad.addColorStop(1, 'rgba(0,0,0,0.7)');
+  ctx.fillStyle = boxGrad;
+  ctx.fillRect(boxX, effectiveBOX_Y - 60, boxW, effectiveBOX_H + 60);
 
   // Text centered vertically within the fixed box — fixed font size for consistency
   const wrapped = wrapKorean(text, 14);
@@ -310,9 +314,9 @@ async function createTextOverlay(
     ctx.shadowBlur = 0;
   }
 
-  // Progress bar (with backing)
+  // Progress bar (Safe Zone 하단 경계에 배치)
   const barH = 10;
-  const barY = H - 58;
+  const barY = H_FULL - SAFE_BOTTOM + 20;
   const barPad = 60;
   const barW = W - barPad * 2;
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -494,18 +498,18 @@ async function createFrameImage(
 
   }
 
-  // ── MAIN TEXT BOX (Lower Third): always at bottom area ──
+  // ── MAIN TEXT BOX (Lower Third): 반투명 그라데이션 배경 ──
   const effectiveBOX_Y = BOX_Y;
   const effectiveBOX_H = BOX_H;
-  const boxX = BOX_W_MARGIN;
-  const boxW = W - BOX_W_MARGIN * 2;
-  ctx.fillStyle = 'rgba(0,0,0,0.38)';
-  ctx.beginPath();
-  ctx.roundRect(boxX, effectiveBOX_Y, boxW, effectiveBOX_H, 28);
-  ctx.fill();
-  ctx.strokeStyle = accentColor + '44';
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  const boxX = 0;
+  const boxW = W;
+  const boxGrad = ctx.createLinearGradient(0, effectiveBOX_Y - 60, 0, effectiveBOX_Y + effectiveBOX_H);
+  boxGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  boxGrad.addColorStop(0.15, 'rgba(0,0,0,0.3)');
+  boxGrad.addColorStop(0.5, 'rgba(0,0,0,0.55)');
+  boxGrad.addColorStop(1, 'rgba(0,0,0,0.7)');
+  ctx.fillStyle = boxGrad;
+  ctx.fillRect(boxX, effectiveBOX_Y - 60, boxW, effectiveBOX_H + 60);
 
   // Fixed font size for consistency across all frames
   const wrapped = wrapKorean(text, 14);
@@ -548,9 +552,9 @@ async function createFrameImage(
     ctx.shadowBlur = 0;
   }
 
-  // Progress bar
+  // Progress bar (Safe Zone 하단 경계에 배치)
   const barH = 8;
-  const barY = H - 58;
+  const barY = H_FULL - SAFE_BOTTOM + 20;
   const barPad = 60;
   const barW = W - barPad * 2;
   ctx.fillStyle = 'rgba(255,255,255,0.15)';
