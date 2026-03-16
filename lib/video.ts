@@ -307,11 +307,11 @@ async function createTextOverlay(
     ctx.moveTo(120, infoY);
     ctx.lineTo(W - 120, infoY);
     ctx.stroke();
-    ctx.font = `bold 26px ${fontFamily}`;
-    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.font = `bold 44px ${fontFamily}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
     ctx.shadowColor = 'rgba(0,0,0,1)';
-    ctx.shadowBlur = 12;
-    ctx.fillText(bottomInfo, W / 2, infoY + 40);
+    ctx.shadowBlur = 14;
+    ctx.fillText(bottomInfo, W / 2, infoY + 52);
     ctx.shadowBlur = 0;
   }
 
@@ -546,11 +546,11 @@ async function createFrameImage(
     ctx.moveTo(120, infoY);
     ctx.lineTo(W - 120, infoY);
     ctx.stroke();
-    ctx.font = `bold 26px ${fontFamily}`;
-    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.font = `bold 44px ${fontFamily}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
     ctx.shadowColor = 'rgba(0,0,0,1)';
-    ctx.shadowBlur = 12;
-    ctx.fillText(bottomInfo, W / 2, infoY + 40);
+    ctx.shadowBlur = 14;
+    ctx.fillText(bottomInfo, W / 2, infoY + 52);
     ctx.shadowBlur = 0;
   }
 
