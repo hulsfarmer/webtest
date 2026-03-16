@@ -212,8 +212,11 @@ async function createTextOverlay(
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
   if (displayBusinessName || title) {
     if (displayBusinessName) {
-      // Row 1 — business name: 66px, golden yellow, clean (no shadow)
+      // Row 1 — business name: 66px, golden yellow + thin black outline
       ctx.font = `bold 66px ${fontFamily}`;
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 2;
+      ctx.strokeText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
       ctx.fillStyle = '#FBBF24';
       ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
       // Thin separator glow under business name
@@ -232,8 +235,8 @@ async function createTextOverlay(
     if (title) {
       // Row 2 — catchy title: gradient bold text
       // When businessName is also shown, use the lower portion of the title zone
-      const catchyZoneTop = displayBusinessName ? TITLE_ZONE_Y + 110 : TITLE_ZONE_Y;
-      const catchyZoneH   = displayBusinessName ? TITLE_ZONE_H - 110 : TITLE_ZONE_H;
+      const catchyZoneTop = displayBusinessName ? TITLE_ZONE_Y + 80 : TITLE_ZONE_Y;
+      const catchyZoneH   = displayBusinessName ? TITLE_ZONE_H - 80 : TITLE_ZONE_H;
       const titleFontSize = displayBusinessName ? 66 : 78;
       const titleWrapped  = wrapKorean(title, 13);
       const titleLines    = titleWrapped.split('\n');
@@ -450,8 +453,11 @@ async function createFrameImage(
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
   if (displayBusinessName || title) {
     if (displayBusinessName) {
-      // Row 1 — business name: 66px, golden yellow, clean (no shadow)
+      // Row 1 — business name: 66px, golden yellow + thin black outline
       ctx.font = `bold 66px ${fontFamily}`;
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 2;
+      ctx.strokeText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
       ctx.fillStyle = '#FBBF24';
       ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
       // Thin separator glow under business name
