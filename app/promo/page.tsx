@@ -908,12 +908,12 @@ export default function PromoPage() {
             {/* Header — business name + editable script title */}
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <h2 className="font-bold text-3xl flex items-center gap-2">
-                  <Megaphone className="w-6 h-6 text-emerald-400 flex-shrink-0" />
+                <h2 className="font-bold text-2xl flex items-center gap-2">
+                  <Megaphone className="w-5 h-5 text-emerald-400 flex-shrink-0" />
                   <span className="text-amber-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">{businessName}</span>
                 </h2>
                 <div className="mt-3 flex items-center gap-3">
-                  <span className="text-sm text-gray-500 shrink-0">스크립트 제목</span>
+                  <span className="text-lg font-semibold text-gray-400 shrink-0">스크립트 제목</span>
                   <input
                     type="text"
                     value={scriptDraft.title}
