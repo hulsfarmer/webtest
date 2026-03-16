@@ -209,8 +209,8 @@ async function createTextOverlay(
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
   if (displayBusinessName || title) {
     if (displayBusinessName) {
-      // Row 1 — business name: 54px, golden yellow, clean (no shadow)
-      ctx.font = `bold 54px ${fontFamily}`;
+      // Row 1 — business name: 66px, golden yellow, clean (no shadow)
+      ctx.font = `bold 66px ${fontFamily}`;
       ctx.fillStyle = '#FBBF24';
       ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
       // Thin separator glow under business name
@@ -448,8 +448,8 @@ async function createFrameImage(
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
   if (displayBusinessName || title) {
     if (displayBusinessName) {
-      // Row 1 — business name: 54px, golden yellow, clean (no shadow)
-      ctx.font = `bold 54px ${fontFamily}`;
+      // Row 1 — business name: 66px, golden yellow, clean (no shadow)
+      ctx.font = `bold 66px ${fontFamily}`;
       ctx.fillStyle = '#FBBF24';
       ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
       // Thin separator glow under business name
