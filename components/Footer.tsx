@@ -27,7 +27,7 @@ export default function Footer() {
           </nav>
 
           <p className="text-gray-600 text-sm">
-            © 2024 ShortsAI. Claude AI 기반
+            © 2026 ShortsAI. Claude AI 기반
           </p>
         </div>
       </div>
