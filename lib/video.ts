@@ -582,15 +582,19 @@ async function createImageSlideshowVideo(
   imagePaths: string[],
   totalDuration: number,
   outputPath: string,
+  perImageDurations?: number[],
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const ffmpegPath = require('ffmpeg-static') as string;
 
-  const perImageDuration = totalDuration / imagePaths.length;
+  // Use per-image durations if provided (sentence-aligned), otherwise equal split
+  const durations = perImageDurations && perImageDurations.length === imagePaths.length
+    ? perImageDurations
+    : imagePaths.map(() => totalDuration / imagePaths.length);
 
   // Build inputs: each image looped for its duration
-  const inputs = imagePaths.map(p =>
-    `-loop 1 -t ${perImageDuration.toFixed(3)} -i "${p}"`
+  const inputs = imagePaths.map((p, i) =>
+    `-loop 1 -t ${durations[i].toFixed(3)} -i "${p}"`
   ).join(' ');
 
   // Scale/crop each image to 1080×1920, then concat all
@@ -684,14 +688,73 @@ export async function generateVideo(
   const pexelsKeyword = script.bgKeyword?.trim() || getPexelsKeyword(fullScriptText);
   console.log(`[Video] Pexels keyword: "${pexelsKeyword}" (bgKeyword: "${script.bgKeyword}")`);
 
+  // ── Build sentence list first (needed for image-script sync) ──
+  type SentenceItem = { sentence: string; sectionType: string };
+  const allSentences: SentenceItem[] = [];
+  for (let i = 0; i < sections.length; i++) {
+    for (const sentence of splitIntoSentences(sections[i].text)) {
+      allSentences.push({ sentence, sectionType: sections[i].type });
+    }
+  }
+  const totalChars = allSentences.reduce((s, item) => s + item.sentence.length, 0);
+
+  // Sentence durations: use externally-supplied SSML timepoints when available,
+  // otherwise fall back to proportional character-count estimation.
+  const sentenceDurations: number[] = externalSentenceDurations && externalSentenceDurations.length === allSentences.length
+    ? externalSentenceDurations
+    : allSentences.map(item =>
+        Math.max((item.sentence.length / totalChars) * audioDuration, 0.4)
+      );
+  const sentenceTimestamps: number[] = [];
+  let cumTime = 0;
+  for (const dur of sentenceDurations) {
+    sentenceTimestamps.push(cumTime);
+    cumTime += dur;
+  }
+
   // ── Mode 3: User-uploaded images as slideshow background (highest priority) ──
+  // Created AFTER sentence timing so we can align image transitions to sentence boundaries
   let videoPath: string | null = null;
   const validUserImages = (userImagePaths ?? []).filter(p => fs.existsSync(p));
   if (validUserImages.length > 0) {
     try {
       console.log(`[Video] Mode: user image slideshow (${validUserImages.length} images)`);
       const slideshowPath = path.join(tmpDir, 'slideshow_bg.mp4');
-      await createImageSlideshowVideo(validUserImages, audioDuration + 2, slideshowPath);
+
+      // Distribute sentences across images so transitions align with speech
+      const numImages = validUserImages.length;
+      const numSentences = allSentences.length;
+      const perImageDurations: number[] = [];
+
+      if (numSentences <= numImages) {
+        // Fewer sentences than images: assign 1 sentence per image, extras get equal share of remainder
+        for (let imgIdx = 0; imgIdx < numImages; imgIdx++) {
+          if (imgIdx < numSentences) {
+            perImageDurations.push(sentenceDurations[imgIdx]);
+          } else {
+            perImageDurations.push(0.5); // minimal duration for extra images
+          }
+        }
+      } else {
+        // More sentences than images: distribute sentences evenly across images
+        const sentencesPerImage = Math.floor(numSentences / numImages);
+        const extraSentences = numSentences % numImages;
+        let sentIdx = 0;
+        for (let imgIdx = 0; imgIdx < numImages; imgIdx++) {
+          const count = sentencesPerImage + (imgIdx < extraSentences ? 1 : 0);
+          let imgDur = 0;
+          for (let s = 0; s < count && sentIdx < numSentences; s++, sentIdx++) {
+            imgDur += sentenceDurations[sentIdx];
+          }
+          perImageDurations.push(Math.max(imgDur, 0.5));
+        }
+      }
+
+      // Add buffer to last image for fadeout
+      perImageDurations[perImageDurations.length - 1] += 2;
+
+      console.log(`[Video] Image durations (sentence-aligned): ${perImageDurations.map(d => d.toFixed(1) + 's').join(', ')}`);
+      await createImageSlideshowVideo(validUserImages, audioDuration + 2, slideshowPath, perImageDurations);
       videoPath = slideshowPath;
       console.log('[Video] Slideshow video ready');
     } catch (e) {
@@ -715,30 +778,6 @@ export async function generateVideo(
     } catch (e) {
       console.warn('[Video] Pexels failed, using gradient:', e);
     }
-  }
-
-  // Build sentence list
-  type SentenceItem = { sentence: string; sectionType: string };
-  const allSentences: SentenceItem[] = [];
-  for (let i = 0; i < sections.length; i++) {
-    for (const sentence of splitIntoSentences(sections[i].text)) {
-      allSentences.push({ sentence, sectionType: sections[i].type });
-    }
-  }
-  const totalChars = allSentences.reduce((s, item) => s + item.sentence.length, 0);
-
-  // Sentence durations: use externally-supplied SSML timepoints when available,
-  // otherwise fall back to proportional character-count estimation.
-  const sentenceDurations: number[] = externalSentenceDurations && externalSentenceDurations.length === allSentences.length
-    ? externalSentenceDurations
-    : allSentences.map(item =>
-        Math.max((item.sentence.length / totalChars) * audioDuration, 0.4)
-      );
-  const sentenceTimestamps: number[] = [];
-  let cumTime = 0;
-  for (const dur of sentenceDurations) {
-    sentenceTimestamps.push(cumTime);
-    cumTime += dur;
   }
 
   if (videoPath) {
