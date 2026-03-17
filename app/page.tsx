@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Play, Sparkles, Zap, Globe, DollarSign, Store, Camera, Music, Clock } from 'lucide-react';
 import Header from '@/components/Header';
@@ -41,15 +40,6 @@ const staticStats = [
 const businessTypes = ['카페', '식당', '헬스장', '미용실', '네일샵', '꽃집', '베이커리', '학원'];
 
 export default function HomePage() {
-  const [totalVideos, setTotalVideos] = useState<number>(0);
-
-  useEffect(() => {
-    fetch('/api/stats')
-      .then((res) => res.json())
-      .then((data) => setTotalVideos(data.totalVideos || 0))
-      .catch(() => {});
-  }, []);
-
   return (
     <main className="min-h-screen bg-[#0B0A14] text-white">
       <Header />
@@ -114,14 +104,6 @@ export default function HomePage() {
               ))}
             </div>
           </div>
-
-          {/* Video counter */}
-          {totalVideos > 0 && (
-            <div className="glass-card p-5 text-center mb-6 max-w-xs mx-auto hover:border-emerald-500/30 transition-colors">
-              <div className="text-3xl font-bold gradient-text">{totalVideos.toLocaleString()}+</div>
-              <div className="text-gray-400 text-sm mt-1">누적 생성 영상 수</div>
-            </div>
-          )}
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
