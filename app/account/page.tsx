@@ -42,7 +42,7 @@ export default function AccountPage() {
 
     Promise.all([
       fetch('/api/subscription').then(r => r.ok ? r.json() : { portalUrl: null }),
-      fetch('/api/usage').then(r => r.ok ? r.json() : {}),
+      fetch('/api/usage').then(r => r.ok ? r.json() : { plan: 'free', used: 0, limit: 3 }),
     ]).then(([sub, usage]) => {
       const plan = usage.plan || 'free';
       setInfo({
