@@ -92,10 +92,17 @@ const STEP_LABELS: Record<string, string> = {
   video: '영상 합성',
 };
 
+const VIDEO_SUB_STEPS = [
+  { at: 0,  msg: '이미지 준비 중...' },
+  { at: 15, msg: '영상 렌더링 중...' },
+  { at: 50, msg: '음악 합성 중...' },
+  { at: 80, msg: '마무리 중...' },
+];
+
 const MAX_IMAGES = 5;
 const MIN_IMAGES = 4;
 
-function StepIndicator({ label, status }: { label: string; status: StepStatus }) {
+function StepIndicator({ label, status, subMessage }: { label: string; status: StepStatus; subMessage?: string }) {
   return (
     <div className={`flex items-center gap-3 p-4 rounded-xl transition-all ${
       status === 'running' ? 'bg-emerald-500/10 border border-emerald-500/30' :
@@ -114,14 +121,19 @@ function StepIndicator({ label, status }: { label: string; status: StepStatus })
         {status === 'failed'  && <AlertCircle className="w-4 h-4 text-red-400" />}
         {status === 'pending' && <div className="w-2 h-2 rounded-full bg-gray-600" />}
       </div>
-      <span className={`font-medium text-sm ${
-        status === 'running' ? 'text-emerald-300' :
-        status === 'done'    ? 'text-green-300' :
-        status === 'failed'  ? 'text-red-300' :
-        'text-gray-500'
-      }`}>
-        {label}
-      </span>
+      <div className="flex flex-col">
+        <span className={`font-medium text-sm ${
+          status === 'running' ? 'text-emerald-300' :
+          status === 'done'    ? 'text-green-300' :
+          status === 'failed'  ? 'text-red-300' :
+          'text-gray-500'
+        }`}>
+          {label}
+        </span>
+        {status === 'running' && subMessage && (
+          <span className="text-xs text-emerald-400/70 mt-0.5">{subMessage}</span>
+        )}
+      </div>
       {status === 'running' && <span className="ml-auto text-xs text-emerald-400 animate-pulse">처리 중...</span>}
       {status === 'done'    && <span className="ml-auto text-xs text-green-400">완료</span>}
     </div>
@@ -169,6 +181,12 @@ export default function PromoPage() {
   const [loadingScript, setLoadingScript]   = useState(false);
   const pollRef   = useRef<NodeJS.Timeout | null>(null);
   const [downloaded, setDownloaded] = useState(false);
+
+  // Fake progress for video step
+  const [fakeProgress, setFakeProgress] = useState(0);
+  const [videoSubMsg, setVideoSubMsg] = useState('');
+  const fakeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const videoStartedRef = useRef(false);
 
   useEffect(() => {
     if (authSession?.user?.id) {
@@ -411,6 +429,40 @@ export default function PromoPage() {
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
+
+  // Fake progress ticker for video generation step
+  useEffect(() => {
+    const isVideoRunning = jobStatus?.status === 'generating_video';
+    if (isVideoRunning && !videoStartedRef.current) {
+      videoStartedRef.current = true;
+      setFakeProgress(0);
+      setVideoSubMsg(VIDEO_SUB_STEPS[0].msg);
+      let tick = 0;
+      fakeTimerRef.current = setInterval(() => {
+        tick += 1;
+        // Ease out: fast at start, slow approaching 95
+        const p = Math.min(95, Math.round(95 * (1 - Math.exp(-tick / 30))));
+        setFakeProgress(p);
+        // Update sub-message based on progress
+        for (let i = VIDEO_SUB_STEPS.length - 1; i >= 0; i--) {
+          if (p >= VIDEO_SUB_STEPS[i].at) {
+            setVideoSubMsg(VIDEO_SUB_STEPS[i].msg);
+            break;
+          }
+        }
+      }, 1000);
+    }
+    if (!isVideoRunning && videoStartedRef.current) {
+      // Video step finished
+      if (fakeTimerRef.current) clearInterval(fakeTimerRef.current);
+      setFakeProgress(100);
+      setVideoSubMsg('');
+      videoStartedRef.current = false;
+    }
+    return () => {
+      if (fakeTimerRef.current) clearInterval(fakeTimerRef.current);
+    };
+  }, [jobStatus?.status]);
 
   // 영상 생성 후 다운로드 안 하고 페이지 이탈 시 경고
   useEffect(() => {
@@ -1113,28 +1165,42 @@ export default function PromoPage() {
         )}
 
         {/* Generation progress */}
-        {isGenerating && jobStatus && (
-          <div className="glass-card p-6 space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="font-bold text-lg">영상 생성 중...</h2>
-              <span className="text-emerald-400 font-bold">{jobStatus.progress ?? 0}%</span>
+        {isGenerating && jobStatus && (() => {
+          const isVideoPhase = jobStatus.status === 'generating_video';
+          // Blend real progress with fake progress during video phase
+          const displayProgress = isVideoPhase
+            ? Math.round(65 + (fakeProgress / 100) * 35)
+            : (jobStatus.progress ?? 0);
+          return (
+            <div className="glass-card p-6 space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="font-bold text-lg">영상 생성 중...</h2>
+                <span className="text-emerald-400 font-bold">{displayProgress}%</span>
+              </div>
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${displayProgress}%`, background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                />
+              </div>
+              <div className="space-y-2 mt-4">
+                {(['script', 'audio', 'video'] as const).map((key) => {
+                  const status = (jobStatus.steps ?? {})[key] as StepStatus | undefined;
+                  if (!status) return null;
+                  return (
+                    <StepIndicator
+                      key={key}
+                      label={STEP_LABELS[key]}
+                      status={status}
+                      subMessage={key === 'video' && status === 'running' ? videoSubMsg : undefined}
+                    />
+                  );
+                })}
+              </div>
+              <p className="text-center text-gray-500 text-xs mt-4">보통 1-2분 소요됩니다. 잠시만 기다려주세요</p>
             </div>
-            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${jobStatus.progress}%`, background: 'linear-gradient(135deg, #10b981, #059669)' }}
-              />
-            </div>
-            <div className="space-y-2 mt-4">
-              {(['script', 'audio', 'video'] as const).map((key) => {
-                const status = (jobStatus.steps ?? {})[key] as StepStatus | undefined;
-                if (!status) return null;
-                return <StepIndicator key={key} label={STEP_LABELS[key]} status={status} />;
-              })}
-            </div>
-            <p className="text-center text-gray-500 text-xs mt-4">보통 1-2분 소요됩니다. 잠시만 기다려주세요 ☕</p>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Loading before first status */}
         {loading && !jobStatus && !loadingScript && (
