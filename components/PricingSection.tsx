@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Zap, Loader2 } from 'lucide-react';
+import { Check, Zap, Loader2, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { useSession } from 'next-auth/react';
@@ -154,6 +154,15 @@ export default function PricingSection() {
             <span className="gradient-text">100배 저렴한</span>
           </h2>
           <p className="text-gray-400 text-lg">사업장 홍보영상, 이제 직접 만드세요</p>
+
+          {/* 할인 배너 */}
+          <div className="mt-8 inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30">
+            <Clock className="w-5 h-5 text-red-400 animate-pulse" />
+            <div className="text-left">
+              <p className="text-white font-bold text-lg">오픈 기념 50% 할인 <span className="text-red-400">OPEN50</span></p>
+              <p className="text-gray-400 text-sm">~4/18까지 · 첫 달 50% 할인 자동 적용</p>
+            </div>
+          </div>
         </div>
 
         {/* Pricing cards */}
@@ -187,10 +196,22 @@ export default function PricingSection() {
                   </div>
                   <p className="text-gray-400 text-sm mb-4">{plan.description}</p>
                   <div className="flex items-end gap-1">
-                    <span className="text-4xl font-bold">{plan.priceDisplay}</span>
-                    {plan.price > 0 && <span className="text-gray-400 mb-1">/{plan.period}</span>}
-                    {plan.price === 0 && <span className="text-gray-400 mb-1 text-sm">{plan.period}</span>}
+                    {plan.price > 0 ? (
+                      <>
+                        <span className="text-lg text-gray-500 line-through mb-1">{plan.priceDisplay}</span>
+                        <span className="text-4xl font-bold text-red-400">₩{(plan.price / 2).toLocaleString()}</span>
+                        <span className="text-gray-400 mb-1">/{plan.period}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-4xl font-bold">{plan.priceDisplay}</span>
+                        <span className="text-gray-400 mb-1 text-sm">{plan.period}</span>
+                      </>
+                    )}
                   </div>
+                  {plan.price > 0 && (
+                    <p className="text-red-400 text-xs mt-1 font-medium">첫 달 50% 할인 적용</p>
+                  )}
                 </div>
 
                 {isCurrentPlan ? (

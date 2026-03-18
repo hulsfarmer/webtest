@@ -47,6 +47,9 @@ export async function POST(request: NextRequest) {
           relationships: {
             store: { data: { type: 'stores', id: storeId } },
             variant: { data: { type: 'variants', id: String(variantId) } },
+            ...(process.env.LEMONSQUEEZY_DISCOUNT_ID ? {
+              discount: { data: { type: 'discounts', id: process.env.LEMONSQUEEZY_DISCOUNT_ID } },
+            } : {}),
           },
         },
       },
