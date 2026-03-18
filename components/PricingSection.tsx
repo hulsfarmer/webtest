@@ -240,6 +240,18 @@ export default function PricingSection() {
                   >
                     현재 플랜보다 낮음
                   </button>
+                ) : currentPlan !== 'free' && currentPlan !== 'admin' && portalUrl ? (
+                  <div className="mb-6 space-y-2">
+                    <a
+                      href={portalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full py-3 rounded-xl bg-white/10 text-white text-sm font-semibold text-center hover:bg-white/20 transition-all"
+                    >
+                      구독 관리에서 변경
+                    </a>
+                    <p className="text-xs text-gray-500 text-center">현재 구독을 변경하려면 구독 관리 페이지를 이용하세요</p>
+                  </div>
                 ) : (
                   <button
                     onClick={() => handleUpgrade(plan.planId, plan.variantId)}
