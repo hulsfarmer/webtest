@@ -93,7 +93,7 @@ export default function HomePage() {
           </h1>
 
           <p className="text-lg text-gray-300 mb-6 font-medium">
-            업종 상관없이 누구나 전문가급 홍보영상
+            업종 상관없이 누구나 전문가급 홍보영상 · 한국어 완벽 지원
           </p>
 
           <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
