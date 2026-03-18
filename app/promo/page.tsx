@@ -1009,8 +1009,8 @@ export default function PromoPage() {
                   <Megaphone className="w-5 h-5 text-emerald-400 flex-shrink-0" />
                   <span className="text-amber-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">{businessName}</span>
                 </h2>
-                <div className="mt-3 flex items-center gap-3">
-                  <span className="text-lg font-semibold text-gray-400 shrink-0">스크립트 제목</span>
+                <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  <span className="text-sm sm:text-lg font-semibold text-gray-400 shrink-0">스크립트 제목</span>
                   <input
                     type="text"
                     value={scriptDraft.title}
@@ -1135,26 +1135,28 @@ export default function PromoPage() {
               </div>
             )}
 
-            <div className="flex gap-3">
-              <button
-                onClick={generateScriptPreview}
-                disabled={loadingScript}
-                className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/15 transition-all border border-white/10 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {loadingScript ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                재생성
-              </button>
-              <button
-                onClick={() => { setScriptDraft(null); setError(null); }}
-                className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/15 transition-all border border-white/10 text-sm flex items-center justify-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                이전
-              </button>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <div className="flex gap-2 sm:gap-3">
+                <button
+                  onClick={generateScriptPreview}
+                  disabled={loadingScript}
+                  className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/15 transition-all border border-white/10 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {loadingScript ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  재생성
+                </button>
+                <button
+                  onClick={() => { setScriptDraft(null); setError(null); }}
+                  className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/15 transition-all border border-white/10 text-sm flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  이전
+                </button>
+              </div>
               <button
                 onClick={startGeneration}
                 disabled={usage?.remaining === 0}
-                className="flex-2 flex-grow py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 transition-all disabled:opacity-40 flex items-center justify-center gap-2 px-6"
+                className="w-full sm:flex-grow py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 transition-all disabled:opacity-40 flex items-center justify-center gap-2 px-6"
                 style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
               >
                 <Megaphone className="w-4 h-4" />
