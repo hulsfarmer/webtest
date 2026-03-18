@@ -20,7 +20,7 @@ export async function GET() {
   }
 
   const subId = user.lemon_subscription_id;
-  const portalUrl = `https://promiai.lemonsqueezy.com/billing/${subId}/update`;
+  const portalUrl = `https://promiai.lemonsqueezy.com/billing/${subId}`;
 
   return NextResponse.json({ portalUrl });
 }
