@@ -7,6 +7,17 @@ import { fetchPexelsVideoUrl, downloadVideo, getPexelsKeyword } from './pexels';
 
 const execAsync = promisify(exec);
 
+// Strip phone numbers/URLs from text (same logic as promo route)
+// so that sentence splitting matches TTS input exactly.
+function stripContactFromText(text: string): string {
+  return text
+    .replace(/\b01[016789][-\s]?\d{3,4}[-\s]?\d{4}\b/g, '')
+    .replace(/\b0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4}\b/g, '')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 // Korean topic → gradient palette keyword mapping
 const KO_EN: Array<[string, string]> = [
   // 동물
@@ -689,10 +700,13 @@ export async function generateVideo(
   console.log(`[Video] Pexels keyword: "${pexelsKeyword}" (bgKeyword: "${script.bgKeyword}")`);
 
   // ── Build sentence list first (needed for image-script sync) ──
+  // Apply stripContactFromText so sentence count matches TTS input exactly.
+  // TTS strips phone/URL before splitting; we must do the same here.
   type SentenceItem = { sentence: string; sectionType: string };
   const allSentences: SentenceItem[] = [];
   for (let i = 0; i < sections.length; i++) {
-    for (const sentence of splitIntoSentences(sections[i].text)) {
+    const cleaned = stripContactFromText(sections[i].text);
+    for (const sentence of splitIntoSentences(cleaned)) {
       allSentences.push({ sentence, sectionType: sections[i].type });
     }
   }
@@ -700,8 +714,12 @@ export async function generateVideo(
 
   // Sentence durations: use externally-supplied SSML timepoints when available,
   // otherwise fall back to proportional character-count estimation.
-  const sentenceDurations: number[] = externalSentenceDurations && externalSentenceDurations.length === allSentences.length
-    ? externalSentenceDurations
+  const timepointsMatch = externalSentenceDurations && externalSentenceDurations.length === allSentences.length;
+  if (externalSentenceDurations) {
+    console.log(`[Video] Timepoints: TTS=${externalSentenceDurations.length}, video=${allSentences.length} → ${timepointsMatch ? 'MATCHED ✓' : 'MISMATCH ✗ (fallback to estimation)'}`);
+  }
+  const sentenceDurations: number[] = timepointsMatch
+    ? externalSentenceDurations!
     : allSentences.map(item =>
         Math.max((item.sentence.length / totalChars) * audioDuration, 0.4)
       );
