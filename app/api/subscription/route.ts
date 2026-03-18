@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import axios from 'axios';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -19,8 +20,28 @@ export async function GET() {
     return NextResponse.json({ portalUrl: null });
   }
 
-  const subId = user.lemon_subscription_id;
-  const portalUrl = `https://promiai.lemonsqueezy.com/billing/${subId}`;
+  const apiKey = process.env.LEMONSQUEEZY_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ portalUrl: null });
+  }
 
-  return NextResponse.json({ portalUrl });
+  try {
+    const res = await axios.get(
+      `https://api.lemonsqueezy.com/v1/subscriptions/${user.lemon_subscription_id}`,
+      {
+        headers: {
+          Accept: 'application/vnd.api+json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        timeout: 10000,
+      }
+    );
+
+    const urls = res.data?.data?.attributes?.urls;
+    const portalUrl = urls?.customer_portal || urls?.update_payment_method || null;
+
+    return NextResponse.json({ portalUrl });
+  } catch {
+    return NextResponse.json({ portalUrl: null });
+  }
 }
