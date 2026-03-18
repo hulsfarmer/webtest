@@ -45,6 +45,7 @@ const headlineTexts = [
   '매매 주택 홍보영상',
   '우리 회사 홍보영상',
   '우리 학교 홍보영상',
+  '우리 농장 홍보영상',
 ];
 
 export default function HomePage() {
@@ -90,6 +91,10 @@ export default function HomePage() {
             <br />
             <span className="gradient-text">고화질 3분 완성!</span>
           </h1>
+
+          <p className="text-lg text-gray-300 mb-6 font-medium">
+            업종 상관없이 누구나 전문가급 홍보영상
+          </p>
 
           <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
             업체명과 사진만 입력하면 <strong className="text-white">스크립트 → 음성 → BGM → 영상</strong>까지
