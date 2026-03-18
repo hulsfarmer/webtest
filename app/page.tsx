@@ -150,6 +150,29 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Sample Video */}
+      <section className="py-16 px-6">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="text-3xl md:text-4xl font-bold mb-3">
+            실제 생성된 <span className="gradient-text">홍보영상</span>
+          </h2>
+          <p className="text-gray-400 mb-8">AI가 자동으로 만든 실제 홍보영상입니다</p>
+          <div className="glass-card p-3 rounded-2xl max-w-sm mx-auto">
+            <video
+              src="/sample/demo.mp4"
+              controls
+              playsInline
+              preload="metadata"
+              poster=""
+              className="w-full rounded-xl aspect-[9/16]"
+            />
+          </div>
+          <p className="text-gray-500 text-sm mt-4">
+            업체명과 사진만 입력 → 3분 만에 이런 영상이 완성됩니다
+          </p>
+        </div>
+      </section>
+
       {/* Demo preview */}
       <section className="py-12 px-6">
         <div className="max-w-4xl mx-auto">
