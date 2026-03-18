@@ -49,11 +49,16 @@ async function cleanupOldVideos(currentJobId: string) {
   const toDelete = allJobs.slice(limit);
   const videoDir = path.join(process.cwd(), 'public', 'videos');
 
+  const uploadsDir = path.join(process.cwd(), 'data', 'uploads');
   for (const old of toDelete) {
+    // 영상 파일 삭제
     const videoPath = path.join(videoDir, `${old.id}.mp4`);
     try { fs.unlinkSync(videoPath); } catch { /* ignore */ }
+    // 업로드 이미지 폴더 삭제
+    const imgDir = path.join(uploadsDir, old.id);
+    try { fs.rmSync(imgDir, { recursive: true, force: true }); } catch { /* ignore */ }
     await supabase.from('jobs').delete().eq('id', old.id);
-    console.log(`[Cleanup] Deleted old video: ${old.id}`);
+    console.log(`[Cleanup] Deleted old video + images: ${old.id}`);
   }
 }
 
@@ -166,19 +171,9 @@ async function processPromoJob(
       bgmPath ?? undefined, bgmId, bgmVolume, showWatermark,
     );
 
-    // Cleanup audio, custom BGM, and uploaded images
+    // Cleanup audio and custom BGM (uploaded images are kept for history reuse)
     try { fs.unlinkSync(audioPath); } catch { /* ignore */ }
     if (customBgmPath) { try { fs.unlinkSync(customBgmPath); } catch { /* ignore */ } }
-    for (const imgPath of userImagePaths) {
-      try { fs.unlinkSync(imgPath); } catch { /* ignore */ }
-    }
-    // Remove uploads dir if empty
-    if (userImagePaths.length > 0) {
-      try {
-        const uploadsDir = path.dirname(userImagePaths[0]);
-        fs.rmdirSync(uploadsDir);
-      } catch { /* ignore */ }
-    }
 
     updateJob(jobId, {
       status: 'done',

@@ -199,6 +199,7 @@ export default function PromoPage() {
     const topicParam = searchParams.get('topic');
     const durParam = searchParams.get('duration');
     const toneParam = searchParams.get('tone');
+    const imageJobId = searchParams.get('imageJobId');
 
     if (scriptParam || bnParam) {
       restoredRef.current = true;
@@ -216,6 +217,43 @@ export default function PromoPage() {
           setSectionPreviews(Array.from({ length: n }, () => null));
         } catch { /* ignore parse errors */ }
       }
+
+      // 이전 영상의 이미지 복원
+      if (imageJobId) {
+        fetch(`/api/images/${imageJobId}`)
+          .then(r => r.json())
+          .then(async (data: { images?: string[] }) => {
+            if (data.images && data.images.length > 0) {
+              // 이미지 URL → File 객체로 변환
+              const files: File[] = [];
+              const previews: string[] = [];
+              for (let i = 0; i < data.images.length; i++) {
+                try {
+                  const res = await fetch(data.images[i]);
+                  const blob = await res.blob();
+                  const file = new File([blob], `restored_${i}.jpg`, { type: blob.type || 'image/jpeg' });
+                  files.push(file);
+                  previews.push(URL.createObjectURL(file));
+                } catch { /* skip failed image */ }
+              }
+              if (files.length > 0) {
+                setImages(files);
+                setImagePreviews(previews);
+                // section images도 업데이트
+                if (scriptParam) {
+                  try {
+                    const parsed = JSON.parse(scriptParam) as VideoScript;
+                    const n = parsed.sections?.length || 0;
+                    setSectionImages(Array.from({ length: n }, (_, i) => files[i] ?? null));
+                    setSectionPreviews(Array.from({ length: n }, (_, i) => previews[i] ?? null));
+                  } catch { /* ignore */ }
+                }
+              }
+            }
+          })
+          .catch(() => { /* ignore */ });
+      }
+
       // URL에서 파라미터 제거 (뒤로가기 시 재트리거 방지)
       window.history.replaceState({}, '', '/promo');
     }

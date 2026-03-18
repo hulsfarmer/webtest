@@ -48,10 +48,17 @@ export async function GET() {
     return NextResponse.json({ error: '목록 조회 실패' }, { status: 500 });
   }
 
-  // 영상 파일 존재 여부 확인
+  // 영상 파일 존재 여부 + 이미지 존재 여부 확인
   const videoDir = path.join(process.cwd(), 'public', 'videos');
+  const uploadsDir = path.join(process.cwd(), 'data', 'uploads');
   const items = (jobs || []).map((job) => {
     const videoExists = job.status === 'done' && fs.existsSync(path.join(videoDir, `${job.id}.mp4`));
+    // 업로드 이미지 폴더 존재 여부 확인
+    const imgDir = path.join(uploadsDir, job.id);
+    let imageCount = 0;
+    if (fs.existsSync(imgDir)) {
+      imageCount = fs.readdirSync(imgDir).filter(f => /^img_\d+\.\w+$/.test(f)).length;
+    }
     return {
       id: job.id,
       status: job.status,
@@ -62,6 +69,7 @@ export async function GET() {
       tone: job.tone,
       script: job.script,
       videoUrl: videoExists ? `/api/video/${job.id}` : null,
+      imageCount,
       error: job.error,
       createdAt: job.created_at,
     };
@@ -105,6 +113,10 @@ export async function DELETE(req: NextRequest) {
   if (fs.existsSync(videoPath)) {
     fs.unlinkSync(videoPath);
   }
+
+  // 업로드 이미지 폴더 삭제
+  const imgDir = path.join(process.cwd(), 'data', 'uploads', jobId);
+  try { fs.rmSync(imgDir, { recursive: true, force: true }); } catch { /* ignore */ }
 
   // DB에서 삭제
   await supabase.from('jobs').delete().eq('id', jobId);

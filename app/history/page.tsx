@@ -17,6 +17,7 @@ import {
   Pencil,
   Plus,
   X,
+  ImageIcon,
 } from 'lucide-react';
 import Header from '@/components/Header';
 
@@ -30,6 +31,7 @@ interface HistoryJob {
   tone: string | null;
   script: Record<string, unknown> | null;
   videoUrl: string | null;
+  imageCount: number;
   error: string | null;
   createdAt: string;
 }
@@ -109,6 +111,7 @@ export default function HistoryPage() {
     if (job.topic) params.set('topic', job.topic);
     if (job.duration) params.set('duration', String(job.duration));
     if (job.tone) params.set('tone', job.tone);
+    if (job.imageCount > 0) params.set('imageJobId', job.id);
     router.push(`/promo?${params.toString()}`);
   };
 
@@ -273,6 +276,12 @@ export default function HistoryPage() {
                         <span>{formatDate(job.createdAt)}</span>
                         {job.duration && <span>{job.duration}초</span>}
                         {job.tone && <span>{job.tone}</span>}
+                        {job.imageCount > 0 && (
+                          <span className="flex items-center gap-1">
+                            <ImageIcon className="w-3 h-3" />
+                            사진 {job.imageCount}장
+                          </span>
+                        )}
                       </div>
 
                       {/* 에러 메시지 */}
