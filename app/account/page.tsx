@@ -41,15 +41,15 @@ export default function AccountPage() {
     if (!session?.user) return;
 
     Promise.all([
-      fetch('/api/subscription').then(r => r.json()),
-      fetch('/api/usage').then(r => r.json()),
+      fetch('/api/subscription').then(r => r.ok ? r.json() : { portalUrl: null }),
+      fetch('/api/usage').then(r => r.ok ? r.json() : {}),
     ]).then(([sub, usage]) => {
       const plan = usage.plan || 'free';
       setInfo({
         portalUrl: sub.portalUrl || null,
         plan,
-        monthlyUsage: usage.monthlyUsage || 0,
-        usageLimit: PLAN_LIMITS[plan] || 3,
+        monthlyUsage: usage.used || 0,
+        usageLimit: usage.limit || PLAN_LIMITS[plan] || 3,
       });
       setLoading(false);
     }).catch(() => setLoading(false));
