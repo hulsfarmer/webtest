@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { ArrowRight, Play, Sparkles, Zap, Globe, DollarSign, Store, Camera, Music, Clock } from 'lucide-react';
 import Header from '@/components/Header';
 import HowItWorks from '@/components/HowItWorks';
@@ -39,7 +40,27 @@ const staticStats = [
 
 const businessTypes = ['카페', '식당', '헬스장', '미용실', '네일샵', '꽃집', '베이커리', '학원'];
 
+const headlineTexts = [
+  '우리 가게 홍보영상',
+  '매매 주택 홍보영상',
+  '우리 회사 홍보영상',
+  '우리 학교 홍보영상',
+];
+
 export default function HomePage() {
+  const [headlineIndex, setHeadlineIndex] = useState(0);
+  const [fade, setFade] = useState(true);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFade(false);
+      setTimeout(() => {
+        setHeadlineIndex((prev) => (prev + 1) % headlineTexts.length);
+        setFade(true);
+      }, 400);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
   return (
     <main className="min-h-screen bg-[#0B0A14] text-white">
       <Header />
@@ -61,7 +82,11 @@ export default function HomePage() {
 
           {/* Headline */}
           <h1 className="text-5xl md:text-7xl font-extrabold leading-tight mb-6">
-            우리 가게 홍보영상
+            <span
+              className={`inline-block transition-all duration-400 ${fade ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}
+            >
+              {headlineTexts[headlineIndex]}
+            </span>
             <br />
             <span className="gradient-text">고화질 3분 완성!</span>
           </h1>
