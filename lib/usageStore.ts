@@ -1,17 +1,19 @@
 import { supabase } from './supabase';
 
-export type Plan = 'free' | 'pro' | 'business';
+export type Plan = 'free' | 'pro' | 'business' | 'admin';
 
 export const PLAN_LIMITS: Record<Plan, number> = {
   free: 3,
   pro: 30,
   business: 100,
+  admin: Infinity,
 };
 
 export const PLAN_PRICES: Record<Plan, number> = {
   free: 0,
   pro: 9900,
   business: 29000,
+  admin: 0,
 };
 
 // LemonSqueezy variant ID → Plan 매핑

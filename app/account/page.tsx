@@ -17,12 +17,14 @@ const PLAN_LABELS: Record<string, string> = {
   free: '무료',
   pro: 'Pro',
   business: 'Business',
+  admin: '관리자',
 };
 
 const PLAN_LIMITS: Record<string, number> = {
   free: 3,
   pro: 30,
   business: 100,
+  admin: Infinity,
 };
 
 export default function AccountPage() {
@@ -49,7 +51,7 @@ export default function AccountPage() {
         portalUrl: sub.portalUrl || null,
         plan,
         monthlyUsage: usage.used || 0,
-        usageLimit: usage.limit || PLAN_LIMITS[plan] || 3,
+        usageLimit: usage.limit === null ? Infinity : (usage.limit || PLAN_LIMITS[plan] || 3),
       });
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -108,7 +110,9 @@ export default function AccountPage() {
             <div className="flex justify-between items-center">
               <span className="text-gray-400">현재 플랜</span>
               <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                info?.plan === 'business'
+                info?.plan === 'admin'
+                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                  : info?.plan === 'business'
                   ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                   : info?.plan === 'pro'
                   ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
@@ -121,7 +125,7 @@ export default function AccountPage() {
             <div className="flex justify-between items-center">
               <span className="text-gray-400">이번 달 사용량</span>
               <span className="text-white">
-                {info?.monthlyUsage || 0} / {info?.usageLimit || 3}회
+                {info?.monthlyUsage || 0} / {info?.usageLimit === Infinity || !info?.usageLimit ? '무제한' : `${info.usageLimit}회`}
               </span>
             </div>
 
