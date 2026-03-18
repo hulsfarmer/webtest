@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { ArrowRight, Play, Sparkles, Zap, Globe, DollarSign, Store, Camera, Music, Clock } from 'lucide-react';
+import { ArrowRight, Play, Sparkles, Zap, Globe, DollarSign, Store, Camera, Music, Clock, MonitorPlay } from 'lucide-react';
 import Header from '@/components/Header';
 import HowItWorks from '@/components/HowItWorks';
 import PricingSection from '@/components/PricingSection';
@@ -232,6 +232,32 @@ export default function HomePage() {
       </section>
 
       <HowItWorks />
+
+      {/* How to Use Video */}
+      <section className="py-16 px-6">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-sm font-medium mb-6">
+            <MonitorPlay className="w-3.5 h-3.5" />
+            실제 사용 영상
+          </div>
+          <h2 className="text-3xl md:text-4xl font-bold mb-3">
+            이렇게 쉽게 <span className="gradient-text">만들어집니다</span>
+          </h2>
+          <p className="text-gray-400 mb-8">ShortsAI로 홍보영상 만드는 전체 과정을 확인하세요</p>
+          <div className="glass-card p-4 rounded-2xl max-w-2xl mx-auto">
+            <video
+              src="/sample/how-to-use.mp4"
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full rounded-xl"
+            />
+          </div>
+          <p className="text-gray-500 text-sm mt-4">
+            업체명 입력부터 완성 영상 다운로드까지, 단 3분이면 충분합니다
+          </p>
+        </div>
+      </section>
 
       {/* Features section */}
       <section className="py-24 px-6 bg-gradient-to-b from-transparent to-purple-950/10">
