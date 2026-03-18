@@ -33,6 +33,9 @@ export async function POST(request: NextRequest) {
             },
             checkout_data: {
               email: session.user.email,
+              billing_address: {
+                country: 'KR',
+              },
               custom: {
                 user_id: (session.user as { id?: string }).id || '',
               },
