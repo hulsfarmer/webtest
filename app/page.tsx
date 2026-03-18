@@ -33,7 +33,7 @@ const features = [
 
 const staticStats = [
   { value: '< 3분', label: '영상 1개 생성 시간' },
-  { value: '1080×1920', label: '쇼츠 최적화 포맷' },
+  { value: '쇼츠 HD', label: '1080×1920 포맷' },
   { value: '100%', label: '한국어 지원' },
   { value: '₩0', label: '시작 비용' },
 ];
@@ -82,7 +82,7 @@ export default function HomePage() {
           </div>
 
           {/* Headline */}
-          <h1 className="text-5xl md:text-7xl font-extrabold leading-tight mb-6">
+          <h1 className="text-4xl md:text-7xl font-extrabold leading-tight mb-6">
             <span
               className={`inline-block transition-all duration-400 ${fade ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}
             >
@@ -106,7 +106,7 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
             <Link
               href="/promo"
-              className="inline-flex items-center gap-2 px-10 py-5 rounded-xl bg-gradient-brand text-white font-bold text-lg hover:opacity-90 transition-all glow-purple"
+              className="inline-flex items-center gap-2 px-8 py-4 md:px-10 md:py-5 rounded-xl bg-gradient-brand text-white font-bold text-base md:text-lg hover:opacity-90 transition-all glow-purple"
             >
               무료로 홍보영상 만들기
               <ArrowRight className="w-5 h-5" />
@@ -263,7 +263,7 @@ export default function HomePage() {
       <section className="py-24 px-6 bg-gradient-to-b from-transparent to-purple-950/10">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+            <h2 className="text-3xl md:text-5xl font-bold mb-4">
               왜 <span className="gradient-text">ShortsAI</span>인가요?
             </h2>
             <p className="text-gray-400 text-lg">사장님을 위한 가장 쉬운 홍보 영상 솔루션</p>
@@ -295,9 +295,8 @@ export default function HomePage() {
       {/* Final CTA */}
       <section className="py-24 px-6">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">
-            지금 바로{' '}
-            <span className="gradient-text">시작해보세요</span>
+          <h2 className="text-3xl md:text-5xl font-bold mb-6">
+            지금 바로 <span className="gradient-text">시작해보세요</span>
           </h2>
           <p className="text-gray-400 text-lg mb-8">
             신용카드 없이 무료로 3개 홍보영상을 만들어보세요

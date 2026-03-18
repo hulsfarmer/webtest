@@ -37,14 +37,13 @@ export default function HowItWorks() {
           <div className="inline-block px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm font-medium mb-4">
             사용방법
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            클릭 한 번으로{' '}
-            <span className="gradient-text">홍보영상 완성</span>
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-4">
+            클릭 한 번으로 <span className="gradient-text">홍보영상 완성</span>
           </h2>
           <p className="text-gray-400 text-lg">전문 영상 제작사 없이 4단계로 끝납니다</p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {steps.map((step, i) => (
             <div key={i} className="relative group">
               {/* Connector line */}

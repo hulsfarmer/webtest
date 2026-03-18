@@ -149,9 +149,8 @@ export default function PricingSection() {
           <div className="inline-block px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm font-medium mb-4">
             합리적인 가격
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            영상 제작사보다{' '}
-            <span className="gradient-text">100배 저렴한</span>
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-4">
+            영상 제작사보다 <span className="gradient-text">100배 저렴한</span>
           </h2>
           <p className="text-gray-400 text-lg">사업장 홍보영상, 이제 직접 만드세요</p>
 
@@ -199,7 +198,7 @@ export default function PricingSection() {
                     {plan.price > 0 ? (
                       <>
                         <span className="text-lg text-gray-500 line-through mb-1">{plan.priceDisplay}</span>
-                        <span className="text-4xl font-bold text-red-400">₩{(plan.price / 2).toLocaleString()}</span>
+                        <span className="text-3xl md:text-4xl font-bold text-red-400">₩{(plan.price / 2).toLocaleString()}</span>
                         <span className="text-gray-400 mb-1">/{plan.period}</span>
                       </>
                     ) : (
