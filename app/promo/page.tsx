@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2, Settings2, Upload, Volume2 } from 'lucide-react';
 import { BGM_CATALOG, recommendBgm, type BgmId } from '@/lib/bgm-catalog';
@@ -142,6 +143,7 @@ function StepIndicator({ label, status, subMessage }: { label: string; status: S
 
 export default function PromoPage() {
   const { data: authSession } = useSession();
+  const searchParams = useSearchParams();
   const [businessName, setBusinessName]     = useState('');
   const [businessType, setBusinessType]     = useState('');
   const [sellingPoints, setSellingPoints]   = useState('');
@@ -187,6 +189,37 @@ export default function PromoPage() {
   const [videoSubMsg, setVideoSubMsg] = useState('');
   const fakeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const videoStartedRef = useRef(false);
+
+  // 히스토리에서 스크립트 수정/재생성으로 온 경우 입력값 복원
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current) return;
+    const scriptParam = searchParams.get('script');
+    const bnParam = searchParams.get('businessName');
+    const topicParam = searchParams.get('topic');
+    const durParam = searchParams.get('duration');
+    const toneParam = searchParams.get('tone');
+
+    if (scriptParam || bnParam) {
+      restoredRef.current = true;
+      if (bnParam) setBusinessName(bnParam);
+      if (topicParam) setSellingPoints(topicParam);
+      if (durParam) setDuration(Number(durParam) || 60);
+      if (toneParam) setTone(toneParam);
+      if (scriptParam) {
+        try {
+          const parsed = JSON.parse(scriptParam) as VideoScript;
+          setScriptDraft(parsed);
+          // Initialize section images for the restored script
+          const n = parsed.sections?.length || 0;
+          setSectionImages(Array.from({ length: n }, () => null));
+          setSectionPreviews(Array.from({ length: n }, () => null));
+        } catch { /* ignore parse errors */ }
+      }
+      // URL에서 파라미터 제거 (뒤로가기 시 재트리거 방지)
+      window.history.replaceState({}, '', '/promo');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (authSession?.user?.id) {

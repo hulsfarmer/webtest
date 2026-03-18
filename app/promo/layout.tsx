@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 
 export const metadata: Metadata = {
   title: '홍보영상 만들기 - 3분이면 완성',
@@ -13,5 +14,5 @@ export const metadata: Metadata = {
 };
 
 export default function PromoLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <Suspense>{children}</Suspense>;
 }

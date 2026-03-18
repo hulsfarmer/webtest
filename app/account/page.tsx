@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { User, CreditCard, ExternalLink, Loader2, ArrowLeft } from 'lucide-react';
+import { User, CreditCard, ExternalLink, Loader2, ArrowLeft, Film } from 'lucide-react';
 import Link from 'next/link';
 
 interface SubscriptionInfo {
@@ -136,6 +136,15 @@ export default function AccountPage() {
               />
             </div>
           </div>
+
+          {/* 내 영상 바로가기 */}
+          <Link
+            href="/history"
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold hover:bg-purple-500/20 transition-colors"
+          >
+            <Film className="w-4 h-4" />
+            내 영상 히스토리 보기
+          </Link>
 
           <div className="pt-2 space-y-3">
             {info?.portalUrl ? (

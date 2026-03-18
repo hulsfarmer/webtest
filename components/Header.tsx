@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Sparkles, LogOut, User, Settings } from 'lucide-react';
+import { Sparkles, LogOut, User, Settings, Film } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 
 export default function Header() {
@@ -46,6 +46,13 @@ export default function Header() {
                 )}
                 <span className="max-w-[120px] truncate">{session.user.name || session.user.email}</span>
               </div>
+              <Link
+                href="/history"
+                className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                title="내 영상"
+              >
+                <Film className="w-4 h-4" />
+              </Link>
               <Link
                 href="/account"
                 className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"

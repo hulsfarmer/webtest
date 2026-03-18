@@ -10,6 +10,52 @@ import { generatePromoScript, PromoInput, VideoScript } from '@/lib/anthropic';
 import { generateAudioWithTimepoints } from '@/lib/tts';
 import { generateVideo } from '@/lib/video';
 import { resolveBgmPath, BgmId } from '@/lib/bgm';
+import { supabase } from '@/lib/supabase';
+
+// 플랜별 보관 한도
+const HISTORY_LIMITS: Record<string, number> = {
+  free: 3, pro: 30, business: 100, admin: 9999,
+};
+
+/** 보관 한도 초과 시 오래된 영상 자동 삭제 */
+async function cleanupOldVideos(currentJobId: string) {
+  // 현재 job의 user_id와 plan 조회
+  const { data: job } = await supabase
+    .from('jobs')
+    .select('user_id')
+    .eq('id', currentJobId)
+    .single();
+  if (!job?.user_id) return;
+
+  const { data: user } = await supabase
+    .from('users')
+    .select('plan')
+    .eq('id', job.user_id)
+    .single();
+  const plan = user?.plan || 'free';
+  const limit = HISTORY_LIMITS[plan] || 3;
+
+  // 완료된 영상 목록 (최신순)
+  const { data: allJobs } = await supabase
+    .from('jobs')
+    .select('id')
+    .eq('user_id', job.user_id)
+    .eq('status', 'done')
+    .order('created_at', { ascending: false });
+
+  if (!allJobs || allJobs.length <= limit) return;
+
+  // 한도 초과분 삭제
+  const toDelete = allJobs.slice(limit);
+  const videoDir = path.join(process.cwd(), 'public', 'videos');
+
+  for (const old of toDelete) {
+    const videoPath = path.join(videoDir, `${old.id}.mp4`);
+    try { fs.unlinkSync(videoPath); } catch { /* ignore */ }
+    await supabase.from('jobs').delete().eq('id', old.id);
+    console.log(`[Cleanup] Deleted old video: ${old.id}`);
+  }
+}
 
 /** Strip phone numbers / addresses from text so TTS doesn't read them awkwardly */
 function stripContactFromText(text: string): string {
@@ -140,6 +186,11 @@ async function processPromoJob(
       steps: { script: 'done', audio: 'done', video: 'done' },
       videoUrl: `/api/video/${jobId}`,
     });
+
+    // 보관 한도 초과 시 오래된 영상 자동 삭제
+    cleanupOldVideos(jobId).catch(err =>
+      console.error(`[Promo] cleanup old videos error:`, err)
+    );
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error(`[PromoJob ${jobId}] Failed:`, errorMsg);
