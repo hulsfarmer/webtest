@@ -158,24 +158,17 @@ export default function HomePage() {
           </h2>
           <p className="text-gray-400 mb-8">AI가 자동으로 만든 실제 홍보영상입니다</p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-            <div className="glass-card p-3 rounded-2xl w-full max-w-xs">
-              <video
-                src="/sample/demo.mp4"
-                controls
-                playsInline
-                preload="metadata"
-                className="w-full rounded-xl aspect-[9/16]"
-              />
-            </div>
-            <div className="glass-card p-3 rounded-2xl w-full max-w-xs">
-              <video
-                src="/sample/demo2.mp4"
-                controls
-                playsInline
-                preload="metadata"
-                className="w-full rounded-xl aspect-[9/16]"
-              />
-            </div>
+            {['/sample/demo.mp4', '/sample/demo2.mp4', '/sample/demo3.mp4'].map((src) => (
+              <div key={src} className="glass-card p-3 rounded-2xl w-full max-w-xs">
+                <video
+                  src={src}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="w-full rounded-xl aspect-[9/16]"
+                />
+              </div>
+            ))}
           </div>
           <p className="text-gray-500 text-sm mt-4">
             업체명과 사진만 입력 → 3분 만에 이런 영상이 완성됩니다
