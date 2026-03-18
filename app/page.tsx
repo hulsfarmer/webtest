@@ -31,7 +31,7 @@ const features = [
 ];
 
 const staticStats = [
-  { value: '< 2분', label: '영상 1개 생성 시간' },
+  { value: '< 3분', label: '영상 1개 생성 시간' },
   { value: '1080×1920', label: '쇼츠 최적화 포맷' },
   { value: '100%', label: '한국어 지원' },
   { value: '₩0', label: '시작 비용' },
@@ -63,7 +63,7 @@ export default function HomePage() {
           <h1 className="text-5xl md:text-7xl font-extrabold leading-tight mb-6">
             우리 가게 홍보영상
             <br />
-            <span className="gradient-text">AI가 만들어 드립니다</span>
+            <span className="gradient-text">고화질 3분 완성!</span>
           </h1>
 
           <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
