@@ -6,6 +6,7 @@ import { ArrowRight, Play, Sparkles, MonitorPlay } from 'lucide-react';
 import Header from '@/components/Header';
 import HowItWorks from '@/components/HowItWorks';
 import PricingSection from '@/components/PricingSection';
+import TestimonialsSection from '@/components/TestimonialsSection';
 import Footer from '@/components/Footer';
 
 const businessTypes = ['카페', '식당', '헬스장', '미용실', '네일샵', '꽃집', '베이커리', '학원'];
@@ -163,6 +164,8 @@ export default function HomePage() {
       </section>
 
       <PricingSection />
+
+      <TestimonialsSection />
 
       {/* Final CTA */}
       <section className="py-24 px-6">
