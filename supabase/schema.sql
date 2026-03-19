@@ -83,6 +83,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ShortsAI: reviews table (customer testimonials)
+CREATE TABLE IF NOT EXISTS reviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  job_id UUID REFERENCES jobs(id) ON DELETE SET NULL,
+  rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  text TEXT NOT NULL,
+  display_name TEXT,
+  business_type TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',  -- pending / approved / rejected
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_accounts_userId ON accounts("userId");
 CREATE INDEX IF NOT EXISTS idx_sessions_userId ON sessions("userId");
@@ -90,3 +103,5 @@ CREATE INDEX IF NOT EXISTS idx_jobs_user_id ON jobs(user_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_stripe ON users(stripe_customer_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status);

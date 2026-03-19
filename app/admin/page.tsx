@@ -15,6 +15,9 @@ import {
   Clock,
   Shield,
   Loader2,
+  Star,
+  MessageSquare,
+  Trash2,
 } from 'lucide-react';
 
 interface AdminStats {
@@ -120,11 +123,26 @@ function timeAgo(dateStr: string): string {
   return `${days}일 전`;
 }
 
+interface ReviewItem {
+  id: string;
+  user_id: string;
+  job_id: string | null;
+  rating: number;
+  text: string;
+  display_name: string | null;
+  business_type: string | null;
+  status: string;
+  created_at: string;
+  users?: { name: string | null; email: string };
+}
+
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -143,11 +161,43 @@ export default function AdminPage() {
     }
   }, []);
 
+  const fetchReviews = useCallback(async () => {
+    setReviewsLoading(true);
+    try {
+      const res = await fetch('/api/admin/reviews');
+      if (res.ok) {
+        const data = await res.json();
+        setReviews(data.reviews ?? []);
+      }
+    } catch { /* ignore */ }
+    setReviewsLoading(false);
+  }, []);
+
+  const handleReviewAction = async (id: string, action: 'approved' | 'rejected') => {
+    await fetch('/api/admin/reviews', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status: action }),
+    });
+    fetchReviews();
+  };
+
+  const handleReviewDelete = async (id: string) => {
+    if (!confirm('정말 삭제하시겠습니까?')) return;
+    await fetch('/api/admin/reviews', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    fetchReviews();
+  };
+
   useEffect(() => {
     if (status === 'authenticated') {
       fetchStats();
+      fetchReviews();
     }
-  }, [status, fetchStats]);
+  }, [status, fetchStats, fetchReviews]);
 
   if (status === 'loading') {
     return (
@@ -373,6 +423,86 @@ export default function AdminPage() {
                   <p className="text-gray-500 text-sm text-center py-4">아직 생성된 영상이 없습니다.</p>
                 )}
               </div>
+            </div>
+
+            {/* Reviews Management */}
+            <div className="glass-card p-6 rounded-2xl mt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-gray-400 text-sm flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" /> 고객 후기 관리
+                  <span className="text-xs text-gray-600">
+                    (대기 {reviews.filter(r => r.status === 'pending').length}건)
+                  </span>
+                </h3>
+                <button
+                  onClick={fetchReviews}
+                  disabled={reviewsLoading}
+                  className="text-xs text-gray-500 hover:text-white transition-colors flex items-center gap-1"
+                >
+                  <RefreshCw className={`w-3 h-3 ${reviewsLoading ? 'animate-spin' : ''}`} />
+                  새로고침
+                </button>
+              </div>
+
+              {reviews.length === 0 ? (
+                <p className="text-gray-500 text-sm text-center py-4">아직 후기가 없습니다.</p>
+              ) : (
+                <div className="space-y-3">
+                  {reviews.map((r) => {
+                    const statusColor = r.status === 'approved' ? 'text-green-400' : r.status === 'rejected' ? 'text-red-400' : 'text-yellow-400';
+                    const statusLabel = r.status === 'approved' ? '승인됨' : r.status === 'rejected' ? '거절됨' : '대기중';
+                    return (
+                      <div key={r.id} className={`p-4 rounded-xl bg-white/3 border ${r.status === 'pending' ? 'border-yellow-500/20' : 'border-white/5'}`}>
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="flex gap-0.5">
+                              {Array.from({ length: r.rating }).map((_, i) => (
+                                <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                              ))}
+                            </div>
+                            <span className="text-white text-sm font-medium">{r.display_name || '익명'}</span>
+                            {r.business_type && (
+                              <span className="text-gray-500 text-xs">· {r.business_type}</span>
+                            )}
+                            <span className={`text-xs ${statusColor}`}>[{statusLabel}]</span>
+                          </div>
+                          <span className="text-gray-500 text-xs whitespace-nowrap">{timeAgo(r.created_at)}</span>
+                        </div>
+                        <p className="text-gray-300 text-sm mb-2">&ldquo;{r.text}&rdquo;</p>
+                        <div className="flex items-center gap-2 text-xs">
+                          {r.users && (
+                            <span className="text-gray-600">{r.users.email}</span>
+                          )}
+                          <div className="ml-auto flex gap-2">
+                            {r.status !== 'approved' && (
+                              <button
+                                onClick={() => handleReviewAction(r.id, 'approved')}
+                                className="px-3 py-1 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors"
+                              >
+                                승인
+                              </button>
+                            )}
+                            {r.status !== 'rejected' && (
+                              <button
+                                onClick={() => handleReviewAction(r.id, 'rejected')}
+                                className="px-3 py-1 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                              >
+                                거절
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleReviewDelete(r.id)}
+                              className="px-2 py-1 rounded-lg bg-white/5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </>
         ) : null}
