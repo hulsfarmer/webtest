@@ -223,38 +223,44 @@ export default function PromoPage() {
 
       // 이전 영상의 이미지 복원
       if (imageJobId) {
-        fetch(`/api/images/${imageJobId}`)
-          .then(r => r.json())
-          .then(async (data: { images?: string[] }) => {
-            if (data.images && data.images.length > 0) {
-              // 이미지 URL → File 객체로 변환
-              const files: File[] = [];
-              const previews: string[] = [];
-              for (let i = 0; i < data.images.length; i++) {
+        (async () => {
+          try {
+            const listRes = await fetch(`/api/images/${imageJobId}`);
+            if (!listRes.ok) {
+              console.warn('[ImageRestore] 이미지 목록 조회 실패:', listRes.status);
+              return;
+            }
+            const listData = await listRes.json() as { images?: string[] };
+            if (!listData.images || listData.images.length === 0) return;
+
+            const files: File[] = [];
+            const previews: string[] = [];
+            for (let i = 0; i < listData.images.length; i++) {
+              try {
+                const imgRes = await fetch(listData.images[i]);
+                if (!imgRes.ok) continue;
+                const blob = await imgRes.blob();
+                const file = new File([blob], `restored_${i}.jpg`, { type: blob.type || 'image/jpeg' });
+                files.push(file);
+                previews.push(URL.createObjectURL(file));
+              } catch { /* skip failed image */ }
+            }
+            if (files.length > 0) {
+              setImages(files);
+              setImagePreviews(previews);
+              if (scriptParam) {
                 try {
-                  const res = await fetch(data.images[i]);
-                  const blob = await res.blob();
-                  const file = new File([blob], `restored_${i}.jpg`, { type: blob.type || 'image/jpeg' });
-                  files.push(file);
-                  previews.push(URL.createObjectURL(file));
-                } catch { /* skip failed image */ }
-              }
-              if (files.length > 0) {
-                setImages(files);
-                setImagePreviews(previews);
-                // section images도 업데이트
-                if (scriptParam) {
-                  try {
-                    const parsed = JSON.parse(scriptParam) as VideoScript;
-                    const n = parsed.sections?.length || 0;
-                    setSectionImages(Array.from({ length: n }, (_, i) => files[i] ?? null));
-                    setSectionPreviews(Array.from({ length: n }, (_, i) => previews[i] ?? null));
-                  } catch { /* ignore */ }
-                }
+                  const parsed = JSON.parse(scriptParam) as VideoScript;
+                  const n = parsed.sections?.length || 0;
+                  setSectionImages(Array.from({ length: n }, (_, idx) => files[idx] ?? null));
+                  setSectionPreviews(Array.from({ length: n }, (_, idx) => previews[idx] ?? null));
+                } catch { /* ignore */ }
               }
             }
-          })
-          .catch(() => { /* ignore */ });
+          } catch (err) {
+            console.warn('[ImageRestore] 이미지 복원 실패:', err);
+          }
+        })();
       }
 
       // URL에서 파라미터 제거 (뒤로가기 시 재트리거 방지)

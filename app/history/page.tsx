@@ -232,10 +232,24 @@ export default function HistoryPage() {
                           ) : (
                             <button
                               onClick={() => setPlayingId(job.id)}
-                              className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900/30 to-black/50 hover:from-purple-900/50 transition-colors group"
+                              className="relative w-full h-full group"
                             >
-                              <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                                <Play className="w-6 h-6 text-white ml-1" />
+                              <video
+                                src={job.videoUrl}
+                                preload="metadata"
+                                muted
+                                playsInline
+                                className="w-full h-full object-cover"
+                                onLoadedData={(e) => {
+                                  // 첫 프레임으로 이동
+                                  const v = e.currentTarget;
+                                  v.currentTime = 0.5;
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/20 transition-colors">
+                                <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors backdrop-blur-sm">
+                                  <Play className="w-6 h-6 text-white ml-1" />
+                                </div>
                               </div>
                             </button>
                           )}
