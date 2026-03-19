@@ -6,7 +6,7 @@ import Link from 'next/link';
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen bg-[#0B0A14] text-white flex items-center justify-center px-6">
+    <main className="min-h-screen bg-[#0B0A14] text-white flex items-center justify-center px-4 sm:px-6">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <Link href="/" className="flex items-center justify-center gap-2 mb-10">
@@ -16,7 +16,7 @@ export default function LoginPage() {
           <span className="gradient-text text-2xl font-bold">ShortsAI</span>
         </Link>
 
-        <div className="glass-card p-8 rounded-2xl">
+        <div className="glass-card p-6 sm:p-8 rounded-2xl">
           <h1 className="text-2xl font-bold text-center mb-2">로그인</h1>
           <p className="text-gray-400 text-sm text-center mb-8">
             소셜 계정으로 간편하게 시작하세요
@@ -25,7 +25,7 @@ export default function LoginPage() {
           <div className="space-y-3">
             <button
               onClick={() => signIn('google', { callbackUrl: '/promo' })}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-white text-gray-900 font-semibold text-sm hover:bg-gray-100 transition-colors"
+              className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl bg-white text-gray-900 font-semibold text-sm hover:bg-gray-100 transition-colors active:bg-gray-200"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
@@ -38,7 +38,7 @@ export default function LoginPage() {
 
             <button
               onClick={() => signIn('kakao', { callbackUrl: '/promo' })}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-[#FEE500] text-[#191919] font-semibold text-sm hover:bg-[#FDD800] transition-colors"
+              className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl bg-[#FEE500] text-[#191919] font-semibold text-sm hover:bg-[#FDD800] transition-colors active:bg-[#F5D000]"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#191919" d="M12 3C6.48 3 2 6.36 2 10.5c0 2.67 1.77 5.02 4.44 6.34-.2.73-.72 2.65-.82 3.06-.13.5.18.49.38.36.16-.1 2.5-1.7 3.51-2.39.49.07.99.13 1.49.13 5.52 0 10-3.36 10-7.5S17.52 3 12 3z" />

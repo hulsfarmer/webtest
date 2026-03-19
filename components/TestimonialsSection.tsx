@@ -80,43 +80,43 @@ export default function TestimonialsSection() {
   }, []);
 
   return (
-    <section className="py-20 px-6">
+    <section className="py-16 sm:py-20 px-4 sm:px-6">
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3">
+        <div className="text-center mb-8 sm:mb-12">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3">
             사장님들의 <span className="gradient-text">솔직 후기</span>
           </h2>
-          <p className="text-gray-400">ShortsAI를 먼저 사용해본 사장님들의 이야기</p>
+          <p className="text-gray-400 text-sm sm:text-base">ShortsAI를 먼저 사용해본 사장님들의 이야기</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-5">
+        <div className="grid sm:grid-cols-2 gap-3 sm:gap-5">
           {reviews.map((t) => {
             const emoji = BUSINESS_EMOJIS[t.business_type || ''] || '🏢';
             return (
               <div
                 key={t.id}
-                className="bg-brand-card border border-white/10 rounded-2xl p-5 hover:border-purple-500/30 transition-all"
+                className="bg-brand-card border border-white/10 rounded-2xl p-4 sm:p-5 hover:border-purple-500/30 transition-all"
               >
                 {/* Header */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-lg">
+                <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-base sm:text-lg shrink-0">
                     {emoji}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="font-semibold text-white text-sm">{t.display_name || '익명'}</div>
                     {t.business_type && (
                       <div className="text-gray-500 text-xs">{t.business_type}</div>
                     )}
                   </div>
-                  <div className="ml-auto flex gap-0.5">
+                  <div className="ml-auto flex gap-0.5 shrink-0">
                     {Array.from({ length: t.rating }).map((_, i) => (
-                      <Star key={i} className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                      <Star key={i} className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400" />
                     ))}
                   </div>
                 </div>
 
                 {/* Review text */}
-                <p className="text-gray-300 text-sm leading-relaxed">
+                <p className="text-gray-300 text-xs sm:text-sm leading-relaxed">
                   &ldquo;{t.text}&rdquo;
                 </p>
               </div>

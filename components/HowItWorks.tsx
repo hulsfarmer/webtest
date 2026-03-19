@@ -31,19 +31,19 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-24 px-6">
+    <section id="how-it-works" className="py-16 sm:py-24 px-4 sm:px-6">
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-16">
-          <div className="inline-block px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm font-medium mb-4">
+        <div className="text-center mb-10 sm:mb-16">
+          <div className="inline-block px-3 sm:px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs sm:text-sm font-medium mb-4">
             사용방법
           </div>
-          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-3 sm:mb-4">
             클릭 한 번으로 <span className="gradient-text">홍보영상 완성</span>
           </h2>
-          <p className="text-gray-400 text-lg">전문 영상 제작사 없이 4단계로 끝납니다</p>
+          <p className="text-gray-400 text-sm sm:text-lg">전문 영상 제작사 없이 4단계로 끝납니다</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           {steps.map((step, i) => (
             <div key={i} className="relative group">
               {/* Connector line */}
@@ -51,31 +51,31 @@ export default function HowItWorks() {
                 <div className="hidden lg:block absolute top-12 left-full w-full h-px bg-gradient-to-r from-purple-500/40 to-transparent z-0" />
               )}
 
-              <div className="glass-card p-6 h-full hover:border-purple-500/40 transition-colors">
+              <div className="glass-card p-4 sm:p-6 h-full hover:border-purple-500/40 transition-colors">
                 {/* Number badge */}
                 <div
-                  className={`w-10 h-10 rounded-xl bg-gradient-to-br ${step.color} flex items-center justify-center text-white font-bold text-sm mb-4`}
+                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br ${step.color} flex items-center justify-center text-white font-bold text-xs sm:text-sm mb-3 sm:mb-4`}
                 >
                   {step.number}
                 </div>
 
-                <div className="text-3xl mb-3">{step.icon}</div>
-                <h3 className="font-bold text-lg mb-2">{step.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">{step.description}</p>
+                <div className="text-2xl sm:text-3xl mb-2 sm:mb-3">{step.icon}</div>
+                <h3 className="font-bold text-sm sm:text-lg mb-1 sm:mb-2">{step.title}</h3>
+                <p className="text-gray-400 text-xs sm:text-sm leading-relaxed">{step.description}</p>
               </div>
             </div>
           ))}
         </div>
 
         {/* Example business types */}
-        <div className="mt-12 text-center">
-          <p className="text-gray-500 text-sm mb-4">이런 업종에서 바로 사용하세요</p>
-          <div className="flex flex-wrap justify-center gap-2">
+        <div className="mt-8 sm:mt-12 text-center">
+          <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-4">이런 업종에서 바로 사용하세요</p>
+          <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
             {['카페 홍보', '식당 신메뉴', '헬스장 이벤트', '미용실 할인', '네일샵 오픈', '베이커리 홍보', '학원 모집', '꽃집 시즌 이벤트'].map(
               (topic) => (
                 <span
                   key={topic}
-                  className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-gray-300 text-sm hover:border-emerald-500/40 transition-colors cursor-default"
+                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white/5 border border-white/10 text-gray-300 text-xs sm:text-sm hover:border-emerald-500/40 transition-colors cursor-default"
                 >
                   {topic}
                 </span>

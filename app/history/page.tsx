@@ -210,7 +210,7 @@ export default function HistoryPage() {
                 >
                   <div className="flex flex-col md:flex-row">
                     {/* 영상 썸네일/플레이어 */}
-                    <div className="md:w-48 lg:w-56 flex-shrink-0 bg-black/40">
+                    <div className="w-full md:w-48 lg:w-56 flex-shrink-0 bg-black/40 max-h-[280px] sm:max-h-none overflow-hidden">
                       {job.videoUrl && job.status === 'done' ? (
                         <div className="relative aspect-[9/16] md:h-full">
                           {isPlaying ? (
@@ -318,7 +318,7 @@ export default function HistoryPage() {
                           <a
                             href={job.videoUrl}
                             download={`${job.businessName || 'shortsai'}_홍보영상.mp4`}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 text-white text-sm font-medium hover:bg-purple-500 transition-colors"
+                            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 text-white text-sm font-medium hover:bg-purple-500 transition-colors active:bg-purple-700"
                           >
                             <Download className="w-4 h-4" />
                             다운로드
@@ -328,7 +328,7 @@ export default function HistoryPage() {
                         {job.script && (
                           <button
                             onClick={() => handleReuse(job)}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors border border-white/10"
+                            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors border border-white/10 active:bg-white/25"
                           >
                             <Pencil className="w-4 h-4" />
                             스크립트 수정 / 재생성
@@ -338,7 +338,7 @@ export default function HistoryPage() {
                         <button
                           onClick={() => handleDelete(job.id)}
                           disabled={deleting === job.id}
-                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-gray-400 text-sm hover:text-red-400 hover:bg-red-500/10 transition-colors ml-auto"
+                          className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-gray-400 text-sm hover:text-red-400 hover:bg-red-500/10 transition-colors active:bg-red-500/20 ml-auto"
                         >
                           {deleting === job.id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />

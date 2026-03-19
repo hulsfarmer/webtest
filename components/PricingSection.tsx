@@ -137,29 +137,29 @@ export default function PricingSection() {
           </div>
         </div>
       )}
-    <section id="pricing" className="py-24 px-6">
+    <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6">
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-16">
-          <div className="inline-block px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm font-medium mb-4">
+        <div className="text-center mb-10 sm:mb-16">
+          <div className="inline-block px-3 sm:px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs sm:text-sm font-medium mb-4">
             합리적인 가격
           </div>
-          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-3 sm:mb-4">
             영상 제작사보다 <span className="gradient-text">100배 저렴한</span>
           </h2>
-          <p className="text-gray-400 text-lg">사업장 홍보영상, 이제 직접 만드세요</p>
+          <p className="text-gray-400 text-sm sm:text-lg">사업장 홍보영상, 이제 직접 만드세요</p>
 
           {/* 할인 배너 */}
-          <div className="mt-8 inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30">
-            <Clock className="w-5 h-5 text-red-400 animate-pulse" />
+          <div className="mt-6 sm:mt-8 inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-red-400 animate-pulse shrink-0" />
             <div className="text-left">
-              <p className="text-white font-bold text-lg">오픈 기념 50% 할인 <span className="text-red-400">OPEN50</span></p>
-              <p className="text-gray-400 text-sm">~4/18까지 · 첫 달 50% 할인 자동 적용</p>
+              <p className="text-white font-bold text-sm sm:text-lg">오픈 기념 50% 할인 <span className="text-red-400">OPEN50</span></p>
+              <p className="text-gray-400 text-xs sm:text-sm">~4/18까지 · 첫 달 50% 할인 자동 적용</p>
             </div>
           </div>
         </div>
 
         {/* Pricing cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-16">
+        <div className="grid md:grid-cols-3 gap-4 sm:gap-6 mb-10 sm:mb-16">
           {plans.map((plan) => {
             const isCurrentPlan = currentPlan === plan.planId;
             const planOrder = ['free', 'pro', 'business'];
@@ -168,7 +168,7 @@ export default function PricingSection() {
             return (
               <div
                 key={plan.name}
-                className={`relative rounded-2xl p-6 border transition-all ${
+                className={`relative rounded-2xl p-4 sm:p-6 border transition-all ${
                   plan.highlighted
                     ? 'bg-gradient-to-b from-purple-900/40 to-brand-card border-purple-500/50 glow-purple'
                     : 'bg-brand-card border-white/10 hover:border-purple-500/30'
@@ -180,9 +180,9 @@ export default function PricingSection() {
                   </div>
                 )}
 
-                <div className="mb-6">
+                <div className="mb-4 sm:mb-6">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-xl font-bold">{plan.name}</h3>
+                    <h3 className="text-lg sm:text-xl font-bold">{plan.name}</h3>
                     {plan.name !== plan.nameEn && (
                       <span className="text-gray-500 text-sm">{plan.nameEn}</span>
                     )}
@@ -192,12 +192,12 @@ export default function PricingSection() {
                     {plan.price > 0 ? (
                       <>
                         <span className="text-lg text-gray-500 line-through mb-1">{plan.priceDisplay}</span>
-                        <span className="text-3xl md:text-4xl font-bold text-red-400">₩{(plan.price / 2).toLocaleString()}</span>
+                        <span className="text-2xl sm:text-3xl md:text-4xl font-bold text-red-400">₩{(plan.price / 2).toLocaleString()}</span>
                         <span className="text-gray-400 mb-1">/{plan.period}</span>
                       </>
                     ) : (
                       <>
-                        <span className="text-4xl font-bold">{plan.priceDisplay}</span>
+                        <span className="text-2xl sm:text-4xl font-bold">{plan.priceDisplay}</span>
                         <span className="text-gray-400 mb-1 text-sm">{plan.period}</span>
                       </>
                     )}
