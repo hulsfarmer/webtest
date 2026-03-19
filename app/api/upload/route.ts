@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
+import sharp from 'sharp';
+
+const HEIC_EXTENSIONS = new Set(['heic', 'heif']);
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,12 +22,30 @@ export async function POST(req: NextRequest) {
     const savedPaths: string[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const ext = file.name.split('.').pop() || 'jpg';
-      const filename = `img_${i}.${ext}`;
-      const filePath = path.join(uploadDir, filename);
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
       const buffer = Buffer.from(await file.arrayBuffer());
-      fs.writeFileSync(filePath, buffer);
-      savedPaths.push(filePath);
+
+      // Convert HEIC/HEIF to JPEG using sharp
+      if (HEIC_EXTENSIONS.has(ext)) {
+        const filename = `img_${i}.jpg`;
+        const filePath = path.join(uploadDir, filename);
+        try {
+          await sharp(buffer)
+            .jpeg({ quality: 90 })
+            .toFile(filePath);
+          console.log(`[Upload] Converted HEIC → JPEG: ${file.name}`);
+        } catch (err) {
+          // If sharp can't handle it, save as-is and hope ffmpeg manages
+          console.warn(`[Upload] HEIC conversion failed for ${file.name}:`, err);
+          fs.writeFileSync(filePath, buffer);
+        }
+        savedPaths.push(filePath);
+      } else {
+        const filename = `img_${i}.${ext}`;
+        const filePath = path.join(uploadDir, filename);
+        fs.writeFileSync(filePath, buffer);
+        savedPaths.push(filePath);
+      }
     }
 
     return NextResponse.json({ uploadId, paths: savedPaths });

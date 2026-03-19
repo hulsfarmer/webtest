@@ -305,14 +305,21 @@ export default function PromoPage() {
   }
 
   const resizeImage = useCallback((file: File, maxW = 1920, maxH = 1920, quality = 0.85): Promise<File> => {
+    // Always output as .jpg to avoid HEIC/HEIF issues on server
+    const jpgName = file.name.replace(/\.[^.]+$/, '.jpg');
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
         let { width: w, height: h } = img;
-        if (w <= maxW && h <= maxH && file.size <= 1 * 1024 * 1024) { URL.revokeObjectURL(img.src); resolve(file); return; }
-        const ratio = Math.min(maxW / w, maxH / h);
-        w = Math.round(w * ratio);
-        h = Math.round(h * ratio);
+        // Always convert through canvas to ensure JPEG output (even if small)
+        const needsResize = w > maxW || h > maxH || file.size > 1 * 1024 * 1024;
+        const isHeic = /\.(heic|heif)$/i.test(file.name);
+        if (!needsResize && !isHeic) { URL.revokeObjectURL(img.src); resolve(file); return; }
+        if (needsResize) {
+          const ratio = Math.min(maxW / w, maxH / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
         const canvas = document.createElement('canvas');
         canvas.width = w;
         canvas.height = h;
@@ -320,7 +327,7 @@ export default function PromoPage() {
         canvas.toBlob(
           (blob) => {
             URL.revokeObjectURL(img.src);
-            resolve(blob ? new File([blob], file.name, { type: 'image/jpeg' }) : file);
+            resolve(blob ? new File([blob], jpgName, { type: 'image/jpeg' }) : file);
           },
           'image/jpeg',
           quality,

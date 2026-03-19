@@ -265,10 +265,26 @@ export async function POST(req: NextRequest) {
       for (let i = 0; i < validImages.length; i++) {
         const file = validImages[i];
         const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-        const savePath = path.join(uploadsDir, `img_${i}.${ext}`);
         const arrayBuffer = await file.arrayBuffer();
-        fs.writeFileSync(savePath, Buffer.from(arrayBuffer));
-        userImagePaths.push(savePath);
+        const buffer = Buffer.from(arrayBuffer);
+
+        // Convert HEIC/HEIF → JPEG using sharp (ffmpeg can't read HEIC)
+        if (ext === 'heic' || ext === 'heif') {
+          const savePath = path.join(uploadsDir, `img_${i}.jpg`);
+          try {
+            const sharp = (await import('sharp')).default;
+            await sharp(buffer).jpeg({ quality: 90 }).toFile(savePath);
+            console.log(`[Promo] Converted HEIC → JPEG: ${file.name}`);
+          } catch (convErr) {
+            console.warn(`[Promo] HEIC conversion failed for ${file.name}:`, convErr);
+            fs.writeFileSync(savePath, buffer);
+          }
+          userImagePaths.push(savePath);
+        } else {
+          const savePath = path.join(uploadsDir, `img_${i}.${ext}`);
+          fs.writeFileSync(savePath, buffer);
+          userImagePaths.push(savePath);
+        }
       }
       console.log(`[Promo] Saved ${userImagePaths.length} user images for job ${jobId}`);
     }
