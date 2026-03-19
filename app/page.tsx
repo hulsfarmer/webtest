@@ -55,8 +55,12 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
+  // Showcase videos first, fill remaining with default samples (always show 3)
   const sampleSources = showcaseVideos.length > 0
-    ? showcaseVideos.map(v => v.videoUrl)
+    ? [
+        ...showcaseVideos.map(v => v.videoUrl),
+        ...DEFAULT_SAMPLES.slice(showcaseVideos.length),
+      ].slice(0, 3)
     : DEFAULT_SAMPLES;
 
   return (
