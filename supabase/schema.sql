@@ -93,6 +93,8 @@ CREATE TABLE IF NOT EXISTS reviews (
   display_name TEXT,
   business_type TEXT,
   status TEXT NOT NULL DEFAULT 'pending',  -- pending / approved / rejected
+  allow_showcase BOOLEAN NOT NULL DEFAULT false,
+  showcase_approved BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

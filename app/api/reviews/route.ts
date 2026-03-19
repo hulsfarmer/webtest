@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { rating, text, displayName, businessType, jobId } = body;
+  const { rating, text, displayName, businessType, jobId, allowShowcase } = body;
 
   // Validation
   if (!rating || rating < 1 || rating > 5) {
@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
       text: text.trim(),
       display_name: displayName?.trim() || session.user.name || '익명',
       business_type: businessType?.trim() || null,
+      allow_showcase: !!allowShowcase,
       status: 'pending',
     })
     .select('id')

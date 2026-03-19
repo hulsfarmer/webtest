@@ -18,6 +18,8 @@ import {
   Star,
   MessageSquare,
   Trash2,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 interface AdminStats {
@@ -132,6 +134,8 @@ interface ReviewItem {
   display_name: string | null;
   business_type: string | null;
   status: string;
+  allow_showcase: boolean;
+  showcase_approved: boolean;
   created_at: string;
   users?: { name: string | null; email: string };
 }
@@ -187,6 +191,15 @@ export default function AdminPage() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, status: action }),
+    });
+    fetchReviews();
+  };
+
+  const handleShowcaseToggle = async (id: string, current: boolean) => {
+    await fetch('/api/admin/reviews', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, showcase_approved: !current }),
     });
     fetchReviews();
   };
@@ -476,6 +489,11 @@ export default function AdminPage() {
                               <span className="text-gray-500 text-xs">· {r.business_type}</span>
                             )}
                             <span className={`text-xs ${statusColor}`}>[{statusLabel}]</span>
+                            {r.allow_showcase && (
+                              <span className={`text-xs ${r.showcase_approved ? 'text-blue-400' : 'text-gray-600'}`}>
+                                {r.showcase_approved ? '📺 메인노출' : '📺 노출동의'}
+                              </span>
+                            )}
                           </div>
                           <span className="text-gray-500 text-xs whitespace-nowrap">{timeAgo(r.created_at)}</span>
                         </div>
@@ -499,6 +517,19 @@ export default function AdminPage() {
                                 className="px-3 py-1 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
                               >
                                 거절
+                              </button>
+                            )}
+                            {r.allow_showcase && r.job_id && r.status === 'approved' && (
+                              <button
+                                onClick={() => handleShowcaseToggle(r.id, r.showcase_approved)}
+                                className={`px-3 py-1 rounded-lg flex items-center gap-1 transition-colors ${
+                                  r.showcase_approved
+                                    ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+                                    : 'bg-white/5 text-gray-400 hover:bg-blue-500/10 hover:text-blue-400'
+                                }`}
+                              >
+                                {r.showcase_approved ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                {r.showcase_approved ? '노출해제' : '메인노출'}
                               </button>
                             )}
                             <button

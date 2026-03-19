@@ -15,6 +15,7 @@ export default function ReviewModal({ jobId, onClose, onSubmitted }: ReviewModal
   const [text, setText] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [businessType, setBusinessType] = useState('');
+  const [allowShowcase, setAllowShowcase] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -38,6 +39,7 @@ export default function ReviewModal({ jobId, onClose, onSubmitted }: ReviewModal
           displayName: displayName.trim() || undefined,
           businessType: businessType || undefined,
           jobId,
+          allowShowcase,
         }),
       });
       const data = await res.json();
@@ -137,6 +139,22 @@ export default function ReviewModal({ jobId, onClose, onSubmitted }: ReviewModal
           />
           <p className="text-gray-600 text-xs mt-1 text-right">{text.length}/500</p>
         </div>
+
+        {/* Showcase consent */}
+        {jobId && (
+          <label className="flex items-start gap-3 mb-5 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={allowShowcase}
+              onChange={(e) => setAllowShowcase(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-white/20 bg-white/5 text-purple-500 focus:ring-purple-500/50"
+            />
+            <span className="text-gray-400 text-xs leading-relaxed group-hover:text-gray-300 transition-colors">
+              제가 만든 영상을 홈페이지 샘플 영상으로 사용하는 것에 동의합니다
+              <span className="text-gray-600 block mt-0.5">(관리자 검토 후 노출됩니다)</span>
+            </span>
+          </label>
+        )}
 
         {error && (
           <p className="text-red-400 text-sm mb-3">{error}</p>

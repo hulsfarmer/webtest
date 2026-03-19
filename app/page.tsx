@@ -9,6 +9,8 @@ import PricingSection from '@/components/PricingSection';
 import TestimonialsSection from '@/components/TestimonialsSection';
 import Footer from '@/components/Footer';
 
+const DEFAULT_SAMPLES = ['/sample/demo.mp4', '/sample/demo2.mp4', '/sample/demo3.mp4'];
+
 const businessTypes = ['카페', '식당', '헬스장', '미용실', '네일샵', '꽃집', '베이커리', '학원'];
 
 const headlineTexts = [
@@ -19,9 +21,17 @@ const headlineTexts = [
   '우리 농장 홍보영상',
 ];
 
+interface ShowcaseVideo {
+  videoUrl: string;
+  businessName: string | null;
+  businessType: string | null;
+  rating: number;
+}
+
 export default function HomePage() {
   const [headlineIndex, setHeadlineIndex] = useState(0);
   const [fade, setFade] = useState(true);
+  const [showcaseVideos, setShowcaseVideos] = useState<ShowcaseVideo[]>([]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -33,6 +43,22 @@ export default function HomePage() {
     }, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    fetch('/api/showcase')
+      .then(r => r.json())
+      .then(data => {
+        if (data.videos && data.videos.length > 0) {
+          setShowcaseVideos(data.videos);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const sampleSources = showcaseVideos.length > 0
+    ? showcaseVideos.map(v => v.videoUrl)
+    : DEFAULT_SAMPLES;
+
   return (
     <main className="min-h-screen bg-[#0B0A14] text-white">
       <Header />
@@ -115,9 +141,11 @@ export default function HomePage() {
           <h2 className="text-3xl md:text-4xl font-bold mb-3">
             실제 생성된 <span className="gradient-text">홍보영상</span>
           </h2>
-          <p className="text-gray-400 mb-8">AI가 자동으로 만든 실제 홍보영상입니다</p>
+          <p className="text-gray-400 mb-8">
+            {showcaseVideos.length > 0 ? '실제 사용자가 만든 홍보영상입니다' : 'AI가 자동으로 만든 실제 홍보영상입니다'}
+          </p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-            {['/sample/demo.mp4', '/sample/demo2.mp4', '/sample/demo3.mp4'].map((src) => (
+            {sampleSources.map((src, i) => (
               <div key={src} className="glass-card p-3 rounded-2xl w-full max-w-xs">
                 <video
                   src={src}
@@ -126,6 +154,12 @@ export default function HomePage() {
                   preload="metadata"
                   className="w-full rounded-xl aspect-[9/16]"
                 />
+                {showcaseVideos[i] && (
+                  <p className="text-gray-400 text-xs mt-2 text-center">
+                    {showcaseVideos[i].businessName}
+                    {showcaseVideos[i].businessType && ` · ${showcaseVideos[i].businessType}`}
+                  </p>
+                )}
               </div>
             ))}
           </div>

@@ -15,7 +15,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('reviews')
     .select(`
-      id, user_id, job_id, rating, text, display_name, business_type, status, created_at,
+      id, user_id, job_id, rating, text, display_name, business_type, status, allow_showcase, showcase_approved, created_at,
       users!inner(name, email)
     `)
     .order('created_at', { ascending: false })
@@ -25,7 +25,7 @@ export async function GET() {
     // inner join이 실패할 수 있으므로 fallback
     const { data: fallback } = await supabase
       .from('reviews')
-      .select('id, user_id, job_id, rating, text, display_name, business_type, status, created_at')
+      .select('id, user_id, job_id, rating, text, display_name, business_type, status, allow_showcase, showcase_approved, created_at')
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -42,14 +42,33 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: '권한이 없습니다' }, { status: 403 });
   }
 
-  const { id, status } = await request.json();
-  if (!id || !['approved', 'rejected', 'pending'].includes(status)) {
+  const body = await request.json();
+  const { id, status: newStatus, showcase_approved } = body;
+  if (!id) {
+    return NextResponse.json({ error: '잘못된 요청입니다' }, { status: 400 });
+  }
+
+  // showcase_approved 토글
+  if (typeof showcase_approved === 'boolean') {
+    const { error: scError } = await supabase
+      .from('reviews')
+      .update({ showcase_approved })
+      .eq('id', id);
+    if (scError) {
+      console.error('[Admin Reviews] Showcase PATCH error:', scError);
+      return NextResponse.json({ error: '쇼케이스 변경에 실패했습니다' }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
+  }
+
+  // status 변경
+  if (!newStatus || !['approved', 'rejected', 'pending'].includes(newStatus)) {
     return NextResponse.json({ error: '잘못된 요청입니다' }, { status: 400 });
   }
 
   const { error } = await supabase
     .from('reviews')
-    .update({ status })
+    .update({ status: newStatus })
     .eq('id', id);
 
   if (error) {
