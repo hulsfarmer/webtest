@@ -87,6 +87,56 @@ function findFont(): string {
   return '';
 }
 
+// ── 톤별 색상 팔레트 ──
+interface TonePalette {
+  hook: string;      // hook 섹션 강조색
+  main: string;      // main 섹션 강조색
+  cta: string;       // cta 섹션 강조색
+  businessName: string; // 업체명 색상
+  titleAccent: string;  // 제목 그라데이션 끝 색상
+  subtitleColor: string; // 본문 자막 색상
+}
+
+const TONE_PALETTES: Record<string, TonePalette> = {
+  '친근한': {
+    hook: '#F59E0B',      // 따뜻한 앰버
+    main: '#FB923C',      // 오렌지
+    cta: '#F97316',       // 딥 오렌지
+    businessName: '#FCD34D', // 밝은 노란
+    titleAccent: '#FB923C',
+    subtitleColor: '#FFFBEB', // 크림 화이트
+  },
+  '전문적인': {
+    hook: '#3B82F6',      // 블루
+    main: '#6366F1',      // 인디고
+    cta: '#8B5CF6',       // 바이올렛
+    businessName: '#93C5FD', // 라이트 블루
+    titleAccent: '#818CF8',
+    subtitleColor: '#EFF6FF', // 블루 화이트
+  },
+  '긴급한': {
+    hook: '#EF4444',      // 레드
+    main: '#F97316',      // 오렌지
+    cta: '#DC2626',       // 딥 레드
+    businessName: '#FCA5A5', // 라이트 레드
+    titleAccent: '#F87171',
+    subtitleColor: '#FFF7ED', // 웜 화이트
+  },
+  '따뜻한': {
+    hook: '#A855F7',      // 퍼플
+    main: '#EC4899',      // 핑크
+    cta: '#F472B6',       // 라이트 핑크
+    businessName: '#FDE68A', // 골든 옐로
+    titleAccent: '#C084FC',
+    subtitleColor: '#FDF4FF', // 퍼플 화이트
+  },
+};
+
+function getTonePalette(tone?: string): TonePalette {
+  if (tone && TONE_PALETTES[tone]) return TONE_PALETTES[tone];
+  return TONE_PALETTES['친근한']; // 기본값
+}
+
 async function getAudioDuration(audioPath: string): Promise<number> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const ffmpegPath = require('ffmpeg-static') as string;
@@ -170,6 +220,7 @@ async function createTextOverlay(
   bottomInfo?: string,
   displayBusinessName?: string,
   showWatermark?: boolean,
+  palette?: TonePalette,
 ): Promise<void> {
   const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
 
@@ -190,12 +241,13 @@ async function createTextOverlay(
   // Fully transparent background
   ctx.clearRect(0, 0, W, H);
 
+  const p = palette || getTonePalette();
   const badgeColors: Record<string, string> = {
-    hook: '#A855F7',
-    main: '#3B82F6',
-    cta: '#EC4899',
+    hook: p.hook,
+    main: p.main,
+    cta: p.cta,
   };
-  const accentColor = badgeColors[sectionType] || '#A855F7';
+  const accentColor = badgeColors[sectionType] || p.hook;
 
   // Top accent bar
   const topGrad = ctx.createLinearGradient(0, 0, W, 0);
@@ -223,12 +275,12 @@ async function createTextOverlay(
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
   if (displayBusinessName || title) {
     if (displayBusinessName) {
-      // Row 1 — business name: 80px, golden yellow + bold black outline
+      // Row 1 — business name: 80px, tone-based color + bold black outline
       ctx.font = `bold 80px ${fontFamily}`;
       ctx.strokeStyle = 'rgba(0,0,0,0.85)';
       ctx.lineWidth = 5;
       ctx.strokeText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
-      ctx.fillStyle = '#FBBF24';
+      ctx.fillStyle = p.businessName;
       ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
       // Thin separator glow under business name
       const sepGrad = ctx.createLinearGradient(200, 0, W - 200, 0);
@@ -258,7 +310,7 @@ async function createTextOverlay(
       ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
       const titleGrad = ctx.createLinearGradient(W / 2 - 380, 0, W / 2 + 380, 0);
       titleGrad.addColorStop(0, 'white');
-      titleGrad.addColorStop(1, accentColor);
+      titleGrad.addColorStop(1, p.titleAccent);
       ctx.fillStyle = titleGrad;
       ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 3;
@@ -296,7 +348,7 @@ async function createTextOverlay(
   const textStartY = effectiveBOX_Y + (effectiveBOX_H - textBlockH) / 2 + fontSize * 0.85;
 
   ctx.font = `bold ${fontSize}px ${fontFamily}`;
-  ctx.fillStyle = 'white';
+  ctx.fillStyle = p.subtitleColor;
   ctx.shadowColor = 'rgba(0,0,0,0.95)';
   ctx.shadowBlur = 18;
   textLines.forEach((line, i) => {
@@ -365,6 +417,7 @@ async function createFrameImage(
   bottomInfo?: string,
   displayBusinessName?: string,
   showWatermark?: boolean,
+  palette?: TonePalette,
 ): Promise<void> {
   const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
 
@@ -436,10 +489,11 @@ async function createFrameImage(
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, W, H);
 
+  const p = palette || getTonePalette();
   const badgeColors: Record<string, string> = {
-    hook: '#A855F7', main: '#3B82F6', cta: '#EC4899',
+    hook: p.hook, main: p.main, cta: p.cta,
   };
-  const accentColor = badgeColors[sectionType] || '#A855F7';
+  const accentColor = badgeColors[sectionType] || p.hook;
 
   // Top accent bar
   const topGrad = ctx.createLinearGradient(0, 0, W, 0);
@@ -464,12 +518,12 @@ async function createFrameImage(
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
   if (displayBusinessName || title) {
     if (displayBusinessName) {
-      // Row 1 — business name: 80px, golden yellow + bold black outline
+      // Row 1 — business name: 80px, tone-based color + bold black outline
       ctx.font = `bold 80px ${fontFamily}`;
       ctx.strokeStyle = 'rgba(0,0,0,0.85)';
       ctx.lineWidth = 5;
       ctx.strokeText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
-      ctx.fillStyle = '#FBBF24';
+      ctx.fillStyle = p.businessName;
       ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
       // Thin separator glow under business name
       const sepGrad = ctx.createLinearGradient(200, 0, W - 200, 0);
@@ -498,7 +552,7 @@ async function createFrameImage(
       ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
       const titleGrad = ctx.createLinearGradient(W / 2 - 380, 0, W / 2 + 380, 0);
       titleGrad.addColorStop(0, 'white');
-      titleGrad.addColorStop(1, accentColor);
+      titleGrad.addColorStop(1, p.titleAccent);
       ctx.fillStyle = titleGrad;
       ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 3;
@@ -645,9 +699,13 @@ export async function generateVideo(
   bgmId?: string,
   externalBgmVolume?: number,
   showWatermark?: boolean,
+  tone?: string,
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const ffmpegPath = require('ffmpeg-static') as string;
+
+  const palette = getTonePalette(tone);
+  console.log(`[Video] Tone: ${tone || '(default)'} → palette: ${JSON.stringify({ hook: palette.hook, main: palette.main, businessName: palette.businessName })}`);
 
   // BGM volume: use user-specified value, or auto (calm/trendy louder, others softer)
   const bgmVolume = externalBgmVolume !== undefined
@@ -812,7 +870,7 @@ export async function generateVideo(
       await createTextOverlay(
         script.title, sentence, sectionType,
         idx, allSentences.length, overlayPath,
-        bottomInfo, displayBusinessName, showWatermark,
+        bottomInfo, displayBusinessName, showWatermark, palette,
       );
       overlayPaths.push(overlayPath);
     }
@@ -919,7 +977,7 @@ export async function generateVideo(
       await createFrameImage(
         script.title, sentence, sectionType,
         idx, allSentences.length, framePath, keyword,
-        bottomInfo, displayBusinessName, showWatermark,
+        bottomInfo, displayBusinessName, showWatermark, palette,
       );
       framePaths.push({ path: framePath, duration: sentenceDurations[idx] });
     }

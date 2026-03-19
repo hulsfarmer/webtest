@@ -168,7 +168,7 @@ async function processPromoJob(
     await generateVideo(
       script, audioPath, videoPath, userImagePaths,
       bottomInfo, sentenceDurations, input.businessName,
-      bgmPath ?? undefined, bgmId, bgmVolume, showWatermark,
+      bgmPath ?? undefined, bgmId, bgmVolume, showWatermark, input.tone,
     );
 
     // Cleanup audio and custom BGM (uploaded images are kept for history reuse)
