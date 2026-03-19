@@ -5,7 +5,8 @@ import axios from 'axios';
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+  const userId = (session?.user as { id?: string })?.id;
+  if (!session?.user || !userId) {
     return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
   }
 
@@ -32,13 +33,13 @@ export async function POST(request: NextRequest) {
               media: false,
             },
             checkout_data: {
-              email: session.user.email,
+              ...(session.user.email ? { email: session.user.email } : {}),
               billing_address: {
                 country: 'KR',
               },
               discount_code: process.env.LEMONSQUEEZY_DISCOUNT_CODE || undefined,
               custom: {
-                user_id: (session.user as { id?: string }).id || '',
+                user_id: userId,
               },
             },
             product_options: {
