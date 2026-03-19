@@ -140,7 +140,15 @@ async function processPromoJob(
       const cleaned = stripContactFromText(s.text);
       return cleaned.split(/(?<=[.!?。！？])\s*/).map(x => x.trim()).filter(Boolean);
     });
-    const sentenceDurations = await generateAudioWithTimepoints(sentences, audioPath, voice, speed);
+    const sentenceDurations = await generateAudioWithTimepoints(sentences, audioPath, voice, speed, (percent) => {
+      // Audio step spans progress 30–65 (35% range)
+      const audioProgress = 30 + Math.round((percent / 100) * 35);
+      updateJob(jobId, {
+        progress: Math.min(audioProgress, 64), // cap at 64, 65 = audio done
+        steps: { script: 'done', audio: 'running', video: 'pending' },
+        status: 'generating_audio',
+      });
+    });
 
     updateJob(jobId, {
       progress: 65,

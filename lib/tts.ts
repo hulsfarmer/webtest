@@ -198,6 +198,7 @@ export async function generateAudioWithTimepoints(
   outputPath: string,
   voice = 'nova',
   speed = 1.0,
+  onProgress?: (percent: number) => void,
 ): Promise<number[]> {
   const apiKey = process.env.GOOGLE_TTS_API_KEY;
 
@@ -259,6 +260,10 @@ export async function generateAudioWithTimepoints(
             segmentPaths.push(segPath);
             const dur = await getActualAudioDuration(segPath);
             durations.push(Math.max(dur, 0.4));
+            // Report progress per sentence
+            if (onProgress) {
+              onProgress(Math.round(((i + 1) / sentences.length) * 100));
+            }
           }
 
           // Concat all segments into final output (exact audio matches measured durations)

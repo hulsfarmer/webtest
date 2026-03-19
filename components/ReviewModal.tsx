@@ -150,7 +150,7 @@ export default function ReviewModal({ jobId, onClose, onSubmitted }: ReviewModal
               className="mt-0.5 w-4 h-4 rounded border-white/20 bg-white/5 text-purple-500 focus:ring-purple-500/50"
             />
             <span className="text-gray-400 text-xs leading-relaxed group-hover:text-gray-300 transition-colors">
-              제가 만든 영상을 홈페이지 샘플 영상으로 사용하는 것에 동의합니다
+              이 영상을 홈페이지 샘플 영상으로 사용하는 것에 동의합니다
               <span className="text-gray-600 block mt-0.5">(관리자 검토 후 노출됩니다)</span>
             </span>
           </label>

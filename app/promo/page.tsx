@@ -1274,7 +1274,11 @@ export default function PromoPage() {
                       key={key}
                       label={STEP_LABELS[key]}
                       status={status}
-                      subMessage={key === 'video' && status === 'running' ? videoSubMsg : undefined}
+                      subMessage={
+                        key === 'video' && status === 'running' ? videoSubMsg :
+                        key === 'audio' && status === 'running' ? `음성 생성 중... ${Math.min(Math.round(((jobStatus.progress ?? 30) - 30) / 35 * 100), 99)}%` :
+                        undefined
+                      }
                     />
                   );
                 })}
