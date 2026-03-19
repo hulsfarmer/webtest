@@ -36,8 +36,11 @@ export async function GET() {
     .filter(r => r.job_id && jobMap.has(r.job_id))
     .map(r => {
       const job = jobMap.get(r.job_id!)!;
+      // Derive poster URL from video URL: /api/video/{id} → /api/video/{id}/thumb
+      const posterUrl = job.video_url ? `${job.video_url}/thumb` : null;
       return {
         videoUrl: job.video_url,
+        posterUrl,
         businessName: job.business_name || r.display_name,
         businessType: r.business_type,
         rating: r.rating,

@@ -9,7 +9,11 @@ import PricingSection from '@/components/PricingSection';
 import TestimonialsSection from '@/components/TestimonialsSection';
 import Footer from '@/components/Footer';
 
-const DEFAULT_SAMPLES = ['/sample/demo.mp4', '/sample/demo2.mp4', '/sample/demo3.mp4'];
+const DEFAULT_SAMPLES = [
+  { src: '/sample/demo.mp4', poster: '/sample/demo_thumb.jpg' },
+  { src: '/sample/demo2.mp4', poster: '/sample/demo2_thumb.jpg' },
+  { src: '/sample/demo3.mp4', poster: '/sample/demo3_thumb.jpg' },
+];
 
 const businessTypes = ['카페', '식당', '헬스장', '미용실', '네일샵', '꽃집', '베이커리', '학원'];
 
@@ -23,6 +27,7 @@ const headlineTexts = [
 
 interface ShowcaseVideo {
   videoUrl: string;
+  posterUrl: string | null;
   businessName: string | null;
   businessType: string | null;
   rating: number;
@@ -56,12 +61,12 @@ export default function HomePage() {
   }, []);
 
   // Showcase videos first, fill remaining with default samples (always show 3)
-  const sampleSources = showcaseVideos.length > 0
+  const sampleSources: { src: string; poster: string | null; showcase?: ShowcaseVideo }[] = showcaseVideos.length > 0
     ? [
-        ...showcaseVideos.map(v => v.videoUrl),
-        ...DEFAULT_SAMPLES.slice(showcaseVideos.length),
+        ...showcaseVideos.map(v => ({ src: v.videoUrl, poster: v.posterUrl, showcase: v })),
+        ...DEFAULT_SAMPLES.slice(showcaseVideos.length).map(s => ({ src: s.src, poster: s.poster as string | null })),
       ].slice(0, 3)
-    : DEFAULT_SAMPLES;
+    : DEFAULT_SAMPLES.map(s => ({ src: s.src, poster: s.poster }));
 
   return (
     <main className="min-h-screen bg-[#0B0A14] text-white overflow-x-hidden">
@@ -152,19 +157,20 @@ export default function HomePage() {
           </p>
           {/* Horizontal scroll on mobile, flex row on desktop */}
           <div className="flex gap-4 sm:gap-6 justify-start sm:justify-center overflow-x-auto sm:overflow-visible pb-4 sm:pb-0 snap-x snap-mandatory sm:snap-none -mx-4 px-4 sm:mx-0 sm:px-0">
-            {sampleSources.map((src, i) => (
-              <div key={src} className="glass-card p-2 sm:p-3 rounded-2xl w-[220px] sm:w-full sm:max-w-xs flex-shrink-0 snap-center">
+            {sampleSources.map((item, i) => (
+              <div key={item.src} className="glass-card p-2 sm:p-3 rounded-2xl w-[220px] sm:w-full sm:max-w-xs flex-shrink-0 snap-center">
                 <video
-                  src={src}
+                  src={item.src}
+                  poster={item.poster || undefined}
                   controls
                   playsInline
                   preload="metadata"
-                  className="w-full rounded-xl aspect-[9/16]"
+                  className="w-full rounded-xl aspect-[9/16] bg-gray-900"
                 />
-                {showcaseVideos[i] && (
+                {item.showcase && (
                   <p className="text-gray-400 text-xs mt-2 text-center">
-                    {showcaseVideos[i].businessName}
-                    {showcaseVideos[i].businessType && ` · ${showcaseVideos[i].businessType}`}
+                    {item.showcase.businessName}
+                    {item.showcase.businessType && ` · ${item.showcase.businessType}`}
                   </p>
                 )}
               </div>
@@ -192,10 +198,11 @@ export default function HomePage() {
           <div className="glass-card p-2 sm:p-4 rounded-2xl max-w-2xl mx-auto">
             <video
               src="/sample/how-to-use.mp4"
+              poster="/sample/how-to-use_thumb.jpg"
               controls
               playsInline
               preload="metadata"
-              className="w-full rounded-xl"
+              className="w-full rounded-xl bg-gray-900"
             />
           </div>
           <p className="text-gray-500 text-xs sm:text-sm mt-4">
