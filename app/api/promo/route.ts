@@ -258,7 +258,10 @@ export async function POST(req: NextRequest) {
     const uploadsDir = path.join(process.cwd(), 'data', 'uploads', jobId);
 
     const imageFiles = formData.getAll('images') as File[];
-    const validImages = imageFiles.filter(f => f instanceof File && f.size > 0).slice(0, 5);
+    const IMAGE_EXTS = /\.(jpe?g|png|webp|gif|bmp|heic|heif|avif)$/i;
+    const validImages = imageFiles.filter(f =>
+      f instanceof File && f.size > 0 && (f.type.startsWith('image/') || IMAGE_EXTS.test(f.name) || f.name === 'blob')
+    ).slice(0, 5);
 
     if (validImages.length > 0) {
       fs.mkdirSync(uploadsDir, { recursive: true });

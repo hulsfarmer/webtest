@@ -339,7 +339,11 @@ export default function PromoPage() {
   }, []);
 
   const addImages = useCallback(async (files: FileList | File[]) => {
-    const fileArr = Array.from(files).filter(f => f.type.startsWith('image/'));
+    // Accept by MIME type or file extension (Android sometimes has empty f.type)
+    const IMAGE_EXTS = /\.(jpe?g|png|webp|gif|bmp|heic|heif|avif)$/i;
+    const fileArr = Array.from(files).filter(f =>
+      f.type.startsWith('image/') || IMAGE_EXTS.test(f.name)
+    );
     const remaining = MAX_IMAGES - images.length;
     const toAdd = fileArr.slice(0, remaining);
     if (toAdd.length === 0) return;
