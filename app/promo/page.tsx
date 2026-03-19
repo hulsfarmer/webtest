@@ -304,6 +304,20 @@ export default function PromoPage() {
     } catch { /* ignore */ }
   }
 
+  const convertOnServer = useCallback(async (file: File): Promise<File | null> => {
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const res = await fetch('/api/upload/convert', { method: 'POST', body: fd });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      const jpgName = file.name.replace(/\.[^.]+$/, '.jpg');
+      return new File([blob], jpgName, { type: 'image/jpeg' });
+    } catch {
+      return null;
+    }
+  }, []);
+
   const resizeImage = useCallback((file: File, maxW = 1920, maxH = 1920, quality = 0.85): Promise<File> => {
     // Always output as .jpg to avoid HEIC/HEIF issues on server
     const jpgName = file.name.replace(/\.[^.]+$/, '.jpg');
@@ -333,10 +347,15 @@ export default function PromoPage() {
           quality,
         );
       };
-      img.onerror = () => resolve(file);
+      // Browser can't decode this format — send to server for sharp conversion
+      img.onerror = async () => {
+        URL.revokeObjectURL(img.src);
+        const converted = await convertOnServer(file);
+        resolve(converted ?? file);
+      };
       img.src = URL.createObjectURL(file);
     });
-  }, []);
+  }, [convertOnServer]);
 
   const addImages = useCallback(async (files: FileList | File[]) => {
     // Accept by MIME type or file extension (Android sometimes has empty f.type)
@@ -348,13 +367,39 @@ export default function PromoPage() {
     const toAdd = fileArr.slice(0, remaining);
     if (toAdd.length === 0) return;
 
-    // 큰 이미지 자동 리사이즈 (모바일 대응)
+    // 큰 이미지 자동 리사이즈 (모바일 대응, 서버 폴백 포함)
     const resized = await Promise.all(toAdd.map(f => resizeImage(f)));
 
-    const newPreviews = resized.map(f => URL.createObjectURL(f));
-    setImages(prev => [...prev, ...resized]);
-    setImagePreviews(prev => [...prev, ...newPreviews]);
-    setUploadId(null); // force re-upload on next script generation
+    // Verify each image can be displayed in browser (filter out broken ones)
+    const verified: File[] = [];
+    const previews: string[] = [];
+    let skipped = 0;
+    for (const f of resized) {
+      const url = URL.createObjectURL(f);
+      const ok = await new Promise<boolean>((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = url;
+      });
+      if (ok) {
+        verified.push(f);
+        previews.push(url);
+      } else {
+        URL.revokeObjectURL(url);
+        skipped++;
+      }
+    }
+
+    if (skipped > 0) {
+      alert(`${skipped}개의 사진이 지원하지 않는 형식이어서 제외되었습니다.\nJPG, PNG 형식의 사진을 사용해주세요.`);
+    }
+
+    if (verified.length > 0) {
+      setImages(prev => [...prev, ...verified]);
+      setImagePreviews(prev => [...prev, ...previews]);
+      setUploadId(null); // force re-upload on next script generation
+    }
   }, [images.length, resizeImage]);
 
   function removeImage(idx: number) {
