@@ -2,41 +2,11 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { ArrowRight, Play, Sparkles, Zap, Globe, DollarSign, Store, Camera, Music, Clock, MonitorPlay } from 'lucide-react';
+import { ArrowRight, Play, Sparkles, MonitorPlay } from 'lucide-react';
 import Header from '@/components/Header';
 import HowItWorks from '@/components/HowItWorks';
 import PricingSection from '@/components/PricingSection';
 import Footer from '@/components/Footer';
-
-const features = [
-  {
-    icon: <Store className="w-6 h-6 text-emerald-400" />,
-    title: '사업장 맞춤 영상',
-    description: '카페, 식당, 헬스장, 미용실 등 업종별 최적화된 홍보 영상을 자동으로 제작',
-  },
-  {
-    icon: <Camera className="w-6 h-6 text-blue-400" />,
-    title: '사진만 올리면 끝',
-    description: '매장 사진을 올리면 AI가 분석해서 어울리는 홍보 스크립트와 영상을 자동 생성',
-  },
-  {
-    icon: <Music className="w-6 h-6 text-pink-400" />,
-    title: 'BGM 자동 추천',
-    description: '업종과 분위기에 맞는 배경음악을 자동으로 선택해서 완성도 높은 영상 완성',
-  },
-  {
-    icon: <DollarSign className="w-6 h-6 text-green-400" />,
-    title: '영상 제작 비용 절감',
-    description: '전문 영상 제작 의뢰(50~100만원) 대비 월 19,900원으로 매달 새 영상 제작',
-  },
-];
-
-const staticStats = [
-  { value: '< 3분', label: '영상 1개 생성 시간' },
-  { value: '쇼츠 HD', label: '1080×1920 포맷' },
-  { value: '100%', label: '한국어 지원' },
-  { value: '₩0', label: '시작 비용' },
-];
 
 const businessTypes = ['카페', '식당', '헬스장', '미용실', '네일샵', '꽃집', '베이커리', '학원'];
 
@@ -135,18 +105,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-            {staticStats.map((stat) => (
-              <div
-                key={stat.label}
-                className="glass-card p-4 text-center hover:border-purple-500/30 transition-colors"
-              >
-                <div className="text-2xl font-bold gradient-text">{stat.value}</div>
-                <div className="text-gray-400 text-xs mt-1">{stat.label}</div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -176,61 +134,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Demo preview */}
-      <section className="py-12 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="glass-card p-6 md:p-8 rounded-2xl">
-            <div className="flex flex-col md:flex-row items-center gap-8">
-              {/* Input side */}
-              <div className="flex-1 space-y-3">
-                <div className="text-gray-400 text-sm font-medium">입력</div>
-                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                  <div className="text-gray-300 text-sm mb-1">업체명</div>
-                  <div className="text-white font-medium">&quot;카페 봄날&quot;</div>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                  <div className="text-gray-300 text-sm mb-1">홍보 포인트</div>
-                  <div className="text-white font-medium">&quot;직접 로스팅한 원두, 한옥 인테리어&quot;</div>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                  <div className="text-gray-300 text-sm mb-1">매장 사진</div>
-                  <div className="text-white font-medium flex items-center gap-2">
-                    <Camera className="w-4 h-4 text-emerald-400" /> 4~5장 업로드
-                  </div>
-                </div>
-              </div>
-
-              {/* Arrow */}
-              <div className="flex items-center justify-center">
-                <div className="px-4 py-2 rounded-full bg-gradient-brand text-white text-sm font-bold animate-pulse-slow">
-                  AI 생성
-                </div>
-              </div>
-
-              {/* Output side */}
-              <div className="flex-1 space-y-3">
-                <div className="text-gray-400 text-sm font-medium">출력</div>
-                {[
-                  { icon: '📝', label: '홍보 스크립트', color: 'text-purple-400' },
-                  { icon: '🎙️', label: '한국어 내레이션', color: 'text-blue-400' },
-                  { icon: '🎵', label: '업종 맞춤 BGM', color: 'text-pink-400' },
-                  { icon: '🎬', label: '홍보 쇼츠 MP4', color: 'text-green-400' },
-                ].map((item) => (
-                  <div
-                    key={item.label}
-                    className="flex items-center gap-3 bg-white/5 rounded-xl p-3 border border-white/10"
-                  >
-                    <span className="text-2xl">{item.icon}</span>
-                    <span className={`font-medium ${item.color}`}>{item.label} 완성</span>
-                    <span className="ml-auto text-green-400 text-xs">✓</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <HowItWorks />
 
       {/* How to Use Video */}
@@ -256,37 +159,6 @@ export default function HomePage() {
           <p className="text-gray-500 text-sm mt-4">
             업체명 입력부터 완성 영상 다운로드까지, 단 3분이면 충분합니다
           </p>
-        </div>
-      </section>
-
-      {/* Features section */}
-      <section className="py-24 px-6 bg-gradient-to-b from-transparent to-purple-950/10">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold mb-4">
-              왜 <span className="gradient-text">ShortsAI</span>인가요?
-            </h2>
-            <p className="text-gray-400 text-lg">사장님을 위한 가장 쉬운 홍보 영상 솔루션</p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            {features.map((feature) => (
-              <div
-                key={feature.title}
-                className="glass-card p-6 hover:border-purple-500/40 transition-all group"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-xl bg-white/5 group-hover:bg-white/10 transition-colors">
-                    {feature.icon}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-lg mb-2">{feature.title}</h3>
-                    <p className="text-gray-400 text-sm leading-relaxed">{feature.description}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 

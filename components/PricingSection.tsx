@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Zap, Loader2, Clock } from 'lucide-react';
+import { Check, Loader2, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { useSession } from 'next-auth/react';
@@ -74,12 +74,6 @@ const plans = [
   },
 ];
 
-const competitorComparison = [
-  { name: '영상 제작 의뢰', price: '50~100만원/건', weakness: '비용 높음, 수정 어려움' },
-  { name: 'Pictory', price: '$23~99/월', weakness: '영어만 지원' },
-  { name: 'InVideo', price: '$15~30/월', weakness: '한국어 부족, 홍보 특화 아님' },
-  { name: 'ShortsAI', price: '₩0~29,000/월', weakness: '한국어 완벽, 사업장 홍보 특화', isUs: true },
-];
 
 export default function PricingSection() {
   const { data: session } = useSession();
@@ -285,40 +279,6 @@ export default function PricingSection() {
           })}
         </div>
 
-        {/* Competitor comparison */}
-        <div className="glass-card p-6">
-          <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-            <Zap className="w-5 h-5 text-yellow-400" />
-            비용 비교
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left py-2 text-gray-400 font-medium">방법</th>
-                  <th className="text-left py-2 text-gray-400 font-medium">가격</th>
-                  <th className="text-left py-2 text-gray-400 font-medium">특징</th>
-                </tr>
-              </thead>
-              <tbody>
-                {competitorComparison.map((c) => (
-                  <tr
-                    key={c.name}
-                    className={`border-b border-white/5 ${c.isUs ? 'bg-purple-500/10' : ''}`}
-                  >
-                    <td className={`py-3 font-medium ${c.isUs ? 'text-purple-400' : 'text-gray-300'}`}>
-                      {c.isUs && '✨ '}{c.name}
-                    </td>
-                    <td className="py-3 text-gray-300">{c.price}</td>
-                    <td className={`py-3 ${c.isUs ? 'text-green-400' : 'text-gray-400'}`}>
-                      {c.weakness}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
     </section>
     </>
