@@ -265,29 +265,26 @@ export async function POST(req: NextRequest) {
 
     if (validImages.length > 0) {
       fs.mkdirSync(uploadsDir, { recursive: true });
+      const sharp = (await import('sharp')).default;
       for (let i = 0; i < validImages.length; i++) {
         const file = validImages[i];
         const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
-        // Convert HEIC/HEIF → JPEG using sharp (ffmpeg can't read HEIC)
-        if (ext === 'heic' || ext === 'heif') {
-          const savePath = path.join(uploadsDir, `img_${i}.jpg`);
-          try {
-            const sharp = (await import('sharp')).default;
-            await sharp(buffer).jpeg({ quality: 90 }).toFile(savePath);
-            console.log(`[Promo] Converted HEIC → JPEG: ${file.name}`);
-          } catch (convErr) {
-            console.warn(`[Promo] HEIC conversion failed for ${file.name}:`, convErr);
-            fs.writeFileSync(savePath, buffer);
+        // Always convert to JPEG via sharp for compatibility (Claude API + ffmpeg)
+        const savePath = path.join(uploadsDir, `img_${i}.jpg`);
+        try {
+          await sharp(buffer).jpeg({ quality: 90 }).toFile(savePath);
+          if (ext !== 'jpg' && ext !== 'jpeg') {
+            console.log(`[Promo] Converted ${ext.toUpperCase()} → JPEG: ${file.name}`);
           }
-          userImagePaths.push(savePath);
-        } else {
-          const savePath = path.join(uploadsDir, `img_${i}.${ext}`);
+        } catch (convErr) {
+          console.warn(`[Promo] Sharp conversion failed for ${file.name} (${ext}):`, convErr);
+          // Fallback: save original and hope for the best
           fs.writeFileSync(savePath, buffer);
-          userImagePaths.push(savePath);
         }
+        userImagePaths.push(savePath);
       }
       console.log(`[Promo] Saved ${userImagePaths.length} user images for job ${jobId}`);
     }
