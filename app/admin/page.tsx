@@ -161,15 +161,24 @@ export default function AdminPage() {
     }
   }, []);
 
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
+
   const fetchReviews = useCallback(async () => {
     setReviewsLoading(true);
+    setReviewsError(null);
     try {
       const res = await fetch('/api/admin/reviews');
-      if (res.ok) {
-        const data = await res.json();
-        setReviews(data.reviews ?? []);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        setReviewsError(errData.error || `HTTP ${res.status}`);
+        setReviewsLoading(false);
+        return;
       }
-    } catch { /* ignore */ }
+      const data = await res.json();
+      setReviews(data.reviews ?? []);
+    } catch (err) {
+      setReviewsError(err instanceof Error ? err.message : '후기 로드 실패');
+    }
     setReviewsLoading(false);
   }, []);
 
@@ -444,7 +453,9 @@ export default function AdminPage() {
                 </button>
               </div>
 
-              {reviews.length === 0 ? (
+              {reviewsError ? (
+                <p className="text-red-400 text-sm text-center py-4">후기 로드 오류: {reviewsError}</p>
+              ) : reviews.length === 0 ? (
                 <p className="text-gray-500 text-sm text-center py-4">아직 후기가 없습니다.</p>
               ) : (
                 <div className="space-y-3">
