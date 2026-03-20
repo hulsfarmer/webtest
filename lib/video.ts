@@ -760,12 +760,12 @@ export async function generateVideo(
   // ── Build sentence list first (needed for image-script sync) ──
   // Apply stripContactFromText so sentence count matches TTS input exactly.
   // TTS strips phone/URL before splitting; we must do the same here.
-  type SentenceItem = { sentence: string; sectionType: string };
+  type SentenceItem = { sentence: string; sectionType: string; sectionIndex: number };
   const allSentences: SentenceItem[] = [];
   for (let i = 0; i < sections.length; i++) {
     const cleaned = stripContactFromText(sections[i].text);
     for (const sentence of splitIntoSentences(cleaned)) {
-      allSentences.push({ sentence, sectionType: sections[i].type });
+      allSentences.push({ sentence, sectionType: sections[i].type, sectionIndex: i });
     }
   }
   const totalChars = allSentences.reduce((s, item) => s + item.sentence.length, 0);
@@ -797,33 +797,60 @@ export async function generateVideo(
       console.log(`[Video] Mode: user image slideshow (${validUserImages.length} images)`);
       const slideshowPath = path.join(tmpDir, 'slideshow_bg.mp4');
 
-      // Distribute sentences across images so transitions align with speech
+      // Distribute sentences across images by SECTION mapping (not evenly)
+      // Script sections map 1:1 to images — section 0's sentences go to image 0, etc.
       const numImages = validUserImages.length;
-      const numSentences = allSentences.length;
+      const numSections = sections.length;
       const perImageDurations: number[] = [];
 
-      if (numSentences <= numImages) {
-        // Fewer sentences than images: assign 1 sentence per image, extras get equal share of remainder
+      if (numSections === numImages) {
+        // Perfect match: each section's sentences map to corresponding image
         for (let imgIdx = 0; imgIdx < numImages; imgIdx++) {
-          if (imgIdx < numSentences) {
-            perImageDurations.push(sentenceDurations[imgIdx]);
-          } else {
-            perImageDurations.push(0.5); // minimal duration for extra images
-          }
-        }
-      } else {
-        // More sentences than images: distribute sentences evenly across images
-        const sentencesPerImage = Math.floor(numSentences / numImages);
-        const extraSentences = numSentences % numImages;
-        let sentIdx = 0;
-        for (let imgIdx = 0; imgIdx < numImages; imgIdx++) {
-          const count = sentencesPerImage + (imgIdx < extraSentences ? 1 : 0);
           let imgDur = 0;
-          for (let s = 0; s < count && sentIdx < numSentences; s++, sentIdx++) {
-            imgDur += sentenceDurations[sentIdx];
+          for (let sentIdx = 0; sentIdx < allSentences.length; sentIdx++) {
+            if (allSentences[sentIdx].sectionIndex === imgIdx) {
+              imgDur += sentenceDurations[sentIdx];
+            }
           }
           perImageDurations.push(Math.max(imgDur, 0.5));
         }
+        console.log(`[Video] Section-to-image mapping: ${numSections} sections → ${numImages} images (1:1)`);
+      } else if (numImages < numSections) {
+        // Fewer images than sections: group adjacent sections into images
+        const sectionsPerImage = Math.floor(numSections / numImages);
+        const extraSections = numSections % numImages;
+        let secIdx = 0;
+        for (let imgIdx = 0; imgIdx < numImages; imgIdx++) {
+          const count = sectionsPerImage + (imgIdx < extraSections ? 1 : 0);
+          let imgDur = 0;
+          const assignedSections: number[] = [];
+          for (let s = 0; s < count && secIdx < numSections; s++, secIdx++) {
+            assignedSections.push(secIdx);
+          }
+          for (let sentIdx = 0; sentIdx < allSentences.length; sentIdx++) {
+            if (assignedSections.includes(allSentences[sentIdx].sectionIndex)) {
+              imgDur += sentenceDurations[sentIdx];
+            }
+          }
+          perImageDurations.push(Math.max(imgDur, 0.5));
+        }
+        console.log(`[Video] Section-to-image mapping: ${numSections} sections → ${numImages} images (grouped)`);
+      } else {
+        // More images than sections: spread sections across images, extras get minimal duration
+        for (let imgIdx = 0; imgIdx < numImages; imgIdx++) {
+          if (imgIdx < numSections) {
+            let imgDur = 0;
+            for (let sentIdx = 0; sentIdx < allSentences.length; sentIdx++) {
+              if (allSentences[sentIdx].sectionIndex === imgIdx) {
+                imgDur += sentenceDurations[sentIdx];
+              }
+            }
+            perImageDurations.push(Math.max(imgDur, 0.5));
+          } else {
+            perImageDurations.push(0.5); // extra images get minimal duration
+          }
+        }
+        console.log(`[Video] Section-to-image mapping: ${numSections} sections → ${numImages} images (extras padded)`);
       }
 
       // Add buffer to last image for fadeout
