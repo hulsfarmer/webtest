@@ -325,8 +325,11 @@ export async function POST(req: NextRequest) {
 
     const topic = `${businessName} ${businessType} 홍보`;
     await createJob({ id: jobId, sessionId: userId, topic, duration, tone });
-    // Save business_name and business_type for history reuse
-    await supabase.from('jobs').update({ business_name: businessName.trim(), business_type: businessType.trim() }).eq('id', jobId);
+    // Save business_name (and business_type if column exists) for history reuse
+    const updateData: Record<string, string> = { business_name: businessName.trim() };
+    // Try with business_type; if column doesn't exist, retry without it
+    const { error: updateErr } = await supabase.from('jobs').update({ ...updateData, business_type: businessType.trim() }).eq('id', jobId);
+    if (updateErr) await supabase.from('jobs').update(updateData).eq('id', jobId);
     await incrementUsage(userId);
 
     const input: PromoInput = {
@@ -384,7 +387,10 @@ export async function POST(req: NextRequest) {
     const jobId = uuidv4();
     const topic = `${businessName} ${businessType} 홍보`;
     await createJob({ id: jobId, sessionId: userId, topic, duration, tone });
-    await supabase.from('jobs').update({ business_name: businessName.trim(), business_type: businessType.trim() }).eq('id', jobId);
+    // Save business_name (and business_type if column exists) for history reuse
+    const updateData2: Record<string, string> = { business_name: businessName.trim() };
+    const { error: updateErr2 } = await supabase.from('jobs').update({ ...updateData2, business_type: businessType.trim() }).eq('id', jobId);
+    if (updateErr2) await supabase.from('jobs').update(updateData2).eq('id', jobId);
     await incrementUsage(userId);
 
     const input: PromoInput = {

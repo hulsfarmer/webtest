@@ -35,7 +35,12 @@ export async function GET() {
   const limit = HISTORY_LIMITS[plan] || 3;
 
   // 완료된 영상 + 최근 진행 중 영상 조회 (최신순)
-  const { data: jobs, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type JobRow = any;
+  let jobs: JobRow[] | null = null;
+
+  // Try with business_type column first, fallback without it
+  const result1 = await supabase
     .from('jobs')
     .select('id, status, progress, topic, business_name, business_type, duration, tone, script, video_url, error, created_at')
     .eq('user_id', userId)
@@ -43,15 +48,28 @@ export async function GET() {
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  if (error) {
-    console.error('[API/jobs] query error:', error.message);
-    return NextResponse.json({ error: '목록 조회 실패' }, { status: 500 });
+  if (result1.error) {
+    // Fallback: business_type column might not exist yet
+    const result2 = await supabase
+      .from('jobs')
+      .select('id, status, progress, topic, business_name, duration, tone, script, video_url, error, created_at')
+      .eq('user_id', userId)
+      .in('status', ['done', 'failed', 'queued', 'generating_script', 'generating_audio', 'generating_video'])
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (result2.error) {
+      console.error('[API/jobs] query error:', result2.error.message);
+      return NextResponse.json({ error: '목록 조회 실패' }, { status: 500 });
+    }
+    jobs = result2.data;
+  } else {
+    jobs = result1.data;
   }
 
   // 영상 파일 존재 여부 + 이미지 존재 여부 확인
   const videoDir = path.join(process.cwd(), 'public', 'videos');
   const uploadsDir = path.join(process.cwd(), 'data', 'uploads');
-  const items = (jobs || []).map((job) => {
+  const items = (jobs || []).map((job: JobRow) => {
     const videoExists = job.status === 'done' && fs.existsSync(path.join(videoDir, `${job.id}.mp4`));
     // 업로드 이미지 폴더 존재 여부 확인
     const imgDir = path.join(uploadsDir, job.id);
@@ -64,8 +82,8 @@ export async function GET() {
       status: job.status,
       progress: job.progress,
       topic: job.topic,
-      businessName: job.business_name,
-      businessType: job.business_type,
+      businessName: job.business_name ?? null,
+      businessType: job.business_type ?? null,
       duration: job.duration,
       tone: job.tone,
       script: job.script,
