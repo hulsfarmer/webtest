@@ -84,7 +84,7 @@ export default function HomePage() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs sm:text-sm font-medium mb-6 sm:mb-8">
             <Sparkles className="w-3.5 h-3.5" />
-            AI 기반 사업장 홍보영상 자동 생성
+            막강 클로드 기반 사업장 홍보영상 자동 생성
           </div>
 
           {/* Headline — fixed height to prevent CLS */}
