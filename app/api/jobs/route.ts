@@ -37,7 +37,7 @@ export async function GET() {
   // 완료된 영상 + 최근 진행 중 영상 조회 (최신순)
   const { data: jobs, error } = await supabase
     .from('jobs')
-    .select('id, status, progress, topic, business_name, duration, tone, script, video_url, error, created_at')
+    .select('id, status, progress, topic, business_name, business_type, duration, tone, script, video_url, error, created_at')
     .eq('user_id', userId)
     .in('status', ['done', 'failed', 'queued', 'generating_script', 'generating_audio', 'generating_video'])
     .order('created_at', { ascending: false })
@@ -65,6 +65,7 @@ export async function GET() {
       progress: job.progress,
       topic: job.topic,
       businessName: job.business_name,
+      businessType: job.business_type,
       duration: job.duration,
       tone: job.tone,
       script: job.script,

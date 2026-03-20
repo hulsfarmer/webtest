@@ -27,6 +27,7 @@ interface HistoryJob {
   progress: number;
   topic: string | null;
   businessName: string | null;
+  businessType: string | null;
   duration: number | null;
   tone: string | null;
   script: Record<string, unknown> | null;
@@ -108,6 +109,7 @@ export default function HistoryPage() {
     const params = new URLSearchParams();
     if (job.script) params.set('script', JSON.stringify(job.script));
     if (job.businessName) params.set('businessName', job.businessName);
+    if (job.businessType) params.set('businessType', job.businessType);
     if (job.topic) params.set('topic', job.topic);
     if (job.duration) params.set('duration', String(job.duration));
     if (job.tone) params.set('tone', job.tone);

@@ -199,6 +199,7 @@ export default function PromoPage() {
     if (restoredRef.current) return;
     const scriptParam = searchParams.get('script');
     const bnParam = searchParams.get('businessName');
+    const btParam = searchParams.get('businessType');
     const topicParam = searchParams.get('topic');
     const durParam = searchParams.get('duration');
     const toneParam = searchParams.get('tone');
@@ -207,6 +208,7 @@ export default function PromoPage() {
     if (scriptParam || bnParam) {
       restoredRef.current = true;
       if (bnParam) setBusinessName(bnParam);
+      if (btParam) setBusinessType(btParam);
       if (topicParam) setSellingPoints(topicParam);
       if (durParam) setDuration(Number(durParam) || 60);
       if (toneParam) setTone(toneParam);
@@ -482,7 +484,9 @@ export default function PromoPage() {
   }
 
   async function startGeneration() {
-    if (!businessName.trim() || !businessType || !sellingPoints.trim()) return;
+    // scriptDraft가 있으면 이미 스크립트가 생성된 상태 → businessType 없어도 진행
+    if (!businessName.trim() || !sellingPoints.trim()) return;
+    if (!scriptDraft && !businessType) return;
     setError(null);
     setLoading(true);
     setJobId(null);
