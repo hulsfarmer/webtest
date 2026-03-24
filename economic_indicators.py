@@ -190,6 +190,37 @@ def _fetch_stooq(symbol):
         return None
 
 
+
+
+def _fetch_yahoo(symbol):
+    """Yahoo Finance v8에서 지수 최신 종가 가져오기 (stooq보다 빠름)"""
+    try:
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=5d"
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "Accept": "application/json"
+        })
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        result = data["chart"]["result"][0]
+        timestamps = result["timestamp"]
+        closes = result["indicators"]["quote"][0]["close"]
+        valid = [(t, c) for t, c in zip(timestamps, closes) if c is not None]
+        if not valid:
+            return None
+        latest_ts, latest_close = valid[-1]
+        from datetime import timezone
+        latest_date = __import__("datetime").datetime.fromtimestamp(latest_ts, tz=timezone.utc).strftime("%Y-%m-%d")
+        res = {"close": round(latest_close, 4), "date": latest_date}
+        if len(valid) >= 2:
+            res["prev_close"] = round(valid[-2][1], 4)
+        else:
+            res["prev_close"] = latest_close
+        return res
+    except Exception as e:
+        print(f"[지표] Yahoo {symbol} 실패: {e}")
+        return None
+
 def _fetch_naver_index_history(code, count=3):
     """네이버 금융 일별 시세에서 최근 종가 가져오기 (전일 종가 정확)"""
     import re
@@ -214,21 +245,22 @@ def _fetch_naver_index_history(code, count=3):
 
 
 def _fetch_market_indices():
-    """시장 지수 수집: stooq(나스닥/S&P/코스피) + 네이버(코스닥)"""
+    """시장 지수 수집: Yahoo(나스닥/S&P) + 네이버(코스피/코스닥)"""
     indices = []
 
-    # stooq 심볼 매핑
-    stooq_symbols = [
-        ("^ndq", "나스닥", "🇺🇸"),
-        ("^spx", "S&P 500", "🇺🇸"),
-        ("^kospi", "코스피", "🇰🇷"),
+    # 미국 지수 - Yahoo Finance (stooq보다 최신 데이터)
+    yahoo_symbols = [
+        ("^IXIC", "나스닥", "🇺🇸"),
+        ("^GSPC", "S&P 500", "🇺🇸"),
     ]
+    stooq_fallback = {"^IXIC": "^ndq", "^GSPC": "^spx"}
 
-    for symbol, name, emoji in stooq_symbols:
-        data = _fetch_stooq(symbol)
+    for symbol, name, emoji in yahoo_symbols:
+        data = _fetch_yahoo(symbol)
+        if not data:
+            data = _fetch_stooq(stooq_fallback.get(symbol, symbol))
         if data:
-            # 등락: 전일 종가 대비 (정확한 등락률)
-            prev_close = data.get("prev_close", data["open"])
+            prev_close = data.get("prev_close", data.get("open", data["close"]))
             change = round(data["close"] - prev_close, 2)
             change_pct = round(change / prev_close * 100, 2) if prev_close else 0
             indices.append({
@@ -240,7 +272,23 @@ def _fetch_market_indices():
                 "date": data["date"],
             })
 
-    # 코스닥 (stooq에 없음 → 네이버 일별 시세)
+    # 코스피 - 네이버 (stooq 1일 지연 문제로 전환)
+    kospi_rows = _fetch_naver_index_history("KOSPI", 2)
+    if kospi_rows:
+        latest = kospi_rows[0]
+        prev = kospi_rows[1] if len(kospi_rows) >= 2 else None
+        change = round(latest["value"] - prev["value"], 2) if prev else 0
+        change_pct = round(change / prev["value"] * 100, 2) if prev and prev["value"] else 0
+        indices.append({
+            "name": "코스피",
+            "emoji": "🇰🇷",
+            "value": latest["value"],
+            "change": change,
+            "change_pct": change_pct,
+            "date": latest["date"],
+        })
+
+    # 코스닥 - 네이버
     kosdaq_rows = _fetch_naver_index_history("KOSDAQ", 2)
     if kosdaq_rows:
         latest = kosdaq_rows[0]
@@ -451,15 +499,39 @@ def fetch_all_indicators():
                     trend_val = round(yoy - prev_yoy, 1)
 
         elif ind["format"] == "percent":
-            rows = _fetch_fred_csv(ind["id"], 3)
-            if not rows:
-                continue
-            raw_value = rows[-1]["value"]
-            display_val = f"{raw_value:.2f}%"
-            latest_date = rows[-1]["date"]
-            trend_val = None
-            if len(rows) >= 2:
-                trend_val = round(raw_value - rows[-2]["value"], 2)
+            # VIX, 10년 국채금리는 Yahoo Finance에서 실시간 데이터 (FRED 1일 지연 문제)
+            yahoo_map = {"VIXCLS": "^VIX", "DGS10": "^TNX"}
+            yahoo_sym = yahoo_map.get(ind["id"])
+            if yahoo_sym:
+                ydata = _fetch_yahoo(yahoo_sym)
+                if ydata:
+                    raw_value = ydata["close"]
+                    display_val = f"{raw_value:.2f}%"
+                    latest_date = ydata["date"]
+                    trend_val = None
+                    if "prev_close" in ydata:
+                        trend_val = round(raw_value - ydata["prev_close"], 3)
+                    print(f"[지표] Yahoo {yahoo_sym}: {raw_value:.2f}% ({latest_date})")
+                else:
+                    rows = _fetch_fred_csv(ind["id"], 3)
+                    if not rows:
+                        continue
+                    raw_value = rows[-1]["value"]
+                    display_val = f"{raw_value:.2f}%"
+                    latest_date = rows[-1]["date"]
+                    trend_val = None
+                    if len(rows) >= 2:
+                        trend_val = round(raw_value - rows[-2]["value"], 2)
+            else:
+                rows = _fetch_fred_csv(ind["id"], 3)
+                if not rows:
+                    continue
+                raw_value = rows[-1]["value"]
+                display_val = f"{raw_value:.2f}%"
+                latest_date = rows[-1]["date"]
+                trend_val = None
+                if len(rows) >= 2:
+                    trend_val = round(raw_value - rows[-2]["value"], 2)
         else:
             continue
 
