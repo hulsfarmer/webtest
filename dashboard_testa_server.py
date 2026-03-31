@@ -234,6 +234,13 @@ HUB_HTML = """<!DOCTYPE html>
   </div>
   <div class="bot-card">
     <div class="bot-header">
+      <span><span class="status-dot dot-loading" id="dot-coinday"></span><span class="bot-title">코인 단타봇 ⚡</span></span>
+      <span><button class="refresh-btn" onclick="loadCoinDay()">새로고침</button>&nbsp;<a class="bot-link" href="http://138.2.28.57:8081/daytrade" target="_blank">대시보드 ↗</a></span>
+    </div>
+    <div id="coinday-content"><p style="color:#64748b;font-size:12px;padding:10px">로딩 중...</p></div>
+  </div>
+  <div class="bot-card">
+    <div class="bot-header">
       <span><span class="status-dot dot-loading" id="dot-bear"></span><span class="bot-title">🐻 BearHunter (하락장 특화)</span></span>
       <span><button class="refresh-btn" onclick="loadBear()">새로고침</button>&nbsp;<a class="bot-link" href="http://138.2.12.110:8083/" target="_blank">대시보드 ↗</a></span>
     </div>
@@ -340,6 +347,33 @@ async function loadDaytrade() {
   }
 }
 
+async function loadCoinDay() {
+  setDot("coinday","loading");
+  try {
+    const d = await fetch("http://138.2.28.57:8081/api/daytrade").then(r=>r.json());
+    setDot("coinday","ok");
+    const pos = d.positions || {};
+    const posKeys = Object.keys(pos);
+    const todayWR = d.today_count ? Math.round(d.today_wins/d.today_count*100) : 0;
+    let posHTML = posKeys.length
+      ? `<table><tr><th>코인</th><th>진입가</th><th>TP</th><th>SL</th><th>트레일링</th></tr>${posKeys.map(code=>{const p=pos[code];return `<tr><td><b>${p.name||code}</b></td><td>${fmt(p.entry_price)}</td><td class="pos">${fmt(p.tp_price)}</td><td class="neg">${fmt(p.sl_price)}</td><td>${p.trail_active?'<span style="color:#22c55e">ON</span>':'<span style="color:#64748b">대기</span>'}</td></tr>`;}).join("")}</table>`
+      : `<p class="positions-empty">포지션 없음</p>`;
+    document.getElementById("coinday-content").innerHTML = `
+      <div class="cards">
+        <div class="card"><div class="lbl">누적 손익</div><div class="val ${pc(d.total_pnl)}">${d.total_pnl>=0?"+":""}${fmt(d.total_pnl)}원</div></div>
+        <div class="card"><div class="lbl">오늘 손익</div><div class="val ${pc(d.today_pnl)}">${d.today_pnl>=0?"+":""}${fmt(d.today_pnl)}원</div></div>
+        <div class="card"><div class="lbl">오늘 거래/승률</div><div class="val wht" style="font-size:14px">${d.today_count}건 ${todayWR}%</div></div>
+        <div class="card"><div class="lbl">전체 거래/승률</div><div class="val wht" style="font-size:14px">${d.trade_count}건 ${d.win_rate}%</div></div>
+        <div class="card"><div class="lbl">포지션</div><div class="val wht">${posKeys.length}개</div></div>
+      </div>
+      <div class="section-title">보유 포지션</div>${posHTML}
+      <div class="updated">갱신: ${d.updated}</div>`;
+  } catch(e) {
+    setDot("coinday","error");
+    document.getElementById("coinday-content").innerHTML=`<p class="err-msg">❌ 연결 실패<br><small style="color:#64748b">${e.message}</small></p>`;
+  }
+}
+
 async function loadBear() {
   setDot("bear","loading");
   try {
@@ -370,7 +404,7 @@ async function loadBear() {
 
 function loadAll() {
   document.getElementById("global-updated").textContent = "마지막 갱신: "+new Date().toLocaleString("ko-KR")+" · 30초 자동갱신";
-  loadCoin(); loadTesta(); loadEvo(); loadDaytrade(); loadBear();
+  loadCoin(); loadTesta(); loadEvo(); loadDaytrade(); loadCoinDay(); loadBear();
 }
 loadAll();
 setInterval(loadAll, 30000);
