@@ -242,7 +242,7 @@ HUB_HTML = """<!DOCTYPE html>
   <div class="bot-card">
     <div class="bot-header">
       <span><span class="status-dot dot-loading" id="dot-bear"></span><span class="bot-title">🐻 BearHunter (하락장 특화)</span></span>
-      <span><button class="refresh-btn" onclick="loadBear()">새로고침</button>&nbsp;<a class="bot-link" href="http://138.2.12.110:8083/" target="_blank">대시보드 ↗</a></span>
+      <span><button class="refresh-btn" onclick="loadBear()">새로고침</button>&nbsp;<a class="bot-link" href="http://138.2.12.110:8083/bear" target="_blank">대시보드 ↗</a></span>
     </div>
     <div id="bear-content"><p style="color:#64748b;font-size:12px;padding:10px">로딩 중...</p></div>
   </div>
@@ -814,6 +814,152 @@ def api_paper_detail():
 @app.route("/daytrade")
 def daytrade():
     return render_template_string(DAYTRADE_HTML)
+
+@app.route("/bear")
+def bear():
+    return render_template_string(BEAR_HTML)
+
+@app.route("/api/bear")
+def api_bear():
+    return jsonify(load_bear())
+
+
+BEAR_HTML = """<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="30">
+<title>🐻 BearHunter 대시보드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e0e0e0; padding: 20px; }
+h1 { font-size: 1.4rem; color: #f0a040; margin-bottom: 6px; }
+.sub { font-size: 0.78rem; color: #555; margin-bottom: 20px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.card { background: #1a1d27; border-radius: 10px; padding: 14px; text-align: center; border: 1px solid #2a2d3a; }
+.card .lbl { font-size: 0.70rem; color: #777; margin-bottom: 5px; }
+.card .val { font-size: 1.3rem; font-weight: 700; }
+.pos { color: #4cdf90; } .neg { color: #f05e5e; } .neu { color: #7eb8f7; } .wht { color: #e0e0e0; }
+.section { background: #1a1d27; border-radius: 10px; padding: 16px; margin-bottom: 16px; border: 1px solid #2a2d3a; }
+.section-title { font-size: 0.78rem; color: #94a3b8; margin-bottom: 10px; text-transform: uppercase; }
+.chart-wrap { position: relative; height: 200px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.80rem; }
+th { background: #22263a; color: #777; padding: 7px 8px; text-align: left; }
+td { padding: 6px 8px; border-bottom: 1px solid #1e2130; }
+.badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.70rem; }
+.b-pos { background: #1a3a2a; color: #4cdf90; } .b-neg { background: #3a1a1a; color: #f05e5e; }
+.b-neu { background: #1a2a3a; color: #7eb8f7; }
+.halt-badge { color: #f05e5e; font-size: 0.8rem; }
+.ok-badge { color: #4cdf90; font-size: 0.8rem; }
+a.back { font-size: 14px; color: #38bdf8; text-decoration: none; margin-left: 12px; }
+</style>
+</head>
+<body>
+<h1>🐻 BearHunter <span style="font-size:13px;color:#94a3b8">하락장 특화봇 (A:낙폭반등 / B:변동성돌파)</span>
+  <a class="back" href="/hub">← 허브로</a>
+</h1>
+<div class="sub" id="updated">로딩 중...</div>
+
+<div class="cards" id="cards"></div>
+
+<div class="section">
+  <div class="section-title">자산 곡선</div>
+  <div class="chart-wrap"><canvas id="chart"></canvas></div>
+</div>
+<div class="section">
+  <div class="section-title">보유 포지션</div>
+  <div id="pos-table"></div>
+</div>
+<div class="section">
+  <div class="section-title">최근 거래 (20건)</div>
+  <div id="trade-table"></div>
+</div>
+
+<script>
+function pc(v){return v>=0?"pos":"neg";}
+function fmt(n){return n==null?"-":Math.round(n).toLocaleString("ko-KR");}
+
+async function load() {
+  try {
+    const d = await fetch("/api/bear").then(r=>r.json());
+    document.getElementById("updated").textContent = "30초 자동갱신 · 상태: " + (d.halt ? "⛔ 당일 중단" : "● 가동 중");
+
+    document.getElementById("cards").innerHTML = `
+      <div class="card"><div class="lbl">총 자산</div><div class="val neu">${fmt(d.total_assets)}원</div></div>
+      <div class="card"><div class="lbl">수익률</div><div class="val ${pc(d.pnl_pct)}">${d.pnl_pct>=0?"+":""}${d.pnl_pct}%</div></div>
+      <div class="card"><div class="lbl">총 손익</div><div class="val ${pc(d.total_pnl)}">${d.total_pnl>=0?"+":""}${fmt(d.total_pnl)}원</div></div>
+      <div class="card"><div class="lbl">오늘 손익</div><div class="val ${pc(d.today_pnl)}">${d.today_pnl>=0?"+":""}${fmt(d.today_pnl)}원</div></div>
+      <div class="card"><div class="lbl">MDD</div><div class="val neg">${d.mdd}%</div></div>
+      <div class="card"><div class="lbl">거래수 / 승률</div><div class="val wht">${d.trade_count}건 / ${d.win_rate}%</div></div>
+      <div class="card"><div class="lbl">R/R</div><div class="val ${d.rr>=2?"pos":"neg"}">${d.rr}</div></div>
+      <div class="card"><div class="lbl">A/B 전략</div><div class="val wht" style="font-size:14px">${d.a_count}건(${d.a_wr}%) / ${d.b_count}건(${d.b_wr}%)</div></div>
+    `;
+
+    // 자산 곡선
+    const curve = d.curve || [];
+    if (window._chart) window._chart.destroy();
+    window._chart = new Chart(document.getElementById("chart"), {
+      type: "line",
+      data: {
+        labels: curve.map(p=>p.date),
+        datasets: [{
+          data: curve.map(p=>p.capital),
+          borderColor: "#f0a040", backgroundColor: "rgba(240,160,64,0.07)",
+          borderWidth: 2, pointRadius: curve.length>30?0:3, fill: true, tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color:"#555", maxTicksLimit:8 }, grid: { color:"#1a1e2e" } },
+          y: { ticks: { color:"#555", callback: v=>(v/10000).toFixed(0)+"만" }, grid: { color:"#1a1e2e" } }
+        }
+      }
+    });
+
+    // 포지션
+    const pos = d.positions || {};
+    const posKeys = Object.keys(pos);
+    document.getElementById("pos-table").innerHTML = posKeys.length
+      ? `<table><tr><th>종목</th><th>전략</th><th>수량</th><th>매수가</th><th>손절가</th><th>익절가</th><th>진입시각</th></tr>
+         ${posKeys.map(code=>{const p=pos[code]; return `<tr>
+           <td><b>${p.name||code}</b></td>
+           <td><span class="badge ${p.strategy==="A"?"b-neg":"b-neu"}">전략${p.strategy}</span></td>
+           <td>${p.shares}주</td>
+           <td>${fmt(p.entry_price)}원</td>
+           <td class="neg">${fmt(p.sl)}원</td>
+           <td class="${p.tp?"pos":"wht"}">${p.tp?fmt(p.tp)+"원":"타임스탑"}</td>
+           <td>${(p.entry_time||"").slice(0,16)}</td>
+         </tr>`;}).join("")}</table>`
+      : `<p style="color:#555;font-size:0.83rem;padding:8px">보유 포지션 없음</p>`;
+
+    // 최근 거래
+    const trades = d.recent_trades || [];
+    document.getElementById("trade-table").innerHTML = trades.length
+      ? `<table><tr><th>날짜</th><th>종목</th><th>전략</th><th>매수가</th><th>매도가</th><th>손익</th><th>수익률</th><th>사유</th></tr>
+         ${trades.map(t=>`<tr>
+           <td>${(t.date||"").slice(0,10)}</td>
+           <td><b>${t.name||""}</b></td>
+           <td><span class="badge ${t.strategy==="A"?"b-neg":"b-neu"}">전략${t.strategy}</span></td>
+           <td>${fmt(t.entry_price)}원</td>
+           <td>${fmt(t.exit_price)}원</td>
+           <td class="${pc(t.pnl||0)}">${(t.pnl||0)>=0?"+":""}${fmt(t.pnl)}원</td>
+           <td><span class="badge ${(t.pnl_pct||0)>=0?"b-pos":"b-neg"}">${(t.pnl_pct||0)>=0?"+":""}${(t.pnl_pct||0).toFixed(1)}%</span></td>
+           <td style="color:#aaa;font-size:0.75rem">${t.reason||""}</td>
+         </tr>`).join("")}</table>`
+      : `<p style="color:#555;font-size:0.83rem;padding:8px">거래 내역 없음</p>`;
+
+  } catch(e) {
+    document.getElementById("updated").textContent = "❌ 로드 실패: " + e.message;
+  }
+}
+load();
+</script>
+</body>
+</html>"""
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8083, debug=False)
