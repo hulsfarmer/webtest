@@ -451,7 +451,7 @@ tr:hover td { background: #1f2335; }
 </style>
 </head>
 <body>
-<h1>📈 테스타 v2 — 가상거래 대시보드</h1>
+<h1>📈 테스타 v2 — 가상거래 대시보드  &nbsp;<a href="/hub" style="font-size:14px;color:#38bdf8;text-decoration:none">← 허브로</a></h1>
 <p class="updated">마지막 갱신: {{ d.updated }} (60초 자동 새로고침)</p>
 
 <!-- 요약 카드 -->
