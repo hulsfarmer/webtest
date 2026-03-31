@@ -164,6 +164,7 @@ def load_paper():
     }
 
 
+
 # ── BearHunter 데이터 ──────────────────────────────────
 BEAR_INITIAL = 1_000_000
 BEAR_STATE   = os.path.join(BASE, "bear_hunter_state.json")
@@ -200,9 +201,9 @@ def load_bear():
     rr       = abs(avg_win / avg_loss) if avg_loss else 0
 
     a_trades = [t for t in trades if t.get("strategy") == "A"]
-    b_trades = [t for t in trades if t.get("strategy") == "B"]
+    b_trades_list = [t for t in trades if t.get("strategy") == "B"]
     a_wr = len([t for t in a_trades if (t.get("pnl") or 0) > 0]) / len(a_trades) * 100 if a_trades else 0
-    b_wr = len([t for t in b_trades if (t.get("pnl") or 0) > 0]) / len(b_trades) * 100 if b_trades else 0
+    b_wr = len([t for t in b_trades_list if (t.get("pnl") or 0) > 0]) / len(b_trades_list) * 100 if b_trades_list else 0
 
     caps = [p["capital"] for p in curve]
     mdd, peak = 0, caps[0]
@@ -228,12 +229,11 @@ def load_bear():
         "positions":     state.get("positions", {}),
         "recent_trades": list(reversed(trades[-20:])),
         "curve":         curve,
-        "a_trades":      len(a_trades),
-        "b_trades":      len(b_trades),
+        "a_count":       len(a_trades),
+        "b_count":       len(b_trades_list),
         "a_wr":          round(a_wr, 1),
         "b_wr":          round(b_wr, 1),
     }
-
 
 # ── HTML ──────────────────────────────────────────────
 HTML = """<!DOCTYPE html>
@@ -325,16 +325,6 @@ tr:hover td { background: #1f2335; }
   <div class="overview-item">
     <div class="lbl">단타봇 전체 승률</div>
     <div class="val {{ 'pos' if p.win_rate >= 50 else 'neg' }}">{{ p.win_rate }}%</div>
-  </div>
-  <div class="divider"></div>
-  <div class="overview-item">
-    <div class="lbl">BearHunter 수익률</div>
-    <div class="val {{ 'pos' if b.pnl_pct >= 0 else 'neg' }}">{{ "{:+.1f}".format(b.pnl_pct) }}%</div>
-  </div>
-  <div class="divider"></div>
-  <div class="overview-item">
-    <div class="lbl">BearHunter 오늘 손익</div>
-    <div class="val {{ 'pos' if b.today_pnl >= 0 else 'neg' }}">{{ "{:+,}".format(b.today_pnl|int) }}원</div>
   </div>
 </div>
 
@@ -538,29 +528,25 @@ tr:hover td { background: #1f2335; }
     {% endif %}
   </div>
 </div>
-
 <!-- ══ BearHunter 패널 ════════════════════════════════ -->
 <div id="panel-bear" class="panel">
   <p style="font-size:0.78rem;color:#555;margin-bottom:14px;">
     {% if b.halt %}<span style="color:#f05e5e">⛔ 당일 거래 중단</span>{% else %}<span style="color:#4cdf90">● 가동 중</span>{% endif %}
   </p>
-
   <div class="cards">
     <div class="card"><div class="label">총 자산</div><div class="value neu">{{ "{:,}".format(b.total_assets) }}원</div></div>
     <div class="card"><div class="label">수익률</div><div class="value {{ 'pos' if b.pnl_pct >= 0 else 'neg' }}">{{ "{:+.1f}".format(b.pnl_pct) }}%</div></div>
     <div class="card"><div class="label">총 손익</div><div class="value {{ 'pos' if b.total_pnl >= 0 else 'neg' }}">{{ "{:+,}".format(b.total_pnl) }}원</div></div>
     <div class="card"><div class="label">MDD</div><div class="value neg">{{ "{:.1f}".format(b.mdd) }}%</div></div>
     <div class="card"><div class="label">오늘 손익</div><div class="value {{ 'pos' if b.today_pnl >= 0 else 'neg' }}">{{ "{:+,}".format(b.today_pnl|int) }}원</div></div>
-    <div class="card"><div class="label">전체 거래수 / 승률</div><div class="value neu">{{ b.trade_count }}건 / {{ b.win_rate }}%</div></div>
+    <div class="card"><div class="label">거래수 / 승률</div><div class="value neu">{{ b.trade_count }}건 / {{ b.win_rate }}%</div></div>
     <div class="card"><div class="label">R/R</div><div class="value {{ 'pos' if b.rr >= 2 else 'neg' }}">{{ b.rr }}</div></div>
-    <div class="card"><div class="label">A전략 / B전략</div><div class="value neu">{{ b.a_trades }}건({{ b.a_wr }}%) / {{ b.b_trades }}건({{ b.b_wr }}%)</div></div>
+    <div class="card"><div class="label">A전략 / B전략</div><div class="value neu">{{ b.a_count }}건({{ b.a_wr }}%) / {{ b.b_count }}건({{ b.b_wr }}%)</div></div>
   </div>
-
   <div class="section">
     <h2>자산 곡선</h2>
     <div class="chart-wrap"><canvas id="bear-curve"></canvas></div>
   </div>
-
   <div class="section">
     <h2>보유 포지션</h2>
     {% if b.positions %}
@@ -582,7 +568,6 @@ tr:hover td { background: #1f2335; }
     <p style="color:#555;font-size:0.83rem;">보유 포지션 없음</p>
     {% endif %}
   </div>
-
   <div class="section">
     <h2>최근 거래 (최대 20건)</h2>
     {% if b.recent_trades %}
@@ -607,6 +592,7 @@ tr:hover td { background: #1f2335; }
     {% endif %}
   </div>
 </div>
+
 
 <script>
 // 탭 전환
@@ -714,13 +700,13 @@ def hub():
 def api_testa():
     return jsonify(load_testa())
 
-@app.route("/api/paper")
-def api_paper():
-    return jsonify(load_paper())
-
 @app.route("/api/bear")
 def api_bear():
     return jsonify(load_bear())
+
+@app.route("/api/paper")
+def api_paper():
+    return jsonify(load_paper())
 
 if __name__ == "__main__":
     print("통합 대시보드 시작: http://localhost:8083")
