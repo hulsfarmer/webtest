@@ -782,6 +782,77 @@ setInterval(load, 30000);
 </body>
 </html>"""
 
+
+# ── BearHunter 데이터 ──────────────────────────────────
+BEAR_INITIAL = 1_000_000
+BEAR_STATE   = os.path.join(os.path.dirname(__file__), "bear_hunter_state.json")
+BEAR_TRADES  = os.path.join(os.path.dirname(__file__), "bear_hunter_trades.json")
+
+def load_bear():
+    state = {"capital": BEAR_INITIAL, "positions": {}, "total_pnl": 0,
+             "trade_count": 0, "today_pnl": 0, "today_wins": 0,
+             "today_losses": 0, "halt": False}
+    trades = []
+    if os.path.exists(BEAR_STATE):
+        with open(BEAR_STATE) as f:
+            state = json.load(f)
+    if os.path.exists(BEAR_TRADES):
+        with open(BEAR_TRADES) as f:
+            trades = json.load(f)
+
+    curve = [{"date": "시작", "capital": BEAR_INITIAL}]
+    running = BEAR_INITIAL
+    for t in trades:
+        running += t.get("pnl", 0) or 0
+        curve.append({"date": (t.get("date") or "")[:10], "capital": round(running)})
+
+    pos_value    = sum(p.get("shares", 0) * p.get("entry_price", 0)
+                       for p in state.get("positions", {}).values())
+    total_assets = state["capital"] + pos_value
+    pnl_pct      = (total_assets - BEAR_INITIAL) / BEAR_INITIAL * 100
+
+    wins     = [t for t in trades if (t.get("pnl") or 0) > 0]
+    losses   = [t for t in trades if (t.get("pnl") or 0) <= 0]
+    win_rate = len(wins) / len(trades) * 100 if trades else 0
+    avg_win  = sum(t.get("pnl_pct", 0) for t in wins)  / len(wins)  if wins   else 0
+    avg_loss = sum(t.get("pnl_pct", 0) for t in losses) / len(losses) if losses else 0
+    rr       = abs(avg_win / avg_loss) if avg_loss else 0
+
+    a_trades = [t for t in trades if t.get("strategy") == "A"]
+    b_trades = [t for t in trades if t.get("strategy") == "B"]
+    a_wr = len([t for t in a_trades if (t.get("pnl") or 0) > 0]) / len(a_trades) * 100 if a_trades else 0
+    b_wr = len([t for t in b_trades if (t.get("pnl") or 0) > 0]) / len(b_trades) * 100 if b_trades else 0
+
+    caps = [p["capital"] for p in curve]
+    mdd, peak = 0, caps[0]
+    for c in caps:
+        peak = max(peak, c)
+        mdd  = min(mdd, (c - peak) / peak * 100)
+
+    return {
+        "capital":       round(state["capital"]),
+        "total_assets":  round(total_assets),
+        "pnl_pct":       round(pnl_pct, 1),
+        "total_pnl":     round(state.get("total_pnl", 0)),
+        "today_pnl":     state.get("today_pnl", 0),
+        "today_wins":    state.get("today_wins", 0),
+        "today_losses":  state.get("today_losses", 0),
+        "halt":          state.get("halt", False),
+        "trade_count":   len(trades),
+        "win_rate":      round(win_rate, 1),
+        "avg_win":       round(avg_win, 1),
+        "avg_loss":      round(avg_loss, 1),
+        "rr":            round(rr, 2),
+        "mdd":           round(mdd, 1),
+        "positions":     state.get("positions", {}),
+        "recent_trades": list(reversed(trades[-20:])),
+        "curve":         curve,
+        "a_count":       len(a_trades),
+        "b_count":       len(b_trades),
+        "a_wr":          round(a_wr, 1),
+        "b_wr":          round(b_wr, 1),
+    }
+
 # ── Flask 앱 ──────────────────────────────────────────────────
 app = Flask(__name__)
 
