@@ -519,7 +519,11 @@ async function toggleMode() {
   if (!isLive) {
     if (!confirm("⚠️ 실거래로 전환하시겠습니까?\\n실제 자금이 사용됩니다!")) return;
   }
-  await fetch("/api/daytrade/toggle-mode");
+  const pin = prompt("PIN 입력:");
+  if (!pin) return;
+  const r = await fetch("/api/daytrade/toggle-mode", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({pin})});
+  const d2 = await r.json();
+  if (d2.error) { alert(d2.error); return; }
   loadAll();
 }
 loadAll();
@@ -555,22 +559,11 @@ class _Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
         elif self.path == "/api/daytrade/toggle-mode":
-            mode_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "daytrade_coin_mode.json")
-            current = False
-            try:
-                if os.path.exists(mode_path):
-                    with open(mode_path) as f:
-                        current = json.load(f).get("live", False)
-            except:
-                pass
-            new_mode = not current
-            with open(mode_path, "w") as f:
-                json.dump({"live": new_mode, "changed": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, f)
-            body = json.dumps({"live": new_mode, "mode": "실거래" if new_mode else "모의거래"}, ensure_ascii=False).encode("utf-8")
-            self.send_response(200)
+            # GET은 거부 — POST만 허용
+            body = json.dumps({"error": "POST 요청만 허용됩니다"}, ensure_ascii=False).encode("utf-8")
+            self.send_response(405)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
-            self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(body)
         elif self.path == "/api/daytrade":
@@ -606,6 +599,47 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(html)
+
+    def do_POST(self):
+        if self.path == "/api/daytrade/toggle-mode":
+            TOGGLE_PIN = "9482"  # 실거래 전환 PIN
+            content_len = int(self.headers.get("Content-Length", 0))
+            raw = self.rfile.read(content_len) if content_len > 0 else b"{}"
+            try:
+                data = json.loads(raw)
+            except:
+                data = {}
+            pin = data.get("pin", "")
+            if pin != TOGGLE_PIN:
+                body = json.dumps({"error": "PIN이 올바르지 않습니다"}, ensure_ascii=False).encode("utf-8")
+                self.send_response(403)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            mode_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "daytrade_coin_mode.json")
+            current = False
+            try:
+                if os.path.exists(mode_path):
+                    with open(mode_path) as f:
+                        current = json.load(f).get("live", False)
+            except:
+                pass
+            new_mode = not current
+            with open(mode_path, "w") as f:
+                json.dump({"live": new_mode, "changed": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, f)
+            body = json.dumps({"live": new_mode, "mode": "실거래" if new_mode else "모의거래"}, ensure_ascii=False).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(body)
+        else:
+            self.send_response(404)
+            self.end_headers()
 
     def log_message(self, format, *args):
         pass  # 액세스 로그 비활성
