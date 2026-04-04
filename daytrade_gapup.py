@@ -439,13 +439,33 @@ def before(t: str) -> bool:
 
 
 # ── 메인 ──────────────────────────────────────────────
-def main():
+def sleep_until_next_trading():
+    """다음 거래일 08:50까지 대기"""
+    now = datetime.now()
+    tomorrow = now + timedelta(days=1)
+    next_start = tomorrow.replace(hour=8, minute=50, second=0, microsecond=0)
+
+    # 금요일 장 마감 → 월요일까지
+    dow = now.weekday()
+    if dow == 4:  # 금요일
+        next_start += timedelta(days=2)
+    elif dow == 5:  # 토요일
+        next_start += timedelta(days=1)
+
+    wait = (next_start - now).total_seconds()
+    if wait > 0:
+        log.info(f"다음 거래일 대기: {next_start.strftime('%Y-%m-%d %H:%M')} ({wait/3600:.1f}시간)")
+        time.sleep(wait)
+
+
+def run_day():
+    """하루치 거래 실행. 정상 종료 시 True 반환."""
     today = datetime.now().strftime("%Y-%m-%d")
     dow = datetime.now().weekday()
 
     if dow >= 5:
-        log.info(f"주말 — 종료")
-        return
+        log.info(f"주말 — 다음 거래일까지 대기")
+        return True
 
     if not APP_KEY or not APP_SECRET:
         log.error(".env에 APP_KEY, APP_SECRET 필요")
@@ -482,7 +502,8 @@ def main():
                 log.info("거래 없음")
             log.info(f"{'='*55}")
             port.save_state()
-            break
+            conn.close()
+            return True
 
         # 09:00~: 워치리스트 구성
         if after("09:00") and not watchlist:
@@ -585,6 +606,17 @@ def main():
             log.info(f"[{current}] 진입 중단 | {port.status()}")
 
         time.sleep(SCAN_INTERVAL)
+
+
+def main():
+    """무한 루프: 매일 장 운영 → 장 마감 후 다음 거래일까지 대기"""
+    log.info("갭상승 단타봇 — 상시 운영 모드 시작")
+    while True:
+        try:
+            run_day()
+        except Exception as e:
+            log.error(f"run_day 오류: {e}", exc_info=True)
+        sleep_until_next_trading()
 
 
 if __name__ == "__main__":
