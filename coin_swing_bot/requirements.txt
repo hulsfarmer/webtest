@@ -1,0 +1,5 @@
+pyupbit
+python-dotenv
+flask
+requests
+pandas
