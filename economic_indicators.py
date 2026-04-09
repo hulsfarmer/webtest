@@ -25,7 +25,7 @@ FRED_INDICATORS = [
         "impact_high": "금리 높음 → 돈 빌리기 비쌈 → 주식시장 부담",
         "impact_low": "금리 낮음 → 돈 빌리기 쉬움 → 주식시장 호재",
         "good_direction": "down",
-        "weight": 10,  # 매크로 (6~8주 변동)
+        "weight": 5,  # 매크로 (6~8주 변동, 하향)
         "category": "미국",
         # 점수 매핑: (값, 점수) — 선형보간
         "score_map": [(3.0, 90), (3.5, 70), (4.0, 50), (4.5, 30), (5.0, 10)],
@@ -39,7 +39,7 @@ FRED_INDICATORS = [
         "impact_high": "물가 상승 → 금리 인상 지속 → 코스피 하락 압력",
         "impact_low": "물가 안정 → 금리 인하 기대 → 코스피 상승 기대",
         "good_direction": "down",
-        "weight": 7,  # 매크로 (월 1회)
+        "weight": 4,  # 매크로 (월 1회, 하향)
         "category": "미국",
         "score_map": [(1.5, 95), (2.0, 80), (2.5, 65), (3.0, 50), (3.5, 35), (4.0, 20), (5.0, 5)],
     },
@@ -52,7 +52,7 @@ FRED_INDICATORS = [
         "impact_high": "실업률 높음 → 경기 둔화 → 금리 인하 기대",
         "impact_low": "실업률 낮음 → 경기 과열 가능 → 금리 인상 우려",
         "good_direction": "neutral",
-        "weight": 4,  # 매크로 (월 1회)
+        "weight": 2,  # 매크로 (월 1회, 하향)
         "category": "미국",
         # 적정 실업률 3.5~4.5%가 건강한 경제
         "score_map": [(3.0, 60), (3.5, 75), (4.0, 70), (4.5, 55), (5.0, 40), (6.0, 20)],
@@ -66,7 +66,7 @@ FRED_INDICATORS = [
         "impact_high": "성장률 높음 → 경제 탄탄 → 기업 실적 기대",
         "impact_low": "성장률 낮음 → 경기 둔화 우려 → 주식시장 불안",
         "good_direction": "up",
-        "weight": 4,  # 매크로 (분기 1회)
+        "weight": 2,  # 매크로 (분기 1회, 하향)
         "category": "미국",
         "score_map": [(-1.0, 5), (0.0, 25), (1.0, 50), (2.0, 70), (3.0, 85), (4.0, 75), (5.0, 60)],
     },
@@ -92,7 +92,7 @@ FRED_INDICATORS = [
         "impact_high": "2%보다 높으면 → 금리 인하 어려움",
         "impact_low": "2%에 가까워지면 → 금리 인하 기대",
         "good_direction": "down",
-        "weight": 5,  # 매크로 (월 1회)
+        "weight": 3,  # 매크로 (월 1회, 하향)
         "category": "미국",
         "score_map": [(1.5, 95), (2.0, 80), (2.5, 60), (3.0, 40), (3.5, 25), (4.0, 10)],
     },
@@ -302,6 +302,21 @@ def _fetch_market_indices():
             "change": change,
             "change_pct": change_pct,
             "date": latest["date"],
+        })
+
+    # 상해지수 - Yahoo Finance (000001.SS)
+    shanghai_data = _fetch_yahoo("000001.SS")
+    if shanghai_data:
+        prev = shanghai_data.get("prev_close", shanghai_data["close"])
+        change = round(shanghai_data["close"] - prev, 2)
+        change_pct = round(change / prev * 100, 2) if prev else 0
+        indices.append({
+            "name": "상해종합",
+            "emoji": "🇨🇳",
+            "value": shanghai_data["close"],
+            "change": change,
+            "change_pct": change_pct,
+            "date": shanghai_data["date"],
         })
 
     return indices
@@ -627,7 +642,7 @@ def fetch_all_indicators():
     # 나스닥/S&P500 등락률을 점수에 반영
     # 전일 미국 시장이 올랐으면 → 코스피 긍정, 내렸으면 → 코스피 부담
     index_score_map = {
-        "나스닥": 20,   # 실시간 (가장 높은 가중치)
+        "나스닥": 25,   # 실시간 (가장 높은 가중치, 상향)
         "S&P 500": 15,  # 실시간
     }
     for idx in indices:
@@ -667,6 +682,70 @@ def fetch_all_indicators():
             "kospi_impact": kospi_impact,
             "score": score,
             "weight": index_score_map[name],
+        })
+
+    # 원/달러 일일 변동률 — 절대값(level)과 별도로 단기 수급 신호
+    for idx in indices:
+        if idx["name"] == "상해종합":
+            pct = idx.get("change_pct", 0)
+            if pct <= -2:
+                score = 10
+            elif pct >= 2:
+                score = 90
+            else:
+                score = max(5, min(95, round(50 + pct * 20)))
+            kospi_impact = "코스피 긍정적" if pct > 0.3 else ("코스피 부담" if pct < -0.3 else "")
+            results.append({
+                "id": "INDEX_상해종합",
+                "name": "상해종합 등락",
+                "emoji": "🇨🇳",
+                "category": "중국",
+                "value": f"{pct:+.2f}%",
+                "raw_value": pct,
+                "date": idx["date"],
+                "trend_icon": "⬆️" if pct > 0 else ("⬇️" if pct < 0 else "➡️"),
+                "trend_label": "상승" if pct > 0.1 else ("하락" if pct < -0.1 else "보합"),
+                "trend_val": pct,
+                "explain": "전일 상해종합지수 등락률 → 중국 수출 비중 25%로 코스피 직결",
+                "impact_high": "상해 상승 → 중국 소비 기대감 → 한국 수출주 강세",
+                "impact_low": "상해 하락 → 중국 경기 우려 → 코스피 하락 압력",
+                "kospi_impact": kospi_impact,
+                "score": score,
+                "weight": 12,
+            })
+
+    # 원/달러 일일 변동률 (절대 레벨과 별도로 단기 수급 신호)
+    fx_daily_change = None
+    for r in results:
+        if r["id"] == "USDKRW":
+            fx_daily_change = r.get("trend_val")
+            break
+    if fx_daily_change is not None:
+        # 변동폭: -20원=90(원화강세 호재), 0=50, +20원=10(원화약세 부담)
+        if fx_daily_change <= -20:
+            fx_score = 90
+        elif fx_daily_change >= 20:
+            fx_score = 10
+        else:
+            fx_score = max(5, min(95, round(50 - fx_daily_change * 2)))
+        kospi_impact = "코스피 긍정적" if fx_daily_change < -2 else ("코스피 부담" if fx_daily_change > 2 else "")
+        results.append({
+            "id": "USDKRW_CHANGE",
+            "name": "원/달러 일변동",
+            "emoji": "📉" if fx_daily_change < 0 else "📈",
+            "category": "한국",
+            "value": f"{fx_daily_change:+.1f}원",
+            "raw_value": fx_daily_change,
+            "date": results[0]["date"] if results else "",
+            "trend_icon": "⬇️" if fx_daily_change < -1 else ("⬆️" if fx_daily_change > 1 else "➡️"),
+            "trend_label": "원화강세" if fx_daily_change < -1 else ("원화약세" if fx_daily_change > 1 else "보합"),
+            "trend_val": fx_daily_change,
+            "explain": "전일 대비 원/달러 변동폭 → 외국인 수급 신호",
+            "impact_high": "원화 약세(환율 상승) → 외국인 달러환산 손실 → 매도 압력",
+            "impact_low": "원화 강세(환율 하락) → 외국인 수익 증가 → 매수 유입",
+            "kospi_impact": kospi_impact,
+            "score": fx_score,
+            "weight": 13,
         })
 
     if results:
@@ -762,19 +841,13 @@ def build_indicators_html(indicators=None, compact=False):
     # 시장 지수 (나스닥, S&P500, 코스피, 코스닥)
     html += indices_html
 
-    # 시장 영향력 점수 게이지
+    # 시장 영향력 점수 (compact)
     html += f"""
-        <div style="background:{gauge_bg}; border:2px solid {gauge_color}; border-radius:12px; padding:20px; margin-bottom:15px; text-align:center;">
-            <div style="font-size:0.9em; color:#718096; margin-bottom:5px;">시장 영향력 점수</div>
-            <div style="font-size:2.5em; font-weight:800; color:{gauge_color};">{score}<span style="font-size:0.4em; font-weight:400;">점</span></div>
-            <div style="font-size:1.1em; font-weight:600; color:{gauge_color}; margin:3px 0;">{label}</div>
-            <div style="font-size:0.85em; color:#4a5568;">{detail}</div>
-            <div style="margin-top:10px; background:#e2e8f0; border-radius:10px; height:10px; overflow:hidden;">
-                <div style="background:{gauge_color}; height:100%; width:{score}%; border-radius:10px; transition:width 0.5s;"></div>
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size:0.7em; color:#a0aec0; margin-top:3px;">
-                <span>0 (매우 부정)</span><span>50 (중립)</span><span>100 (매우 긍정)</span>
-            </div>
+        <div style="background:#fff; border-radius:8px; border:1px solid #e2e8f0; padding:12px; margin-bottom:12px; text-align:center;">
+            <span style="color:#718096; font-size:0.85em;">시장 영향력 점수</span>
+            <span style="color:{gauge_color}; font-weight:700; font-size:1.1em; margin-left:8px;">{label}</span>
+            <span style="color:#a0aec0; font-size:0.8em; margin-left:5px;">({score}점)</span>
+            <span style="color:#cbd5e0; font-size:0.75em; margin-left:8px;">— {detail}</span>
         </div>
 """
 

@@ -68,10 +68,12 @@ def record_prediction(date, market_score, market_label, news_score,
                       nasdaq_pct=0, sp500_pct=0):
     """아침 6시: 시장 점수 예측 기록"""
     conn = sqlite3.connect(DB_PATH)
-    # 방향 예측: 점수 55+ = 상승, 45- = 하락, 중간 = 보합
-    if market_score >= 55:
+    # 복합 점수: 시장 지표(70%) + 뉴스(30%) — 뉴스도 방향 예측에 반영
+    combo = round(market_score * 0.7 + news_score * 0.3)
+    # 보합 기준 48~52로 좁힘 (기존 45~55에서 보합함정 4/6 오류 발생)
+    if combo >= 52:
         direction = "상승"
-    elif market_score <= 45:
+    elif combo <= 48:
         direction = "하락"
     else:
         direction = "보합"
@@ -592,6 +594,11 @@ def feedback_on_morning(indicators, indices, scored_news):
 
 def feedback_on_close():
     """장 마감 후 호출: 실제 코스피/코스닥 종가 기록 (네이버 우선)"""
+    # 주말(토/일) 스킵 — 시장 데이터 없음
+    if datetime.now().weekday() >= 5:
+        print("[피드백] 주말 — 스킵")
+        return {"ready": False, "message": "주말 스킵"}
+
     from economic_indicators import _fetch_naver_index_history
 
     today = datetime.now().strftime("%Y-%m-%d")

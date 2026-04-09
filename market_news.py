@@ -136,13 +136,130 @@ def _fallback_score(headlines):
     return results
 
 
+
+
+# ── 지정학적/글로벌 리스크 뉴스 ──
+
+GEO_KEYWORDS = [
+    "전쟁", "미사일", "폭격", "침공", "군사", "핵",
+    "관세", "무역전쟁", "제재", "보복관세", "수출규제",
+    "트럼프", "바이든", "시진핑", "푸틴",
+    "OPEC", "유가", "원유", "금값",
+    "디폴트", "부도", "금융위기", "뱅크런", "서킷브레이커",
+    "팬데믹", "봉쇄", "록다운",
+    "war", "missile", "tariff", "sanction", "invasion",
+]
+
+GEO_POSITIVE_KW = ["휴전", "평화", "합의", "해제", "완화", "협상타결", "정전"]
+GEO_NEGATIVE_KW = ["전쟁", "미사일", "침공", "폭격", "핵", "제재", "보복", "위기",
+                    "디폴트", "부도", "봉쇄", "서킷브레이커", "war", "invasion", "sanction"]
+
+
+def fetch_geopolitical_news():
+    """구글 뉴스 RSS에서 지정학적 리스크 뉴스 수집"""
+    import xml.etree.ElementTree as ET
+    
+    geo_headlines = []
+    
+    # 한국어 구글 뉴스: 주요 키워드별 검색
+    search_queries = [
+        "전쟁+주식시장",
+        "관세+코스피",
+        "지정학+리스크",
+        "글로벌+위기+증시",
+    ]
+    
+    for query in search_queries:
+        try:
+            encoded_q = urllib.request.quote(query, safe="+")
+            url = f"https://news.google.com/rss/search?q={encoded_q}&hl=ko&gl=KR&ceid=KR:ko"
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            })
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                xml_text = resp.read().decode("utf-8")
+            root = ET.fromstring(xml_text)
+            items = root.findall(".//item/title")
+            for item in items[:3]:  # 쿼리당 3개
+                title = item.text or ""
+                # 키워드 매칭 확인
+                if any(kw in title for kw in GEO_KEYWORDS):
+                    if title not in geo_headlines:
+                        geo_headlines.append(title)
+        except Exception as e:
+            print(f"[지정학] 구글뉴스 검색 실패 ({query}): {e}")
+            continue
+    
+    if not geo_headlines:
+        return []
+    
+    print(f"[지정학] {len(geo_headlines)}개 지정학적 뉴스 감지")
+    return geo_headlines[:5]  # 최대 5개
+
+
+def score_geopolitical_news(geo_headlines):
+    """지정학적 뉴스를 키워드 기반으로 점수화 (API 비용 없음)"""
+    if not geo_headlines:
+        return 0, []
+    
+    scored = []
+    for h in geo_headlines:
+        score = 0
+        for kw in GEO_NEGATIVE_KW:
+            if kw in h.lower():
+                score -= 2
+        for kw in GEO_POSITIVE_KW:
+            if kw in h.lower():
+                score += 2
+        score = max(-5, min(5, score))
+        scored.append({"headline": h, "score": score})
+    
+    # 평균 점수 (-5 ~ +5)
+    avg_score = sum(s["score"] for s in scored) / len(scored) if scored else 0
+    return avg_score, scored
+
+
+def get_geopolitical_risk_score():
+    """지정학적 리스크 점수 반환 (0~100 스케일, 50=중립)
+    뉴스가 없으면 50(중립) 반환."""
+    headlines = fetch_geopolitical_news()
+    if not headlines:
+        return 50, []
+    
+    avg_score, scored = score_geopolitical_news(headlines)
+    # -5~+5 → 0~100
+    risk_score = round(50 + avg_score * 10)
+    risk_score = max(0, min(100, risk_score))
+    
+    print(f"[지정학] 리스크 점수: {risk_score} (뉴스 {len(scored)}개, 평균 {avg_score:+.1f})")
+    return risk_score, scored
+
+
 def fetch_and_score_news():
     """전체 프로세스: 수집 → 점수화 → 캐시"""
     # 캐시 확인
     cached = _load_cache()
     if cached:
         print(f"[시장뉴스] 캐시 사용 ({cached.get('cached_at', '?')})")
-        return cached.get("news", []), cached.get("headlines", [])
+        scored = cached.get("news", [])
+        headlines = cached.get("headlines", [])
+        # 지정학 뉴스는 캐시와 별개로 항상 수집 (빠르게 변하는 글로벌 이벤트)
+        try:
+            geo_score, geo_items = get_geopolitical_risk_score()
+            if geo_items:
+                # 기존 지정학 뉴스 제거 후 최신으로 교체
+                scored = [n for n in scored if not n.get("geo")]
+                for g in geo_items:
+                    scored.append({
+                        "summary": g["headline"][:30],
+                        "score": g["score"],
+                        "stocks": [],
+                        "stock_impact": 0,
+                        "geo": True,
+                    })
+        except Exception as ge:
+            print(f"[지정학] 캐시+지정학 수집 실패: {ge}")
+        return scored, headlines
 
     headlines = fetch_naver_headlines(10)
     if not headlines:
@@ -153,18 +270,44 @@ def fetch_and_score_news():
     # 캐시 저장
     _save_cache(scored, headlines)
 
+    # 지정학적 뉴스 수집 + 점수 반영
+    try:
+        geo_score, geo_items = get_geopolitical_risk_score()
+        if geo_items:
+            # 지정학 뉴스를 scored에 추가 (블로그 표시용)
+            for g in geo_items:
+                scored.append({
+                    "summary": "🌍 " + g["headline"][:30],
+                    "score": g["score"],
+                    "stocks": [],
+                    "stock_impact": 0,
+                    "geo": True,
+                })
+    except Exception as ge:
+        print(f"[지정학] 수집 실패: {ge}")
+
     return scored, headlines
 
 
 def get_market_news_score(scored_news):
-    """시장 뉴스 종합 점수 (0~100 스케일)"""
+    """시장 뉴스 종합 점수 (0~100 스케일) — 지정학 뉴스 가중 반영"""
     if not scored_news:
         return 50  # 중립
 
-    total = sum(n.get("score", 0) for n in scored_news)
-    avg = total / len(scored_news)  # -5 ~ +5
-    # -5~+5 → 0~100 변환
-    score = round(50 + avg * 10)
+    # 일반 뉴스와 지정학 뉴스 분리
+    regular = [n for n in scored_news if not n.get("geo")]
+    geo = [n for n in scored_news if n.get("geo")]
+    
+    regular_avg = sum(n.get("score", 0) for n in regular) / len(regular) if regular else 0
+    geo_avg = sum(n.get("score", 0) for n in geo) / len(geo) if geo else 0
+    
+    if geo:
+        # 지정학 뉴스가 있으면: 일반(60%) + 지정학(40%)
+        combined = regular_avg * 0.6 + geo_avg * 0.4
+    else:
+        combined = regular_avg
+    
+    score = round(50 + combined * 10)
     return max(0, min(100, score))
 
 
