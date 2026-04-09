@@ -1,6 +1,7 @@
 """MarketSignal - 시장 점수 피드백 시스템
 매일 시장 점수(예측)와 실제 코스피 등락(결과)을 기록하고,
 상관관계를 계산하여 신뢰도를 축적한다.
+포스트모템: 예측이 틀린 원인을 분석하여 개선 데이터를 축적한다.
 """
 import sqlite3
 import json
@@ -35,6 +36,28 @@ def init_feedback_db():
             -- 메타
             created_at TEXT,
             validated_at TEXT
+        )
+    """)
+    # 포스트모템 테이블
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS prediction_postmortem (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL UNIQUE,
+            correct INTEGER DEFAULT 0,
+            market_score INTEGER DEFAULT 0,
+            news_score INTEGER DEFAULT 0,
+            kospi_change_pct REAL DEFAULT 0,
+            -- 지표별 기여 분석
+            indicator_breakdown TEXT DEFAULT '[]',
+            -- 오류 분류
+            error_type TEXT DEFAULT '',
+            error_factors TEXT DEFAULT '[]',
+            -- 핵심 교훈
+            lesson TEXT DEFAULT '',
+            -- 누적 통계 스냅샷
+            cumulative_accuracy REAL DEFAULT 0,
+            cumulative_correlation REAL DEFAULT 0,
+            created_at TEXT
         )
     """)
     conn.commit()
@@ -220,6 +243,330 @@ def _pearson(x, y):
     return cov / (sx * sy)
 
 
+# ── 포스트모템 분석 ──
+
+def analyze_prediction(date):
+    """예측과 실제의 차이 원인을 분석하여 postmortem 테이블에 저장"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+
+    row = conn.execute(
+        "SELECT * FROM market_feedback WHERE date=? AND validated_at IS NOT NULL",
+        (date,)
+    ).fetchone()
+    if not row:
+        conn.close()
+        return None
+
+    # 주말 체크
+    d = datetime.strptime(date, "%Y-%m-%d")
+    if d.weekday() >= 5:
+        conn.close()
+        return None
+
+    market_score = row["market_score"]
+    news_score = row["news_score"]
+    kospi_pct = row["kospi_change_pct"]
+    nasdaq_pct = row["nasdaq_pct"]
+    sp500_pct = row["sp500_pct"]
+    correct = row["correct"]
+    pred = row["prediction_direction"]
+    actual = row["actual_direction"]
+
+    # ── 1. 지표별 기여 분석 (캐시에서 당일 지표 복원 시도) ──
+    indicator_breakdown = _analyze_indicators_for_date(
+        market_score, news_score, nasdaq_pct, sp500_pct, kospi_pct
+    )
+
+    # ── 2. 오류 분류 ──
+    error_type, error_factors = _classify_error(
+        correct, market_score, news_score, kospi_pct,
+        nasdaq_pct, sp500_pct, pred, actual
+    )
+
+    # ── 3. 교훈 도출 ──
+    lesson = _derive_lesson(error_type, error_factors, market_score,
+                            news_score, kospi_pct, nasdaq_pct, pred, actual)
+
+    # ── 4. 누적 통계 ──
+    reliability = calc_reliability()
+    cum_acc = reliability.get("accuracy", 0)
+    cum_corr = reliability.get("correlation", 0)
+
+    # 저장
+    conn.execute("""
+        INSERT OR REPLACE INTO prediction_postmortem
+        (date, correct, market_score, news_score, kospi_change_pct,
+         indicator_breakdown, error_type, error_factors, lesson,
+         cumulative_accuracy, cumulative_correlation, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (date, correct, market_score, news_score, kospi_pct,
+          json.dumps(indicator_breakdown, ensure_ascii=False),
+          error_type,
+          json.dumps(error_factors, ensure_ascii=False),
+          lesson, cum_acc, cum_corr, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+
+    print(f"[포스트모템] {date}: {error_type}")
+    if error_factors:
+        for f in error_factors:
+            print(f"  - {f}")
+    print(f"  교훈: {lesson}")
+
+    return {
+        "date": date, "correct": correct,
+        "error_type": error_type, "error_factors": error_factors,
+        "lesson": lesson,
+    }
+
+
+def _analyze_indicators_for_date(market_score, news_score, nasdaq_pct, sp500_pct, kospi_pct):
+    """지표별 기여도 분석 — 어떤 지표가 맞고/틀렸는지"""
+    breakdown = []
+
+    # 나스닥 신호 vs 실제
+    nasdaq_signal = "긍정" if nasdaq_pct > 0.3 else ("부정" if nasdaq_pct < -0.3 else "중립")
+    actual_signal = "상승" if kospi_pct > 0.3 else ("하락" if kospi_pct < -0.3 else "보합")
+    nasdaq_correct = (nasdaq_pct > 0 and kospi_pct > 0) or (nasdaq_pct < 0 and kospi_pct < 0)
+    breakdown.append({
+        "name": "나스닥", "weight": 20, "signal": nasdaq_signal,
+        "value": nasdaq_pct, "correct": nasdaq_correct,
+        "note": f"나스닥 {nasdaq_pct:+.2f}% → 코스피 {kospi_pct:+.2f}%"
+    })
+
+    # S&P 500 신호
+    sp_signal = "긍정" if sp500_pct > 0.3 else ("부정" if sp500_pct < -0.3 else "중립")
+    sp_correct = (sp500_pct > 0 and kospi_pct > 0) or (sp500_pct < 0 and kospi_pct < 0)
+    breakdown.append({
+        "name": "S&P500", "weight": 15, "signal": sp_signal,
+        "value": sp500_pct, "correct": sp_correct,
+        "note": f"S&P500 {sp500_pct:+.2f}% → 코스피 {kospi_pct:+.2f}%"
+    })
+
+    # 뉴스 점수 신호
+    news_signal = "긍정" if news_score > 55 else ("부정" if news_score < 45 else "중립")
+    news_correct = (news_score > 55 and kospi_pct > 0.3) or \
+                   (news_score < 45 and kospi_pct < -0.3) or \
+                   (45 <= news_score <= 55 and abs(kospi_pct) <= 0.3)
+    breakdown.append({
+        "name": "뉴스점수", "weight": 0, "signal": news_signal,
+        "value": news_score, "correct": news_correct,
+        "note": f"뉴스 {news_score}점, 실제 {actual_signal}"
+    })
+
+    # 종합 점수 vs 실제 방향
+    score_signal = "상승" if market_score >= 55 else ("하락" if market_score <= 45 else "보합")
+    score_correct = (score_signal == actual_signal)
+    breakdown.append({
+        "name": "종합점수", "weight": 100, "signal": score_signal,
+        "value": market_score, "correct": score_correct,
+        "note": f"종합 {market_score}점({score_signal}) vs 실제 {actual_signal}"
+    })
+
+    return breakdown
+
+
+def _classify_error(correct, market_score, news_score, kospi_pct,
+                    nasdaq_pct, sp500_pct, pred, actual):
+    """오류 유형 분류"""
+    if correct:
+        return "적중", []
+
+    factors = []
+
+    # 1. 보합 함정: 점수가 45~55에 갇혀 큰 변동 놓침
+    if pred == "보합" and abs(kospi_pct) > 1.5:
+        factors.append(f"보합함정: 점수 {market_score}(중립대)인데 코스피 {kospi_pct:+.2f}% 큰 변동")
+
+    # 2. 한국 독자 요인: 미국 양호한데 코스피 역행
+    if nasdaq_pct > 0.5 and kospi_pct < -1:
+        factors.append(f"한국독자하락: 나스닥 {nasdaq_pct:+.2f}%인데 코스피 {kospi_pct:+.2f}%")
+    elif nasdaq_pct < -0.5 and kospi_pct > 1:
+        factors.append(f"한국독자상승: 나스닥 {nasdaq_pct:+.2f}%인데 코스피 {kospi_pct:+.2f}%")
+
+    # 3. 뉴스 점수 오도: 뉴스 긍정인데 하락 (또는 반대)
+    if news_score > 60 and kospi_pct < -1:
+        factors.append(f"뉴스과대평가: 뉴스 {news_score}점(긍정)인데 코스피 {kospi_pct:+.2f}%")
+    elif news_score < 40 and kospi_pct > 1:
+        factors.append(f"뉴스과소평가: 뉴스 {news_score}점(부정)인데 코스피 {kospi_pct:+.2f}%")
+
+    # 4. 매크로 지표 둔감: 점수가 일일 변동을 반영 못함
+    score_delta = abs(market_score - 50)
+    actual_delta = abs(kospi_pct)
+    if score_delta < 8 and actual_delta > 2:
+        factors.append(f"매크로둔감: 점수 변동폭 {score_delta}인데 실제 변동 {actual_delta:.1f}%")
+
+    # 5. 방향 반전: 예측과 정반대
+    if (pred == "상승" and actual == "하락") or (pred == "하락" and actual == "상승"):
+        factors.append(f"방향반전: 예측 {pred} → 실제 {actual}")
+
+    # 오류 유형 결정
+    if not factors:
+        error_type = "경미한오차"
+    elif any("보합함정" in f for f in factors):
+        error_type = "보합함정"
+    elif any("한국독자" in f for f in factors):
+        error_type = "한국독자요인"
+    elif any("뉴스" in f for f in factors):
+        error_type = "뉴스오도"
+    elif any("매크로둔감" in f for f in factors):
+        error_type = "매크로둔감"
+    elif any("방향반전" in f for f in factors):
+        error_type = "방향반전"
+    else:
+        error_type = "복합오류"
+
+    return error_type, factors
+
+
+def _derive_lesson(error_type, error_factors, market_score, news_score,
+                   kospi_pct, nasdaq_pct, pred, actual):
+    """오류 유형별 개선 방향 도출"""
+    if error_type == "적중":
+        if abs(kospi_pct) > 3:
+            return f"큰 변동({kospi_pct:+.2f}%)을 정확히 예측 — 이 패턴 유지"
+        return "예측 적중"
+
+    lessons = {
+        "보합함정": "점수 45~55 구간이 너무 넓음. 나스닥/환율 등 실시간 지표를 더 반영하거나, 보합 기준을 48~52로 좁히는 것 검토",
+        "한국독자요인": "미국 지수와 코스피가 역행 — 환율, 외국인 수급, 한국 정책 뉴스 등 한국 독자 팩터 반영 필요",
+        "뉴스오도": "뉴스 점수가 실제 시장 방향과 불일치 — AI 뉴스 평가 프롬프트 개선 또는 뉴스 가중치 하향 필요",
+        "매크로둔감": "FRED 매크로 지표(CPI/GDP/실업률)는 월/분기 업데이트라 일일 변동 반영 불가. 실시간 지표(나스닥/VIX/환율) 가중치 상향 필요",
+        "방향반전": "예측과 정반대 결과. 지표 구조적 한계일 수 있음 — 최근 오답 패턴 분석 필요",
+        "복합오류": "여러 요인이 겹침. 개별 팩터를 분리하여 가중치 재조정 필요",
+    }
+    return lessons.get(error_type, "분석 필요")
+
+
+def get_improvement_insights():
+    """누적된 포스트모템에서 개선 인사이트 도출"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("""
+        SELECT * FROM prediction_postmortem ORDER BY date
+    """).fetchall()
+    conn.close()
+
+    if not rows:
+        return {"total": 0, "message": "아직 포스트모템 데이터가 없습니다"}
+
+    total = len(rows)
+    correct_count = sum(1 for r in rows if r["correct"])
+    incorrect = [r for r in rows if not r["correct"]]
+
+    # 오류 유형별 빈도
+    error_counts = {}
+    for r in incorrect:
+        et = r["error_type"]
+        error_counts[et] = error_counts.get(et, 0) + 1
+
+    # 오류 유형별 정렬
+    sorted_errors = sorted(error_counts.items(), key=lambda x: x[1], reverse=True)
+
+    # 뉴스 점수 유효성
+    news_correct = 0
+    news_total = 0
+    for r in rows:
+        ns = r["news_score"]
+        kp = r["kospi_change_pct"]
+        if ns > 55 and kp > 0.3:
+            news_correct += 1
+        elif ns < 45 and kp < -0.3:
+            news_correct += 1
+        elif 45 <= ns <= 55 and abs(kp) <= 0.3:
+            news_correct += 1
+        news_total += 1
+    news_acc = round(news_correct / news_total * 100, 1) if news_total else 0
+
+    # 나스닥 추종률
+    nasdaq_follow = 0
+    nasdaq_total = 0
+    for r in rows:
+        breakdown = json.loads(r["indicator_breakdown"]) if r["indicator_breakdown"] else []
+        for b in breakdown:
+            if b.get("name") == "나스닥":
+                nasdaq_total += 1
+                if b.get("correct"):
+                    nasdaq_follow += 1
+    nasdaq_rate = round(nasdaq_follow / nasdaq_total * 100, 1) if nasdaq_total else 0
+
+    # 가장 큰 미스 (절대 오차 기준)
+    biggest_miss = None
+    max_gap = 0
+    for r in rows:
+        if not r["correct"]:
+            expected_dir = 1 if r["market_score"] >= 55 else (-1 if r["market_score"] <= 45 else 0)
+            actual_dir = 1 if r["kospi_change_pct"] > 0 else -1
+            gap = abs(r["kospi_change_pct"])
+            if expected_dir != actual_dir and gap > max_gap:
+                max_gap = gap
+                biggest_miss = r["date"]
+
+    # 정확도 추이 (5일 이동평균)
+    accuracy_trend = []
+    for i in range(4, total):
+        window = rows[i-4:i+1]
+        win_correct = sum(1 for r in window if r["correct"])
+        accuracy_trend.append({
+            "date": rows[i]["date"],
+            "accuracy_5d": round(win_correct / 5 * 100, 1)
+        })
+
+    # 권장사항
+    recommendations = []
+    if sorted_errors:
+        top_error = sorted_errors[0][0]
+        count = sorted_errors[0][1]
+        if top_error == "보합함정":
+            recommendations.append(f"가장 많은 오류: 보합함정({count}회) → 보합 기준을 48~52로 좁히거나, 실시간 지표 비중 상향")
+        elif top_error == "한국독자요인":
+            recommendations.append(f"가장 많은 오류: 한국독자요인({count}회) → 원/달러 일변동, 외국인 수급 데이터 추가 반영")
+        elif top_error == "뉴스오도":
+            recommendations.append(f"가장 많은 오류: 뉴스오도({count}회) → AI 뉴스 평가 정확도 {news_acc}%, 프롬프트 개선 필요")
+        elif top_error == "매크로둔감":
+            recommendations.append(f"가장 많은 오류: 매크로둔감({count}회) → 매크로 지표 가중치 하향, 실시간 지표 상향")
+
+    if news_acc < 50:
+        recommendations.append(f"뉴스 점수 정확도 {news_acc}% (50% 미만) → 뉴스 점수의 시장점수 반영 가중치를 줄이거나, 뉴스 평가 AI 프롬프트 개선")
+    if nasdaq_rate > 70:
+        recommendations.append(f"나스닥 추종률 {nasdaq_rate}% → 나스닥 가중치가 적절")
+    elif nasdaq_rate < 50:
+        recommendations.append(f"나스닥 추종률 {nasdaq_rate}% (50% 미만) → 한국 독자 요인이 크므로 나스닥 가중치 하향 검토")
+
+    return {
+        "total": total,
+        "correct": correct_count,
+        "accuracy": round(correct_count / total * 100, 1),
+        "error_distribution": sorted_errors,
+        "news_accuracy": news_acc,
+        "nasdaq_follow_rate": nasdaq_rate,
+        "biggest_miss": biggest_miss,
+        "accuracy_trend": accuracy_trend[-5:] if accuracy_trend else [],
+        "recommendations": recommendations,
+    }
+
+
+def backfill_postmortems():
+    """기존 데이터에 대해 포스트모템 소급 실행"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("""
+        SELECT date FROM market_feedback
+        WHERE validated_at IS NOT NULL
+        ORDER BY date
+    """).fetchall()
+    conn.close()
+
+    count = 0
+    for r in rows:
+        result = analyze_prediction(r["date"])
+        if result:
+            count += 1
+    print(f"[포스트모템] {count}일 소급 분석 완료")
+    return count
+
+
 # ── main.py에서 호출할 헬퍼 ──
 
 def feedback_on_morning(indicators, indices, scored_news):
@@ -275,6 +622,14 @@ def feedback_on_close():
 
     record_actual(today, kospi_close, kospi_pct, kosdaq_close, kosdaq_pct)
 
+    # 포스트모템 분석
+    try:
+        pm = analyze_prediction(today)
+        if pm:
+            print(f"[포스트모템] {today}: {pm['error_type']}")
+    except Exception as pe:
+        print(f"[포스트모템] 분석 실패: {pe}")
+
     # 신뢰도 체크
     rel = calc_reliability()
     print(f"[피드백] 신뢰도: {rel['message']}")
@@ -282,9 +637,18 @@ def feedback_on_close():
 
 
 if __name__ == "__main__":
+    import sys
     init_feedback_db()
     print("[피드백] 테이블 생성 완료")
 
-    # 테스트: 현재 신뢰도
-    rel = calc_reliability()
-    print(f"신뢰도: {rel}")
+    if len(sys.argv) > 1 and sys.argv[1] == "backfill":
+        # 기존 데이터 소급 분석
+        backfill_postmortems()
+        insights = get_improvement_insights()
+        print(f"\n{'='*50}")
+        print(f"  포스트모템 인사이트")
+        print(f"{'='*50}")
+        print(json.dumps(insights, indent=2, ensure_ascii=False))
+    else:
+        rel = calc_reliability()
+        print(f"신뢰도: {rel}")
