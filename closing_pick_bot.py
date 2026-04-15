@@ -200,7 +200,7 @@ def get_volume_rank(token: str, n: int = 200) -> list[dict]:
                 "fid_blng_cls_code": "0",
                 "fid_trgt_cls_code": "111111111",
                 "fid_trgt_exls_cls_code": "000000",
-                "fid_input_price_1": str(MIN_PRICE),
+                "fid_input_price_1": "3000",
                 "fid_input_price_2": "0",
                 "fid_vol_cnt": "0",
                 "fid_input_date_1": "",
