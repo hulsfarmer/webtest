@@ -145,19 +145,19 @@ def api_get(tr_id: str, url: str, params: dict, token: str, retries: int = 3) ->
 
 
 def get_daily_price(code: str, token: str, days: int = 80) -> list[dict]:
-    """최근 N일 일봉 (볼린저+60일고가 계산에 80일 필요)"""
-    all_data = []
+    """최근 N일 일봉 (기간별 차트 API — 100개까지 반환)"""
+    from datetime import timedelta as _td
     end_date = datetime.now(KST).strftime("%Y%m%d")
-
-    # KIS API는 한 번에 최대 100개 반환 — 80일이면 충분
+    start_date = (datetime.now(KST) - _td(days=days + 60)).strftime("%Y%m%d")
     data = api_get(
-        "FHKST01010400",
-        f"{BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-price",
+        "FHKST03010100",
+        f"{BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice",
         {"fid_cond_mrkt_div_code": "J", "fid_input_iscd": code,
+         "fid_input_date_1": start_date, "fid_input_date_2": end_date,
          "fid_period_div_code": "D", "fid_org_adj_prc": "0"},
         token
     )
-    return data.get("output", [])[:days]
+    return data.get("output2", [])[:days]
 
 
 def get_current_price(code: str, token: str) -> dict | None:
