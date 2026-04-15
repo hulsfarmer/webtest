@@ -3,14 +3,14 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [핵심 전략]
   볼린저밴드 1.5σ 돌파 + 거래량 3배 + 캔들위치 85%+ + 60일 신고가
-  → 15:20 종가 매수, 익일 09:05 시장가 전량매도
+  → 15:20 종가 매수, 익일 09:01 시장가 전량매도
 
 [백테스트 근거]
   4.3년 223건 | 승률 60.1% | PF 7.41 | CAGR +57.9% | MDD 7.73%
 
 [타임라인]
   08:55       봇 시작, 토큰 발급
-  09:00~09:05 전일 매수분 시장가 전량매도 (청산)
+  09:00~09:02 전일 매수분 시장가 전량매도 (청산)
   15:00       스크리닝용 데이터 수집 (일봉 20일+)
   15:18~15:20 조건 충족 종목 매수 (최대 3종목)
   15:30       일간 요약 출력
@@ -374,7 +374,7 @@ class ClosingPickPortfolio:
         self.save_state()
 
     def sell_all(self, token: str, conn: sqlite3.Connection):
-        """전 포지션 시장가 매도 (09:05)"""
+        """전 포지션 시장가 매도 (09:01)"""
         today = datetime.now(KST).strftime("%Y-%m-%d")
         if not self.positions:
             return
@@ -684,8 +684,8 @@ def run_day():
     while True:
         current = now_str()
 
-        # ── 09:00~09:05: 전일 매수분 매도 ──
-        if after("09:00") and before("09:06") and not sold_today:
+        # ── 09:00~09:02: 전일 매수분 매도 ──
+        if after("09:00") and before("09:03") and not sold_today:
             if port.positions:
                 log.info(f"[{current}] 전일 매수분 시장가 청산 ({len(port.positions)}건)")
                 token = get_token()
@@ -756,7 +756,7 @@ def run_day():
                              f"{t['entry_price']:,}→{t['exit_price']:,} | "
                              f"{t['return_pct']:+.2f}% | {t['pnl']:+,.0f}원")
             if port.positions:
-                log.info(f"보유 {len(port.positions)}건 (익일 09:05 청산 예정)")
+                log.info(f"보유 {len(port.positions)}건 (익일 09:01 청산 예정)")
                 for code, p in port.positions.items():
                     log.info(f"  {p['name']}({code}) | 진입: {p['entry_price']:,} | "
                              f"vol{p.get('vol_ratio',0):.1f}x")
