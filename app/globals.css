@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0B0A14;
-  --card: #12111E;
-  --border: rgba(124, 58, 237, 0.2);
+  --bg: #0F172A;
+  --card: #1E293B;
+  --border: rgba(99, 179, 237, 0.2);
 }
 
 * {
@@ -57,7 +57,7 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(124, 58, 237, 0.4);
+  background: rgba(99, 179, 237, 0.4);
   border-radius: 3px;
 }
 @media (max-width: 640px) {
@@ -81,9 +81,9 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Card style */
 .glass-card {
-  background: rgba(18, 17, 30, 0.8);
+  background: rgba(30, 41, 59, 0.8);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(124, 58, 237, 0.2);
+  border: 1px solid rgba(99, 179, 237, 0.2);
   border-radius: 16px;
 }
 

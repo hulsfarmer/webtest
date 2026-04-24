@@ -59,7 +59,7 @@ export default function AccountPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen bg-[#0B0A14] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
       </div>
     );
@@ -70,7 +70,7 @@ export default function AccountPage() {
   const user = session.user;
 
   return (
-    <div className="min-h-screen bg-[#0B0A14] pt-24 pb-16 px-6">
+    <div className="min-h-screen bg-[#0F172A] pt-24 pb-16 px-6">
       <div className="max-w-2xl mx-auto space-y-6">
         <Link
           href="/promo"

@@ -12,7 +12,7 @@ export default function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#0B0A14]/80 backdrop-blur-xl">
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#0F172A]/80 backdrop-blur-xl">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 font-bold text-lg sm:text-xl shrink-0">

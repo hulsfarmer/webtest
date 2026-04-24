@@ -134,7 +134,7 @@ export default function HistoryPage() {
 
   if (authStatus === 'loading' || loading) {
     return (
-      <div className="min-h-screen bg-[#0B0A14] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
       </div>
     );
@@ -145,7 +145,7 @@ export default function HistoryPage() {
   const PLAN_LABELS: Record<string, string> = { free: '무료', pro: 'Pro', business: 'Business', admin: '관리자' };
 
   return (
-    <div className="min-h-screen bg-[#0B0A14] text-white">
+    <div className="min-h-screen bg-[#0F172A] text-white">
       <Header />
 
       <div className="pt-24 pb-16 px-4 sm:px-6">

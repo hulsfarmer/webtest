@@ -69,7 +69,7 @@ export default function HomePage() {
     : DEFAULT_SAMPLES.map(s => ({ src: s.src, poster: s.poster }));
 
   return (
-    <main className="min-h-screen bg-[#0B0A14] text-white overflow-x-hidden">
+    <main className="min-h-screen bg-[#0F172A] text-white overflow-x-hidden">
       <Header />
 
       {/* Hero */}

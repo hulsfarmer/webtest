@@ -681,9 +681,9 @@ export default function PromoPage() {
   const canStart        = businessName.trim().length > 0 && businessType.length > 0 && sellingPoints.trim().length > 0 && images.length >= MIN_IMAGES && !loading && !loadingScript;
 
   return (
-    <main className="min-h-screen bg-[#0B0A14] text-white">
+    <main className="min-h-screen bg-[#0F172A] text-white">
       {/* Header */}
-      <div className="border-b border-white/5 bg-[#0B0A14]/80 backdrop-blur-xl sticky top-0 z-10">
+      <div className="border-b border-white/5 bg-[#0F172A]/80 backdrop-blur-xl sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm">
             <ArrowLeft className="w-4 h-4" />

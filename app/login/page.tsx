@@ -6,7 +6,7 @@ import Link from 'next/link';
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen bg-[#0B0A14] text-white flex items-center justify-center px-4 sm:px-6">
+    <main className="min-h-screen bg-[#0F172A] text-white flex items-center justify-center px-4 sm:px-6">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <Link href="/" className="flex items-center justify-center gap-2 mb-10">

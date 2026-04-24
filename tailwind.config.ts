@@ -12,14 +12,14 @@ export default {
           purple: '#7C3AED',
           blue: '#2563EB',
           pink: '#EC4899',
-          dark: '#0B0A14',
-          darker: '#07070F',
-          card: '#12111E',
+          dark: '#0F172A',
+          darker: '#0A1020',
+          card: '#1E293B',
         },
       },
       backgroundImage: {
         'gradient-brand': 'linear-gradient(135deg, #7C3AED 0%, #2563EB 100%)',
-        'gradient-hero': 'radial-gradient(ellipse at top, #1a0b35 0%, #0B0A14 60%)',
+        'gradient-hero': 'radial-gradient(ellipse at top, #1a1f4e 0%, #0F172A 60%)',
       },
       animation: {
         'float': 'float 6s ease-in-out infinite',
