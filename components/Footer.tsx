@@ -50,9 +50,6 @@ export default function Footer() {
             <span className="text-gray-500">사업자등록번호</span> 794-03-04121
           </p>
           <p>
-            <span className="text-gray-500">통신판매업신고</span> 제2026-제주제주시-____호
-          </p>
-          <p>
             <span className="text-gray-500">주소</span> 제주특별자치도 제주시 조천읍 함덕12길 46-1, 202호
           </p>
           <p>
