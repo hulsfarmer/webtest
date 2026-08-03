@@ -40,9 +40,10 @@ export interface UsageResult {
 export async function getUsage(userId: string): Promise<UsageResult> {
   const currentMonth = getCurrentMonth();
 
+  // select('*')로 조회 — plan_expires_at 컬럼이 아직 없어도 안전(undefined 처리)
   const { data: user } = await supabase
     .from('users')
-    .select('plan, monthly_usage, usage_reset_month, plan_expires_at')
+    .select('*')
     .eq('id', userId)
     .single();
 
