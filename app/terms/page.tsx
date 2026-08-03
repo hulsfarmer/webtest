@@ -80,7 +80,7 @@ export default function TermsPage() {
       <div className="mt-12 pt-6 border-t border-white/10 text-sm text-gray-500">
         상호: 이지온 | 대표: 안수동 | 사업자등록번호: 794-03-04121<br />
         주소: 제주특별자치도 제주시 조천읍 함덕12길 46-1, 202호<br />
-        고객문의: 010-4149-0673 | huls_family@naver.com
+        고객문의: 010-4149-0673 | support@shortsai.kr
       </div>
     </main>
   );

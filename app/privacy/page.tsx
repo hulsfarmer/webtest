@@ -72,7 +72,7 @@ export default function PrivacyPage() {
       </Section>
 
       <Section title="9. 개인정보 보호책임자">
-        <p>성명: 안수동<br />연락처: 010-4149-0673 / huls_family@naver.com</p>
+        <p>성명: 안수동<br />연락처: 010-4149-0673 / support@shortsai.kr</p>
       </Section>
 
       <div className="mt-12 pt-6 border-t border-white/10 text-sm text-gray-500">

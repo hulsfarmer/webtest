@@ -58,7 +58,7 @@ export default function Footer() {
           <p>
             <span className="text-gray-500">고객문의</span> 010-4149-0673
             <span className="mx-1.5 text-gray-700">|</span>
-            <a href="mailto:huls_family@naver.com" className="hover:text-gray-400">huls_family@naver.com</a>
+            <a href="mailto:support@shortsai.kr" className="hover:text-gray-400">support@shortsai.kr</a>
           </p>
           <p className="text-gray-700">호스팅 제공: Amazon Web Services</p>
         </div>
