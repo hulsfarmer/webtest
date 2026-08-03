@@ -30,6 +30,29 @@ export default function Footer() {
             © 2026 ShortsAI. Claude AI 기반
           </p>
         </div>
+
+        {/* 사업자 정보 (전자상거래법 표기 의무) */}
+        <div className="mt-8 pt-6 border-t border-white/5 text-gray-600 text-[11px] sm:text-xs leading-relaxed space-y-1">
+          <p>
+            <span className="text-gray-500">상호</span> 이지온
+            <span className="mx-1.5 text-gray-700">|</span>
+            <span className="text-gray-500">대표</span> 안수동
+            <span className="mx-1.5 text-gray-700">|</span>
+            <span className="text-gray-500">사업자등록번호</span> 794-03-04121
+          </p>
+          <p>
+            <span className="text-gray-500">통신판매업신고</span> 제2026-제주제주시-____호
+          </p>
+          <p>
+            <span className="text-gray-500">주소</span> 제주특별자치도 제주시 조천읍 함덕12길 46-1, 202호
+          </p>
+          <p>
+            <span className="text-gray-500">고객문의</span> 010-4149-0673
+            <span className="mx-1.5 text-gray-700">|</span>
+            <a href="mailto:huls_family@naver.com" className="hover:text-gray-400">huls_family@naver.com</a>
+          </p>
+          <p className="text-gray-700">호스팅 제공: Amazon Web Services</p>
+        </div>
       </div>
     </footer>
   );
