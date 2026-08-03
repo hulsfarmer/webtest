@@ -14,7 +14,7 @@ export default function Footer() {
             <span className="text-gray-600 text-xs sm:text-sm ml-2">사업장 홍보영상 자동 생성</span>
           </div>
 
-          <nav className="flex gap-4 sm:gap-6 text-xs sm:text-sm text-gray-500">
+          <nav className="flex flex-wrap justify-center gap-x-4 gap-y-2 sm:gap-6 text-xs sm:text-sm text-gray-500">
             <Link href="/promo" className="hover:text-gray-300 transition-colors">
               홍보영상 만들기
             </Link>
@@ -24,6 +24,15 @@ export default function Footer() {
             <a href="#how-it-works" className="hover:text-gray-300 transition-colors">
               사용방법
             </a>
+            <Link href="/terms" className="hover:text-gray-300 transition-colors">
+              이용약관
+            </Link>
+            <Link href="/privacy" className="hover:text-gray-300 transition-colors">
+              개인정보처리방침
+            </Link>
+            <Link href="/refund" className="hover:text-gray-300 transition-colors">
+              환불정책
+            </Link>
           </nav>
 
           <p className="text-gray-600 text-xs sm:text-sm">
