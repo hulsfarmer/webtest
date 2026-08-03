@@ -6,12 +6,16 @@ import { flushSync } from 'react-dom';
 import { useSession } from 'next-auth/react';
 import PortOne from '@portone/browser-sdk/v2';
 
-// 국내 결제수단 → PortOne 채널키/빌링수단 매핑 (채널키는 포트원 콘솔에서 발급)
-const PAY_METHODS = [
+// 국내 결제수단 → PortOne 채널키/빌링수단 매핑 (채널키는 포트원 콘솔에서 발급).
+// channelKey(env)가 설정된 수단만 결제창에 노출된다. (네이버페이는 매출이력 요건 충족 후 키 추가)
+const ALL_PAY_METHODS = [
+  { id: 'toss', label: '토스페이', channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_TOSS, billingKeyMethod: 'EASY_PAY' as const },
   { id: 'kakao', label: '카카오페이', channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_KAKAO, billingKeyMethod: 'EASY_PAY' as const },
   { id: 'naver', label: '네이버페이', channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_NAVER, billingKeyMethod: 'EASY_PAY' as const },
   { id: 'card', label: '신용·체크카드', channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_CARD, billingKeyMethod: 'CARD' as const },
 ];
+// 실제 설정된(채널키 존재) 수단만
+const PAY_METHODS = ALL_PAY_METHODS.filter((m) => m.channelKey);
 
 const PLAN_AMOUNT: Record<string, { amount: number; orderName: string }> = {
   pro: { amount: 9900, orderName: 'ShortsAI Pro 월 정기결제' },
@@ -119,6 +123,10 @@ export default function PricingSection() {
       return;
     }
     if (!PLAN_AMOUNT[planId]) return;
+    if (PAY_METHODS.length === 0) {
+      alert('결제 기능이 곧 오픈됩니다. 잠시만 기다려주세요!');
+      return;
+    }
     setPendingPlan(planId);
   };
 
