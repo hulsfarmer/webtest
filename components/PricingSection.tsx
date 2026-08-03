@@ -1,9 +1,22 @@
 'use client';
 
-import { Check, Loader2, Clock } from 'lucide-react';
+import { Check, Loader2, Clock, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { useSession } from 'next-auth/react';
+import PortOne from '@portone/browser-sdk/v2';
+
+// 국내 결제수단 → PortOne 채널키/빌링수단 매핑 (채널키는 포트원 콘솔에서 발급)
+const PAY_METHODS = [
+  { id: 'kakao', label: '카카오페이', channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_KAKAO, billingKeyMethod: 'EASY_PAY' as const },
+  { id: 'naver', label: '네이버페이', channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_NAVER, billingKeyMethod: 'EASY_PAY' as const },
+  { id: 'card', label: '신용·체크카드', channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_CARD, billingKeyMethod: 'CARD' as const },
+];
+
+const PLAN_AMOUNT: Record<string, { amount: number; orderName: string }> = {
+  pro: { amount: 9900, orderName: 'ShortsAI Pro 월 정기결제' },
+  business: { amount: 29000, orderName: 'ShortsAI Business 월 정기결제' },
+};
 
 const plans = [
   {
@@ -80,6 +93,7 @@ export default function PricingSection() {
   const [loading, setLoading] = useState<string | null>(null);
   const [currentPlan, setCurrentPlan] = useState('free');
   const [portalUrl, setPortalUrl] = useState<string | null>(null);
+  const [pendingPlan, setPendingPlan] = useState<string | null>(null); // 결제수단 선택 모달 대상 플랜
 
   useEffect(() => {
     if (session?.user) {
@@ -94,33 +108,78 @@ export default function PricingSection() {
     }
   }, [session]);
 
-  const handleUpgrade = async (planId: string, variantId: number | null) => {
+  // 플랜 CTA 클릭 → 결제수단 선택 모달 열기
+  const handleUpgrade = (planId: string) => {
     if (planId === 'free') {
       window.location.href = session ? '/promo' : '/api/auth/signin';
       return;
     }
-
     if (!session) {
       window.location.href = '/api/auth/signin';
       return;
     }
+    if (!PLAN_AMOUNT[planId]) return;
+    setPendingPlan(planId);
+  };
 
-    if (!variantId) return;
+  // 구독 해지 — 다음 자동청구 중단(현재 기간은 만료일까지 유지)
+  const handleCancel = async () => {
+    if (!confirm('정기결제를 해지할까요? 남은 이용기간은 유지되며, 다음 달부터 청구되지 않습니다.')) return;
+    try {
+      const res = await fetch('/api/payment/portone/cancel', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) alert('구독이 해지되었습니다. 남은 기간까지는 계속 이용하실 수 있습니다.');
+      else alert(data.error || '해지 처리에 실패했습니다.');
+    } catch {
+      alert('해지 처리 중 오류가 발생했습니다.');
+    }
+  };
 
+  // 선택한 결제수단으로 PortOne 단건결제 실행 → 서버 검증 → 플랜 반영
+  const payWith = async (methodId: string) => {
+    const planId = pendingPlan;
+    if (!planId) return;
+    const method = PAY_METHODS.find((m) => m.id === methodId);
+    const target = PLAN_AMOUNT[planId];
+    const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
+    if (!method || !target || !storeId || !method.channelKey) {
+      alert('결제가 아직 준비 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+
+    setPendingPlan(null);
     flushSync(() => setLoading(planId));
     try {
-      const res = await fetch('/api/checkout', {
+      const userId = (session!.user as { id?: string }).id;
+      // 1) 빌링키(정기결제 수단) 발급
+      const issue = await PortOne.requestIssueBillingKey({
+        storeId,
+        channelKey: method.channelKey,
+        billingKeyMethod: method.billingKeyMethod,
+        issueName: target.orderName,
+        customer: { customerId: userId },
+      });
+
+      if (!issue || issue.code != null) {
+        if (issue?.message) alert(issue.message);
+        setLoading(null);
+        return;
+      }
+
+      // 2) 서버에 빌링키 전달 → 첫 달 청구 + 구독 활성화
+      const res = await fetch('/api/payment/portone/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variantId }),
+        body: JSON.stringify({ billingKey: issue.billingKey, plan: planId }),
       });
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-        return; // 로딩 오버레이 유지한 채 이동
-      } else {
-        alert('결제 페이지를 열 수 없습니다.');
+      if (data.success) {
+        setCurrentPlan(data.plan);
+        alert(`${data.plan === 'business' ? 'Business' : 'Pro'} 정기결제가 시작되었습니다!`);
+        window.location.href = '/promo';
+        return;
       }
+      alert(data.error || '결제에 실패했습니다. 결제수단을 확인해주세요.');
     } catch {
       alert('결제 처리 중 오류가 발생했습니다.');
     }
@@ -133,7 +192,44 @@ export default function PricingSection() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-4">
             <Loader2 size={40} className="animate-spin text-purple-400" />
-            <p className="text-white text-lg font-medium">결제 페이지로 이동 중...</p>
+            <p className="text-white text-lg font-medium">결제 처리 중...</p>
+          </div>
+        </div>
+      )}
+
+      {pendingPlan && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => setPendingPlan(null)}
+        >
+          <div
+            className="bg-brand-card border border-white/10 rounded-2xl p-6 w-full max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-bold text-white">결제수단 선택</h3>
+              <button onClick={() => setPendingPlan(null)} className="text-gray-400 hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-gray-400 text-sm mb-5">
+              {pendingPlan === 'business' ? 'Business' : 'Pro'} · 월 ₩
+              {PLAN_AMOUNT[pendingPlan]?.amount.toLocaleString()} 정기결제
+            </p>
+            <div className="space-y-2">
+              {PAY_METHODS.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => payWith(m.id)}
+                  className="w-full py-3 rounded-xl bg-white/10 text-white font-semibold hover:bg-white/15 border border-white/10 transition-all"
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-gray-500 text-xs mt-4 text-center">
+              매월 자동결제되며, 언제든 해지할 수 있습니다.
+            </p>
           </div>
         </div>
       )}
@@ -215,15 +311,13 @@ export default function PricingSection() {
                     >
                       현재 플랜
                     </button>
-                    {portalUrl && plan.planId !== 'free' && (
-                      <a
-                        href={portalUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    {plan.planId !== 'free' && (
+                      <button
+                        onClick={handleCancel}
                         className="block w-full py-2 rounded-xl bg-white/5 text-gray-400 text-xs text-center hover:text-white hover:bg-white/10 transition-all"
                       >
-                        구독 관리
-                      </a>
+                        구독 해지
+                      </button>
                     )}
                   </div>
                 ) : isLowerPlan ? (
@@ -247,7 +341,7 @@ export default function PricingSection() {
                   </div>
                 ) : (
                   <button
-                    onClick={() => handleUpgrade(plan.planId, plan.variantId)}
+                    onClick={() => handleUpgrade(plan.planId)}
                     disabled={loading !== null}
                     className={`w-full py-3 rounded-xl font-semibold text-sm mb-6 transition-all ${
                       plan.highlighted

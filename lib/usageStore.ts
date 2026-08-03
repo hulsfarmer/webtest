@@ -42,7 +42,7 @@ export async function getUsage(userId: string): Promise<UsageResult> {
 
   const { data: user } = await supabase
     .from('users')
-    .select('plan, monthly_usage, usage_reset_month')
+    .select('plan, monthly_usage, usage_reset_month, plan_expires_at')
     .eq('id', userId)
     .single();
 
@@ -50,7 +50,19 @@ export async function getUsage(userId: string): Promise<UsageResult> {
     return { plan: 'free', count: 0, month: currentMonth, remaining: PLAN_LIMITS.free };
   }
 
-  const plan = (user.plan || 'free') as Plan;
+  let plan = (user.plan || 'free') as Plan;
+
+  // 단건결제(PortOne) 플랜 만료 체크: plan_expires_at이 지났으면 free로 강등
+  if (plan !== 'admin' && plan !== 'free' && user.plan_expires_at) {
+    if (new Date(user.plan_expires_at).getTime() < Date.now()) {
+      plan = 'free';
+      await supabase
+        .from('users')
+        .update({ plan: 'free', plan_expires_at: null })
+        .eq('id', userId);
+    }
+  }
+
   let count = user.monthly_usage || 0;
 
   // Auto-reset if month changed
@@ -86,12 +98,56 @@ export async function incrementUsage(userId: string): Promise<void> {
 }
 
 /**
- * Upgrade user plan (called from Stripe webhook).
+ * Upgrade user plan (구독형 — 만료 없음).
  */
 export async function upgradePlan(userId: string, plan: Plan): Promise<void> {
   await supabase
     .from('users')
     .update({ plan, monthly_usage: 0, usage_reset_month: getCurrentMonth() })
+    .eq('id', userId);
+}
+
+/**
+ * 정기결제(PortOne 빌링) 시작 — 첫 결제 성공 후 호출.
+ * 플랜 활성화 + 만료일 +1개월 + 빌링키 저장.
+ */
+export async function startSubscription(userId: string, plan: Plan, billingKey: string): Promise<void> {
+  const expires = new Date();
+  expires.setMonth(expires.getMonth() + 1);
+  await supabase
+    .from('users')
+    .update({
+      plan,
+      plan_expires_at: expires.toISOString(),
+      portone_billing_key: billingKey,
+      monthly_usage: 0,
+      usage_reset_month: getCurrentMonth(),
+    })
+    .eq('id', userId);
+}
+
+/**
+ * 정기결제 갱신 — 월 자동청구 크론에서 청구 성공 후 호출.
+ * 만료일을 (현재 만료일 또는 지금 중 큰 값)에서 +1개월 연장.
+ */
+export async function renewSubscription(userId: string, currentExpiresAt: string | null): Promise<void> {
+  const base = currentExpiresAt && new Date(currentExpiresAt) > new Date()
+    ? new Date(currentExpiresAt)
+    : new Date();
+  base.setMonth(base.getMonth() + 1);
+  await supabase
+    .from('users')
+    .update({ plan_expires_at: base.toISOString() })
+    .eq('id', userId);
+}
+
+/**
+ * 구독 해지 — 빌링키 제거로 다음 청구 중단. 플랜은 만료일까지 유지.
+ */
+export async function cancelSubscription(userId: string): Promise<void> {
+  await supabase
+    .from('users')
+    .update({ portone_billing_key: null })
     .eq('id', userId);
 }
 
