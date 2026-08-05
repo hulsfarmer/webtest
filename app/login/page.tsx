@@ -1,12 +1,55 @@
 'use client';
 
+import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      if (mode === 'signup') {
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, name }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || '가입에 실패했습니다.');
+          setLoading(false);
+          return;
+        }
+      }
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      });
+      if (result?.error) {
+        setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+        setLoading(false);
+        return;
+      }
+      window.location.href = '/promo';
+    } catch {
+      setError('처리 중 오류가 발생했습니다.');
+      setLoading(false);
+    }
+  }
+
   return (
-    <main className="min-h-screen bg-[#0F172A] text-white flex items-center justify-center px-4 sm:px-6">
+    <main className="min-h-screen bg-[#0F172A] text-white flex items-center justify-center px-4 sm:px-6 py-10">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <Link href="/" className="flex items-center justify-center gap-2 mb-10">
@@ -17,10 +60,68 @@ export default function LoginPage() {
         </Link>
 
         <div className="glass-card p-6 sm:p-8 rounded-2xl">
-          <h1 className="text-2xl font-bold text-center mb-2">로그인</h1>
-          <p className="text-gray-400 text-sm text-center mb-8">
-            소셜 계정으로 간편하게 시작하세요
+          <h1 className="text-2xl font-bold text-center mb-2">
+            {mode === 'login' ? '로그인' : '회원가입'}
+          </h1>
+          <p className="text-gray-400 text-sm text-center mb-6">
+            {mode === 'login' ? '이메일 또는 소셜 계정으로 시작하세요' : '이메일로 새 계정을 만드세요'}
           </p>
+
+          {/* 이메일/비밀번호 폼 */}
+          <form onSubmit={handleSubmit} className="space-y-3 mb-4">
+            {mode === 'signup' && (
+              <input
+                type="text"
+                placeholder="이름 (선택)"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+              />
+            )}
+            <input
+              type="email"
+              required
+              placeholder="이메일"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+            />
+            <input
+              type="password"
+              required
+              placeholder={mode === 'signup' ? '비밀번호 (8자 이상)' : '비밀번호'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+            />
+            {error && <p className="text-red-400 text-xs text-center">{error}</p>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full px-4 py-3.5 rounded-xl bg-gradient-brand text-white font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {loading ? '처리 중...' : mode === 'login' ? '이메일로 로그인' : '가입하고 시작하기'}
+            </button>
+          </form>
+
+          <p className="text-center text-sm text-gray-400 mb-6">
+            {mode === 'login' ? (
+              <>계정이 없으신가요?{' '}
+                <button onClick={() => { setMode('signup'); setError(''); }} className="text-indigo-400 hover:text-indigo-300 font-medium">회원가입</button>
+              </>
+            ) : (
+              <>이미 계정이 있으신가요?{' '}
+                <button onClick={() => { setMode('login'); setError(''); }} className="text-indigo-400 hover:text-indigo-300 font-medium">로그인</button>
+              </>
+            )}
+          </p>
+
+          {/* 구분선 */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px bg-white/10" />
+            <span className="text-gray-500 text-xs">또는 소셜 계정</span>
+            <div className="flex-1 h-px bg-white/10" />
+          </div>
 
           <div className="space-y-3">
             <button

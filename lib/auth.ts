@@ -1,12 +1,45 @@
 import { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import bcrypt from 'bcryptjs';
 import { CustomSupabaseAdapter } from './supabase-adapter';
 import { supabase } from './supabase';
 
-const providers = [
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const providers: any[] = [
   GoogleProvider({
     clientId: process.env.GOOGLE_CLIENT_ID!,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+  }),
+  // 이메일/비밀번호 로그인 (poimen 구조 참조)
+  CredentialsProvider({
+    name: 'credentials',
+    credentials: {
+      email: { label: '이메일', type: 'email' },
+      password: { label: '비밀번호', type: 'password' },
+    },
+    async authorize(credentials) {
+      if (!credentials?.email || !credentials?.password) return null;
+      const email = String(credentials.email).trim().toLowerCase();
+
+      const { data: user } = await supabase
+        .from('users')
+        .select('id, email, name, image, password_hash')
+        .eq('email', email)
+        .single();
+
+      if (!user || !user.password_hash) return null;
+
+      const ok = await bcrypt.compare(String(credentials.password), user.password_hash);
+      if (!ok) return null;
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        image: user.image ?? null,
+      };
+    },
   }),
 ];
 
@@ -30,8 +63,7 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, profile }) {
-      // 기존 사용자의 이메일/이름이 비어있으면 프로필에서 업데이트
-      // (카카오 이메일 권한이 나중에 추가된 경우 대응)
+      // OAuth: 기존 사용자의 이메일/이름이 비어있으면 프로필에서 업데이트
       if (user?.id && profile) {
         const { data: existing } = await supabase
           .from('users')
@@ -56,7 +88,6 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, user }) {
-      // 최초 로그인 시 user 객체에서 id를 토큰에 저장
       if (user) {
         token.id = user.id;
       }
