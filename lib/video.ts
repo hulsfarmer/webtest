@@ -738,7 +738,7 @@ export async function generateVideo(
     await execAsync(
       `"${ffmpegPath}" -i "${audioPath}" -i "${chimeFile}" ` +
       `-filter_complex "[1:a]adelay=${chimeDelay}|${chimeDelay}[chime_d];` +
-      `[0:a][chime_d]amix=inputs=2:duration=longest[aout]" ` +
+      `[0:a][chime_d]amix=inputs=2:duration=longest:normalize=0[aout]" ` +
       `-map "[aout]" -c:a libmp3lame -q:a 3 -y "${narrationWithChime}"`
     );
     // 이후 audioPath 대신 narrationWithChime 사용
@@ -956,7 +956,7 @@ export async function generateVideo(
     if (bgmPath) {
       filterParts.push(
         `[${bgmInputIdx}:a]volume=${bgmVolume},afade=t=out:st=${fadeStart.toFixed(3)}:d=${fadeOutDur.toFixed(3)}[bgm_adj]`,
-        `[${audioInputIdx}:a][bgm_adj]amix=inputs=2:duration=longest:dropout_transition=2[aout]`
+        `[${audioInputIdx}:a][bgm_adj]amix=inputs=2:duration=longest:dropout_transition=2:normalize=0,alimiter=limit=0.95[aout]`
       );
     } else {
       // BGM 없으면 나레이션에도 페이드아웃
@@ -1033,7 +1033,7 @@ export async function generateVideo(
         `pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,` +
         `fade=t=out:st=${m2FadeStart.toFixed(3)}:d=${m2FadeOutDur.toFixed(3)}[vout]`,
         `[2:a]volume=${bgmVolume},afade=t=out:st=${m2FadeStart.toFixed(3)}:d=${m2FadeOutDur.toFixed(3)}[bgm_adj]`,
-        `[1:a][bgm_adj]amix=inputs=2:duration=longest:dropout_transition=2[aout]`,
+        `[1:a][bgm_adj]amix=inputs=2:duration=longest:dropout_transition=2:normalize=0,alimiter=limit=0.95[aout]`,
       ].join(';');
       cmd = [
         `"${ffmpegPath}"`,
