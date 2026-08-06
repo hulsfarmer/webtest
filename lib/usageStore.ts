@@ -9,6 +9,11 @@ export const PLAN_LIMITS: Record<Plan, number> = {
   admin: Infinity,
 };
 
+// 테스트 계정 개별 한도 (이메일 기준, 소문자 비교). 실사용자 미영향.
+export const CUSTOM_LIMITS: Record<string, number> = {
+  'test@shortsai.kr': 10,
+};
+
 export const PLAN_PRICES: Record<Plan, number> = {
   free: 0,
   pro: 9900,
@@ -75,7 +80,7 @@ export async function getUsage(userId: string): Promise<UsageResult> {
       .eq('id', userId);
   }
 
-  const limit = PLAN_LIMITS[plan];
+  const limit = CUSTOM_LIMITS[(user.email || '').toLowerCase()] ?? PLAN_LIMITS[plan];
   const remaining = Math.max(0, limit - count);
 
   return { plan, count, month: currentMonth, remaining };
@@ -86,7 +91,7 @@ export async function getUsage(userId: string): Promise<UsageResult> {
  */
 export async function canGenerate(userId: string): Promise<boolean> {
   const usage = await getUsage(userId);
-  return usage.count < PLAN_LIMITS[usage.plan];
+  return usage.remaining > 0;
 }
 
 /**
