@@ -710,8 +710,8 @@ export async function generateVideo(
   // BGM volume: use user-specified value, or auto (calm/trendy louder, others softer)
   const bgmVolume = externalBgmVolume !== undefined
     ? externalBgmVolume.toFixed(2)
-    : (bgmId === 'calm' || bgmId === 'trendy') ? '0.45'
-    : (bgmId === 'professional' || bgmId === 'energetic') ? '0.18' : '0.28';
+    : (bgmId === 'calm' || bgmId === 'trendy') ? '0.90'
+    : (bgmId === 'professional' || bgmId === 'energetic') ? '0.20' : '0.40';
 
   const outputDir = path.dirname(outputPath);
   if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
