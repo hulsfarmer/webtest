@@ -4,8 +4,8 @@ import type { Plan } from './usageStore';
  * PortOne V2 정기결제(빌링) — 플랜별 월 청구 금액(원) 및 주문명.
  */
 export const PORTONE_PLAN_AMOUNT: Record<string, { plan: Plan; amount: number; orderName: string }> = {
-  pro: { plan: 'pro', amount: 9900, orderName: 'ShortsAI Pro 월 정기결제' },
-  business: { plan: 'business', amount: 29000, orderName: 'ShortsAI Business 월 정기결제' },
+  pro: { plan: 'pro', amount: 5500, orderName: 'ShortsAI Pro 월 정기결제' },
+  business: { plan: 'business', amount: 15950, orderName: 'ShortsAI Business 월 정기결제' },
 };
 
 /** 서버에 PortOne 시크릿이 설정돼 있는지 (없으면 결제 비활성) */

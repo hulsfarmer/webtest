@@ -16,8 +16,8 @@ export const CUSTOM_LIMITS: Record<string, number> = {
 
 export const PLAN_PRICES: Record<Plan, number> = {
   free: 0,
-  pro: 9900,
-  business: 29000,
+  pro: 5000,
+  business: 14500,
   admin: 0,
 };
 

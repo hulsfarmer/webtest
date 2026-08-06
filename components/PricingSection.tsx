@@ -18,8 +18,8 @@ const ALL_PAY_METHODS = [
 const PAY_METHODS = ALL_PAY_METHODS.filter((m) => m.channelKey);
 
 const PLAN_AMOUNT: Record<string, { amount: number; orderName: string }> = {
-  pro: { amount: 9900, orderName: 'ShortsAI Pro 월 정기결제' },
-  business: { amount: 29000, orderName: 'ShortsAI Business 월 정기결제' },
+  pro: { amount: 5500, orderName: 'ShortsAI Pro 월 정기결제' },
+  business: { amount: 15950, orderName: 'ShortsAI Business 월 정기결제' },
 };
 
 const plans = [
@@ -47,8 +47,8 @@ const plans = [
   {
     name: 'Pro',
     nameEn: 'Pro',
-    price: 9900,
-    priceDisplay: '₩9,900',
+    price: 5000,
+    priceDisplay: '₩5,000',
     period: '월',
     description: '매달 꾸준히 홍보하는 사장님께',
     features: [
@@ -69,8 +69,8 @@ const plans = [
   {
     name: 'Business',
     nameEn: 'Business',
-    price: 29000,
-    priceDisplay: '₩29,000',
+    price: 14500,
+    priceDisplay: '₩14,500',
     period: '월',
     description: '여러 매장을 운영하거나 매일 홍보하는 분께',
     features: [
@@ -293,21 +293,11 @@ export default function PricingSection() {
                   </div>
                   <p className="text-gray-400 text-sm mb-4">{plan.description}</p>
                   <div className="flex items-end gap-1">
-                    {plan.price > 0 ? (
-                      <>
-                        <span className="text-lg text-gray-500 line-through mb-1">{plan.priceDisplay}</span>
-                        <span className="text-2xl sm:text-3xl md:text-4xl font-bold text-red-400">₩{(plan.price / 2).toLocaleString()}</span>
-                        <span className="text-gray-400 mb-1">/{plan.period}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-2xl sm:text-4xl font-bold">{plan.priceDisplay}</span>
-                        <span className="text-gray-400 mb-1 text-sm">{plan.period}</span>
-                      </>
-                    )}
+                    <span className="text-2xl sm:text-3xl md:text-4xl font-bold">{plan.priceDisplay}</span>
+                    <span className="text-gray-400 mb-1 text-sm">{plan.price > 0 ? `/${plan.period}` : plan.period}</span>
                   </div>
                   {plan.price > 0 && (
-                    <p className="text-red-400 text-xs mt-1 font-medium">첫 달 50% 할인 적용</p>
+                    <p className="text-gray-500 text-xs mt-1">부가세(VAT) 별도</p>
                   )}
                 </div>
 
