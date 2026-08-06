@@ -287,7 +287,7 @@ export default function PromoPage() {
   // BGM별 기본 볼륨 (calm/trendy는 소리가 작아서 높게)
   const getDefaultVolume = (id: string) =>
     (id === 'calm' || id === 'trendy') ? 45
-    : (id === 'professional' || id === 'energetic') ? 10 : 20;
+    : (id === 'professional' || id === 'energetic') ? 18 : 28;
 
   // 업종·톤 변경 시 배경음악 자동 추천
   useEffect(() => {

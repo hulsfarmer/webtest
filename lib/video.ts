@@ -711,7 +711,7 @@ export async function generateVideo(
   const bgmVolume = externalBgmVolume !== undefined
     ? externalBgmVolume.toFixed(2)
     : (bgmId === 'calm' || bgmId === 'trendy') ? '0.45'
-    : (bgmId === 'professional' || bgmId === 'energetic') ? '0.10' : '0.20';
+    : (bgmId === 'professional' || bgmId === 'energetic') ? '0.18' : '0.28';
 
   const outputDir = path.dirname(outputPath);
   if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
