@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Loader2, Clock, X } from 'lucide-react';
+import { Check, Loader2, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { useSession } from 'next-auth/react';
@@ -252,14 +252,6 @@ export default function PricingSection() {
           </h2>
           <p className="text-gray-400 text-sm sm:text-lg">사업장 홍보영상, 이제 직접 만드세요</p>
 
-          {/* 할인 배너 */}
-          <div className="mt-6 sm:mt-8 inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30">
-            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-red-400 animate-pulse shrink-0" />
-            <div className="text-left">
-              <p className="text-white font-bold text-sm sm:text-lg">오픈 기념 50% 할인 <span className="text-red-400">OPEN50</span></p>
-              <p className="text-gray-400 text-xs sm:text-sm">~4/18까지 · 첫 달 50% 할인 자동 적용</p>
-            </div>
-          </div>
         </div>
 
         {/* Pricing cards */}
