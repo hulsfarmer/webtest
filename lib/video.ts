@@ -194,6 +194,21 @@ function wrapKorean(text: string, maxChars = 14): string {
   return lines.join('\n');
 }
 
+// Split a sentence into punchy 3~4 word chunks for sequential caption reveal.
+// Chunks are balanced (avoids orphan single-word tails), e.g. 5 words → [3,2].
+function splitIntoChunks(text: string, maxWords = 4): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [text];
+  if (words.length <= maxWords) return [words.join(' ')];
+  const numChunks = Math.ceil(words.length / maxWords);
+  const per = Math.ceil(words.length / numChunks);
+  const chunks: string[] = [];
+  for (let i = 0; i < words.length; i += per) {
+    chunks.push(words.slice(i, i + per).join(' '));
+  }
+  return chunks;
+}
+
 // ── Fixed layout constants — Safe Zone 기반 (shared by both overlay functions) ──
 // 쇼츠 Safe Zone: 상단 15% (288px), 하단 25% (480px) 확보
 const H_FULL = 1920;
@@ -275,14 +290,25 @@ async function createTextOverlay(
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
   if (displayBusinessName || title) {
     if (displayBusinessName) {
-      // Row 1 — business name: 80px, tone-based color + bold black outline
-      ctx.font = `bold 80px ${fontFamily}`;
-      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-      ctx.lineWidth = 5;
-      ctx.strokeText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
-      ctx.fillStyle = p.businessName;
-      ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
+      // Row 1 — business name: large bright yellow, auto-fit to width, bold black outline
+      const bnMaxW = W - 120;
+      let bnSize = 100;
+      ctx.font = `bold ${bnSize}px ${fontFamily}`;
+      while (bnSize > 56 && ctx.measureText(displayBusinessName).width > bnMaxW) {
+        bnSize -= 4;
+        ctx.font = `bold ${bnSize}px ${fontFamily}`;
+      }
+      const bnBaseline = TITLE_ZONE_Y + bnSize * 0.82;
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 12;
+      ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+      ctx.lineWidth = 6;
+      ctx.strokeText(displayBusinessName, W / 2, bnBaseline);
+      ctx.fillStyle = '#FDE047'; // 밝은 노랑 고정 (톤 무관, 가독성 우선)
+      ctx.fillText(displayBusinessName, W / 2, bnBaseline);
+      ctx.shadowBlur = 0;
       // Thin separator glow under business name
+      const sepY = bnBaseline + 26;
       const sepGrad = ctx.createLinearGradient(200, 0, W - 200, 0);
       sepGrad.addColorStop(0, 'transparent');
       sepGrad.addColorStop(0.5, accentColor + '55');
@@ -290,16 +316,16 @@ async function createTextOverlay(
       ctx.strokeStyle = sepGrad;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(200, TITLE_ZONE_Y + 96);
-      ctx.lineTo(W - 200, TITLE_ZONE_Y + 96);
+      ctx.moveTo(200, sepY);
+      ctx.lineTo(W - 200, sepY);
       ctx.stroke();
     }
 
     if (title) {
       // Row 2 — catchy title: gradient bold text
       // When businessName is also shown, use the lower portion of the title zone
-      const catchyZoneTop = displayBusinessName ? TITLE_ZONE_Y + 86 : TITLE_ZONE_Y;
-      const catchyZoneH   = displayBusinessName ? TITLE_ZONE_H - 80 : TITLE_ZONE_H;
+      const catchyZoneTop = displayBusinessName ? TITLE_ZONE_Y + 116 : TITLE_ZONE_Y;
+      const catchyZoneH   = displayBusinessName ? TITLE_ZONE_H - 116 : TITLE_ZONE_H;
       const titleFontSize = displayBusinessName ? 66 : 78;
       const titleWrapped  = wrapKorean(title, 13);
       const titleLines    = titleWrapped.split('\n');
@@ -518,14 +544,25 @@ async function createFrameImage(
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
   if (displayBusinessName || title) {
     if (displayBusinessName) {
-      // Row 1 — business name: 80px, tone-based color + bold black outline
-      ctx.font = `bold 80px ${fontFamily}`;
-      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-      ctx.lineWidth = 5;
-      ctx.strokeText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
-      ctx.fillStyle = p.businessName;
-      ctx.fillText(displayBusinessName, W / 2, TITLE_ZONE_Y + 58);
+      // Row 1 — business name: large bright yellow, auto-fit to width, bold black outline
+      const bnMaxW = W - 120;
+      let bnSize = 100;
+      ctx.font = `bold ${bnSize}px ${fontFamily}`;
+      while (bnSize > 56 && ctx.measureText(displayBusinessName).width > bnMaxW) {
+        bnSize -= 4;
+        ctx.font = `bold ${bnSize}px ${fontFamily}`;
+      }
+      const bnBaseline = TITLE_ZONE_Y + bnSize * 0.82;
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 12;
+      ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+      ctx.lineWidth = 6;
+      ctx.strokeText(displayBusinessName, W / 2, bnBaseline);
+      ctx.fillStyle = '#FDE047'; // 밝은 노랑 고정 (톤 무관, 가독성 우선)
+      ctx.fillText(displayBusinessName, W / 2, bnBaseline);
+      ctx.shadowBlur = 0;
       // Thin separator glow under business name
+      const sepY = bnBaseline + 26;
       const sepGrad = ctx.createLinearGradient(200, 0, W - 200, 0);
       sepGrad.addColorStop(0, 'transparent');
       sepGrad.addColorStop(0.5, accentColor + '55');
@@ -533,15 +570,15 @@ async function createFrameImage(
       ctx.strokeStyle = sepGrad;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(200, TITLE_ZONE_Y + 96);
-      ctx.lineTo(W - 200, TITLE_ZONE_Y + 96);
+      ctx.moveTo(200, sepY);
+      ctx.lineTo(W - 200, sepY);
       ctx.stroke();
     }
 
     if (title) {
       // Row 2 — catchy title: gradient bold text
-      const catchyZoneTop = displayBusinessName ? TITLE_ZONE_Y + 86 : TITLE_ZONE_Y;
-      const catchyZoneH   = displayBusinessName ? TITLE_ZONE_H - 110 : TITLE_ZONE_H;
+      const catchyZoneTop = displayBusinessName ? TITLE_ZONE_Y + 116 : TITLE_ZONE_Y;
+      const catchyZoneH   = displayBusinessName ? TITLE_ZONE_H - 116 : TITLE_ZONE_H;
       const titleFontSize = displayBusinessName ? 66 : 78;
       const titleWrapped  = wrapKorean(title, 13);
       const titleLines    = titleWrapped.split('\n');
@@ -788,6 +825,32 @@ export async function generateVideo(
     cumTime += dur;
   }
 
+  // ── Sub-split each sentence into punchy 3~4 word caption chunks ──
+  // Sentence-level timing (above) stays intact for TTS sync & image slideshow;
+  // each chunk gets a slice of its sentence's window, proportional to char length,
+  // so captions reveal sequentially in step with the narration (karaoke-style).
+  type ChunkItem = { text: string; sectionType: string; sectionIndex: number };
+  const allChunks: ChunkItem[] = [];
+  const chunkDurations: number[] = [];
+  const chunkTimestamps: number[] = [];
+  for (let i = 0; i < allSentences.length; i++) {
+    const { sentence, sectionType, sectionIndex } = allSentences[i];
+    const sentDur = sentenceDurations[i];
+    const sentStart = sentenceTimestamps[i];
+    const chunks = splitIntoChunks(sentence, 4);
+    const totalLen = chunks.reduce((s, c) => s + c.length, 0) || 1;
+    let cumLen = 0;
+    for (const c of chunks) {
+      const startFrac = cumLen / totalLen;
+      cumLen += c.length;
+      const endFrac = cumLen / totalLen;
+      allChunks.push({ text: c, sectionType, sectionIndex });
+      chunkTimestamps.push(sentStart + startFrac * sentDur);
+      chunkDurations.push(Math.max((endFrac - startFrac) * sentDur, 0.25));
+    }
+  }
+  console.log(`[Video] Caption chunks: ${allSentences.length} sentences → ${allChunks.length} chunks`);
+
   // ── Mode 3: User-uploaded images as slideshow background (highest priority) ──
   // Created AFTER sentence timing so we can align image transitions to sentence boundaries
   let videoPath: string | null = null;
@@ -891,12 +954,12 @@ export async function generateVideo(
 
     // Generate transparent text overlay PNGs
     const overlayPaths: string[] = [];
-    for (let idx = 0; idx < allSentences.length; idx++) {
-      const { sentence, sectionType } = allSentences[idx];
+    for (let idx = 0; idx < allChunks.length; idx++) {
+      const { text, sectionType } = allChunks[idx];
       const overlayPath = path.join(tmpDir, `overlay_${idx}.png`);
       await createTextOverlay(
-        script.title, sentence, sectionType,
-        idx, allSentences.length, overlayPath,
+        script.title, text, sectionType,
+        idx, allChunks.length, overlayPath,
         bottomInfo, displayBusinessName, showWatermark, palette,
       );
       overlayPaths.push(overlayPath);
@@ -928,9 +991,9 @@ export async function generateVideo(
     // (Fixed-size box ensures no trembling at transitions.)
     let prevLabel = 'bg0';
     for (let i = 0; i < overlayPaths.length; i++) {
-      const tStart = sentenceTimestamps[i].toFixed(3);
+      const tStart = chunkTimestamps[i].toFixed(3);
       const tEnd = i < overlayPaths.length - 1
-        ? sentenceTimestamps[i + 1].toFixed(3)
+        ? chunkTimestamps[i + 1].toFixed(3)
         : (audioDuration + 2).toFixed(3);
       const outLabel = i === overlayPaths.length - 1 ? 'vout' : `v${i + 1}`;
       filterParts.push(
@@ -998,15 +1061,15 @@ export async function generateVideo(
     console.log('[Video] Mode: gradient background');
 
     const framePaths: Array<{ path: string; duration: number }> = [];
-    for (let idx = 0; idx < allSentences.length; idx++) {
-      const { sentence, sectionType } = allSentences[idx];
+    for (let idx = 0; idx < allChunks.length; idx++) {
+      const { text, sectionType } = allChunks[idx];
       const framePath = path.join(tmpDir, `frame_${idx}.png`);
       await createFrameImage(
-        script.title, sentence, sectionType,
-        idx, allSentences.length, framePath, keyword,
+        script.title, text, sectionType,
+        idx, allChunks.length, framePath, keyword,
         bottomInfo, displayBusinessName, showWatermark, palette,
       );
-      framePaths.push({ path: framePath, duration: sentenceDurations[idx] });
+      framePaths.push({ path: framePath, duration: chunkDurations[idx] });
     }
 
     // FFmpeg concat file
