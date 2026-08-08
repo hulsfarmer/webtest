@@ -214,8 +214,10 @@ function splitIntoChunks(text: string, maxWords = 4): string[] {
 const H_FULL = 1920;
 const SAFE_TOP = Math.round(H_FULL * 0.15);     // 288px — 상단 UI 영역
 const SAFE_BOTTOM = Math.round(H_FULL * 0.25);  // 480px — 하단 UI 영역
-const TITLE_ZONE_Y = SAFE_TOP;                   // 288px부터 시작
-const TITLE_ZONE_H = 340;                        // 업체명 + 여백 + 캐치프레이즈
+// 상단 1/5 검은 밴드: 업체명 + 스크립트 제목 (사진은 하단 4/5)
+const BAND_H = Math.round(H_FULL / 5);           // 384px — 상단 검은 배경 밴드
+const TITLE_ZONE_Y = 44;                          // 밴드 내부 상단 여백
+const TITLE_ZONE_H = BAND_H - 84;                 // 300px — 업체명 + 캐치프레이즈
 const DIV_Y = TITLE_ZONE_Y + TITLE_ZONE_H + 16;
 const BOX_W_MARGIN = 40;
 const INFO_H = 84;
@@ -277,13 +279,15 @@ async function createTextOverlay(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
 
-  // Brand watermark (무료 플랜만)
+  // Brand watermark (무료 플랜만) — 밴드 좌상단 (중앙 업체명과 겹침 방지)
   if (showWatermark) {
+    ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.font = `bold 34px ${fontFamily}`;
+    ctx.font = `bold 30px ${fontFamily}`;
     ctx.shadowColor = 'rgba(0,0,0,0.8)';
-    ctx.shadowBlur = 12;
-    ctx.fillText('ShortsAI', W / 2, 76);
+    ctx.shadowBlur = 10;
+    ctx.fillText('ShortsAI', 28, 46);
+    ctx.textAlign = 'center';
   }
   ctx.shadowBlur = 0;
 
@@ -292,7 +296,7 @@ async function createTextOverlay(
     if (displayBusinessName) {
       // Row 1 — business name: large bright yellow, auto-fit to width, bold black outline
       const bnMaxW = W - 120;
-      let bnSize = 100;
+      let bnSize = 84;
       ctx.font = `bold ${bnSize}px ${fontFamily}`;
       while (bnSize > 56 && ctx.measureText(displayBusinessName).width > bnMaxW) {
         bnSize -= 4;
@@ -534,11 +538,13 @@ async function createFrameImage(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
 
-  // Brand watermark (무료 플랜만)
+  // Brand watermark (무료 플랜만) — 좌상단
   if (showWatermark) {
+    ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.font = `bold 34px ${fontFamily}`;
-    ctx.fillText('ShortsAI', W / 2, 76);
+    ctx.font = `bold 30px ${fontFamily}`;
+    ctx.fillText('ShortsAI', 28, 46);
+    ctx.textAlign = 'center';
   }
 
   // ── TITLE ZONE: optional business name (top, small) + catchy title (below, large) ──
@@ -546,7 +552,7 @@ async function createFrameImage(
     if (displayBusinessName) {
       // Row 1 — business name: large bright yellow, auto-fit to width, bold black outline
       const bnMaxW = W - 120;
-      let bnSize = 100;
+      let bnSize = 84;
       ctx.font = `bold ${bnSize}px ${fontFamily}`;
       while (bnSize > 56 && ctx.measureText(displayBusinessName).width > bnMaxW) {
         bnSize -= 4;
@@ -982,8 +988,10 @@ export async function generateVideo(
     // Scale bg → chain overlay each text PNG with enable='between(t, start, end)'
     const filterParts: string[] = [];
     filterParts.push(
-      `[0:v]scale=1080:1920:force_original_aspect_ratio=increase,` +
-      `crop=1080:1920:(iw-1080)/2:(ih-1920)/2,setsar=1[bg0]`
+      // 사진(또는 영상)은 하단 4/5, 상단 1/5(BAND_H)는 검은 배경
+      `[0:v]scale=1080:${H_FULL - BAND_H}:force_original_aspect_ratio=increase,` +
+      `crop=1080:${H_FULL - BAND_H}:(iw-1080)/2:(ih-${H_FULL - BAND_H})/2,` +
+      `pad=1080:${H_FULL}:0:${BAND_H}:black,setsar=1[bg0]`
     );
 
     // Use between(t, start, end) so only ONE overlay is active at a time.
