@@ -338,10 +338,7 @@ async function createTextOverlay(
       const titleStartY   = catchyZoneTop + (catchyZoneH - titleBlockH) / 2 + titleFontSize * 0.85;
 
       ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
-      const titleGrad = ctx.createLinearGradient(W / 2 - 380, 0, W / 2 + 380, 0);
-      titleGrad.addColorStop(0, 'white');
-      titleGrad.addColorStop(1, p.titleAccent);
-      ctx.fillStyle = titleGrad;
+      ctx.fillStyle = 'white'; // 검은 밴드 위 순백색 제목 (업체명은 노랑)
       ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 3;
       ctx.shadowColor = 'rgba(0,0,0,1)';
@@ -593,10 +590,7 @@ async function createFrameImage(
       const titleStartY   = catchyZoneTop + (catchyZoneH - titleBlockH) / 2 + titleFontSize * 0.85;
 
       ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
-      const titleGrad = ctx.createLinearGradient(W / 2 - 380, 0, W / 2 + 380, 0);
-      titleGrad.addColorStop(0, 'white');
-      titleGrad.addColorStop(1, p.titleAccent);
-      ctx.fillStyle = titleGrad;
+      ctx.fillStyle = 'white'; // 검은 밴드 위 순백색 제목 (업체명은 노랑)
       ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 3;
       ctx.shadowColor = 'rgba(0,0,0,1)';
