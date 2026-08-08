@@ -705,10 +705,12 @@ async function createImageSlideshowVideo(
     `-loop 1 -t ${durations[i].toFixed(3)} -i "${p}"`
   ).join(' ');
 
-  // Scale/crop each image to 1080×1920, then concat all
+  // 사진 비율 유지(contain): 하단 사진영역(1080×1536)에 잘림 없이 fit, 남는 곳은 검정
+  // (가로형 사진이 좌우로 크롭돼 세로 조각이 되던 문제 해결)
+  const PHOTO_H = 1536; // 1920 - 384(상단 밴드)
   const scaleFilters = imagePaths.map((_, i) =>
-    `[${i}:v]scale=1080:1920:force_original_aspect_ratio=increase,` +
-    `crop=1080:1920:(iw-1080)/2:(ih-1920)/2,setsar=1,fps=30[v${i}]`
+    `[${i}:v]scale=1080:${PHOTO_H}:force_original_aspect_ratio=decrease,` +
+    `pad=1080:${PHOTO_H}:(ow-iw)/2:0:black,setsar=1,fps=30[v${i}]`
   );
   const concatInputLabels = imagePaths.map((_, i) => `[v${i}]`).join('');
   const filterComplex = [
@@ -988,10 +990,10 @@ export async function generateVideo(
     // Scale bg → chain overlay each text PNG with enable='between(t, start, end)'
     const filterParts: string[] = [];
     filterParts.push(
-      // 사진(또는 영상)은 하단 4/5, 상단 1/5(BAND_H)는 검은 배경
-      `[0:v]scale=1080:${H_FULL - BAND_H}:force_original_aspect_ratio=increase,` +
-      `crop=1080:${H_FULL - BAND_H}:(iw-1080)/2:(ih-${H_FULL - BAND_H})/2,` +
-      `pad=1080:${H_FULL}:0:${BAND_H}:black,setsar=1[bg0]`
+      // 사진/영상은 비율 유지(contain, 잘림·찌그러짐 없음)로 밴드 바로 아래(상단정렬) 배치,
+      // 상단 1/5(BAND_H)은 검은 밴드. 슬라이드쇼는 이미 1080×1536이라 그대로 하단 배치됨.
+      `[0:v]scale=1080:${H_FULL - BAND_H}:force_original_aspect_ratio=decrease,` +
+      `pad=1080:${H_FULL}:(ow-iw)/2:${BAND_H}:black,setsar=1[bg0]`
     );
 
     // Use between(t, start, end) so only ONE overlay is active at a time.
