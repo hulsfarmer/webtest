@@ -12,7 +12,7 @@ export default function RefundPage() {
       <p className="text-gray-500 text-sm mb-10">시행일: 2026년 8월 3일</p>
 
       <Section title="1. 정기결제 해지">
-        <p>유료 요금제(Pro·Business)는 월 정기결제로 자동 갱신됩니다. 회원은 언제든지 서비스 내 &lsquo;구독 해지&rsquo; 또는 고객문의를 통해 해지할 수 있습니다.</p>
+        <p>구독 요금제(Lite·Pro·Business)는 월 정기결제로 자동 갱신됩니다. 회원은 언제든지 서비스 내 &lsquo;구독 해지&rsquo; 또는 고객문의를 통해 해지할 수 있습니다. 단건 이용권(횟수 충전)은 1회성 결제로 자동 갱신되지 않으며, 미사용 잔여 횟수는 고객문의를 통해 환불 요청할 수 있습니다(사용한 횟수는 정가 기준 차감).</p>
         <p>해지 시 <strong className="text-gray-200">다음 결제일부터 청구가 중단</strong>되며, 이미 결제한 기간 동안에는 계속 서비스를 이용할 수 있습니다.</p>
       </Section>
 

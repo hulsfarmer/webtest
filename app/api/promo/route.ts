@@ -222,6 +222,8 @@ export async function POST(req: NextRequest) {
   let contact = '';
   let location = '';
   let cta = '';
+  let mode = 'business';
+  let eventDate = '';
   let duration = 60;
   let tone = '친근한';
   let voice = 'ko-KR-Chirp3-HD-Aoede';
@@ -241,6 +243,8 @@ export async function POST(req: NextRequest) {
     contact       = (formData.get('contact')       as string | null) ?? '';
     location      = (formData.get('location')      as string | null) ?? '';
     cta           = (formData.get('cta')           as string | null) ?? '';
+    mode          = (formData.get('mode')          as string | null) ?? 'business';
+    eventDate     = (formData.get('eventDate')     as string | null) ?? '';
     voice         = (formData.get('voice')         as string | null) ?? 'ko-KR-Chirp3-HD-Aoede';
     duration      = parseInt((formData.get('duration') as string | null) ?? '60', 10);
     tone          = (formData.get('tone')          as string | null) ?? '친근한';
@@ -303,14 +307,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate required fields
+    const isEvent = mode === 'event';
     if (!businessName?.trim()) {
-      return NextResponse.json({ error: '업체명을 입력해주세요.' }, { status: 400 });
+      return NextResponse.json({ error: isEvent ? '행사명을 입력해주세요.' : '업체명을 입력해주세요.' }, { status: 400 });
     }
-    if (!businessType?.trim()) {
-      return NextResponse.json({ error: '업종을 선택해주세요.' }, { status: 400 });
+    if (!prebuiltScript && !businessType?.trim()) {
+      return NextResponse.json({ error: isEvent ? '행사 종류를 선택해주세요.' : '업종을 선택해주세요.' }, { status: 400 });
     }
     if (!sellingPoints?.trim()) {
-      return NextResponse.json({ error: '홍보 포인트를 입력해주세요.' }, { status: 400 });
+      return NextResponse.json({ error: isEvent ? '주요 내용·프로그램을 입력해주세요.' : '홍보 포인트를 입력해주세요.' }, { status: 400 });
     }
 
     if (!(await canGenerate(userId))) {
@@ -341,6 +346,8 @@ export async function POST(req: NextRequest) {
       cta: cta?.trim() || undefined,
       duration,
       tone,
+      mode: isEvent ? 'event' : 'business',
+      eventDate: eventDate?.trim() || undefined,
     };
 
     processPromoJob(jobId, input, voice, speed, userImagePaths, prebuiltScript, bgmId, customBgmPath, bgmVolume, showWatermark).catch(console.error);
@@ -367,7 +374,7 @@ export async function POST(req: NextRequest) {
     if (!businessName?.trim()) {
       return NextResponse.json({ error: '업체명을 입력해주세요.' }, { status: 400 });
     }
-    if (!businessType?.trim()) {
+    if (!prebuiltScript && !businessType?.trim()) {
       return NextResponse.json({ error: '업종을 선택해주세요.' }, { status: 400 });
     }
     if (!sellingPoints?.trim()) {

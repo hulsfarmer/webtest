@@ -1,9 +1,11 @@
 import { supabase } from './supabase';
 
-export type Plan = 'free' | 'pro' | 'business' | 'admin';
+export type Plan = 'free' | 'lite' | 'pro' | 'business' | 'admin';
 
+// 구독 플랜별 월 영상 한도
 export const PLAN_LIMITS: Record<Plan, number> = {
-  free: 3,
+  free: 0,
+  lite: 10,
   pro: 30,
   business: 100,
   admin: Infinity,
@@ -14,14 +16,16 @@ export const CUSTOM_LIMITS: Record<string, number> = {
   'test@shortsai.kr': 10,
 };
 
+// 구독 플랜 월 결제금액 (VAT 포함 실청구가)
 export const PLAN_PRICES: Record<Plan, number> = {
   free: 0,
-  pro: 5000,
-  business: 14500,
+  lite: 2000,
+  pro: 4000,
+  business: 10000,
   admin: 0,
 };
 
-// LemonSqueezy variant ID → Plan 매핑
+// LemonSqueezy variant ID → Plan 매핑 (레거시, 미사용)
 export const VARIANT_TO_PLAN: Record<string, Plan> = {
   '1409976': 'pro',
   '1410086': 'business',
@@ -35,7 +39,8 @@ export interface UsageResult {
   plan: Plan;
   count: number;
   month: string;
-  remaining: number;
+  remaining: number; // 구독/무료 월 한도 잔여
+  credits: number;   // 단건 구매 크레딧 잔액(월 리셋 없음)
 }
 
 /**
@@ -45,7 +50,7 @@ export interface UsageResult {
 export async function getUsage(userId: string): Promise<UsageResult> {
   const currentMonth = getCurrentMonth();
 
-  // select('*')로 조회 — plan_expires_at 컬럼이 아직 없어도 안전(undefined 처리)
+  // select('*')로 조회 — 컬럼 부재에도 안전(undefined 처리)
   const { data: user } = await supabase
     .from('users')
     .select('*')
@@ -53,12 +58,12 @@ export async function getUsage(userId: string): Promise<UsageResult> {
     .single();
 
   if (!user) {
-    return { plan: 'free', count: 0, month: currentMonth, remaining: PLAN_LIMITS.free };
+    return { plan: 'free', count: 0, month: currentMonth, remaining: PLAN_LIMITS.free, credits: 0 };
   }
 
   let plan = (user.plan || 'free') as Plan;
 
-  // 단건결제(PortOne) 플랜 만료 체크: plan_expires_at이 지났으면 free로 강등
+  // 정기결제 만료 체크: plan_expires_at이 지났으면 free로 강등
   if (plan !== 'admin' && plan !== 'free' && user.plan_expires_at) {
     if (new Date(user.plan_expires_at).getTime() < Date.now()) {
       plan = 'free';
@@ -82,25 +87,48 @@ export async function getUsage(userId: string): Promise<UsageResult> {
 
   const limit = CUSTOM_LIMITS[(user.email || '').toLowerCase()] ?? PLAN_LIMITS[plan];
   const remaining = Math.max(0, limit - count);
+  const credits = (user.credits as number) || 0;
 
-  return { plan, count, month: currentMonth, remaining };
+  return { plan, count, month: currentMonth, remaining, credits };
 }
 
 /**
  * Check if user can generate another video.
+ * 구독/무료 월 한도가 남았거나, 크레딧 잔액이 있으면 생성 가능.
  */
 export async function canGenerate(userId: string): Promise<boolean> {
   const usage = await getUsage(userId);
-  return usage.remaining > 0;
+  return usage.remaining > 0 || usage.credits > 0;
 }
 
 /**
- * Increment monthly usage count.
+ * Increment usage.
+ * 구독/무료 월 한도가 남으면 월 사용량 +1, 소진됐으면 크레딧 -1.
  */
 export async function incrementUsage(userId: string): Promise<void> {
   const currentMonth = getCurrentMonth();
+  const usage = await getUsage(userId);
 
-  await supabase.rpc('increment_usage', { user_id_param: userId, current_month: currentMonth });
+  if (usage.remaining > 0) {
+    await supabase.rpc('increment_usage', { user_id_param: userId, current_month: currentMonth });
+    return;
+  }
+
+  // 월 한도 소진 → 크레딧 1 차감 (남아있을 때만)
+  const { data } = await supabase.from('users').select('credits').eq('id', userId).single();
+  const credits = (data?.credits as number) || 0;
+  if (credits > 0) {
+    await supabase.from('users').update({ credits: credits - 1 }).eq('id', userId);
+  }
+}
+
+/**
+ * 단건 크레딧 지급 — 단건 결제(포트원 일반결제) 검증 성공 후 호출.
+ */
+export async function addCredits(userId: string, amount: number): Promise<void> {
+  const { data } = await supabase.from('users').select('credits').eq('id', userId).single();
+  const credits = (data?.credits as number) || 0;
+  await supabase.from('users').update({ credits: credits + amount }).eq('id', userId);
 }
 
 /**

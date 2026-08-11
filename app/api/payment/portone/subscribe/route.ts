@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '잘못된 요청입니다' }, { status: 400 });
   }
 
-  const paymentId = `shortsai-${userId}-${Date.now()}`;
+  const paymentId = `sa-${String(userId).slice(0, 8)}-${Date.now().toString(36)}`;
   const result = await chargeBillingKey(paymentId, billingKey, plan, userId);
   if (!result.ok) {
     console.error(`[PortOne] 첫 결제 실패 user=${userId} plan=${plan}: ${result.error}`);

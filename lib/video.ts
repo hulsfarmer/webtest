@@ -360,9 +360,9 @@ async function createTextOverlay(
   // 하단 그라데이션 오버레이 (위: 투명 → 아래: 반투명 검정)
   const boxGrad = ctx.createLinearGradient(0, effectiveBOX_Y - 60, 0, effectiveBOX_Y + effectiveBOX_H);
   boxGrad.addColorStop(0, 'rgba(0,0,0,0)');
-  boxGrad.addColorStop(0.15, 'rgba(0,0,0,0.3)');
-  boxGrad.addColorStop(0.5, 'rgba(0,0,0,0.55)');
-  boxGrad.addColorStop(1, 'rgba(0,0,0,0.7)');
+  boxGrad.addColorStop(0.15, 'rgba(0,0,0,0.15)');
+  boxGrad.addColorStop(0.5, 'rgba(0,0,0,0.3)');
+  boxGrad.addColorStop(1, 'rgba(0,0,0,0.45)');
   ctx.fillStyle = boxGrad;
   ctx.fillRect(boxX, effectiveBOX_Y - 60, boxW, effectiveBOX_H + 60);
 
@@ -410,7 +410,7 @@ async function createTextOverlay(
   const barY = H_FULL - SAFE_BOTTOM + 20;
   const barPad = 60;
   const barW = W - barPad * 2;
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.beginPath();
   ctx.roundRect(barPad - 8, barY - 8, barW + 16, barH + 16, 8);
   ctx.fill();
@@ -611,9 +611,9 @@ async function createFrameImage(
   const boxW = W;
   const boxGrad = ctx.createLinearGradient(0, effectiveBOX_Y - 60, 0, effectiveBOX_Y + effectiveBOX_H);
   boxGrad.addColorStop(0, 'rgba(0,0,0,0)');
-  boxGrad.addColorStop(0.15, 'rgba(0,0,0,0.3)');
-  boxGrad.addColorStop(0.5, 'rgba(0,0,0,0.55)');
-  boxGrad.addColorStop(1, 'rgba(0,0,0,0.7)');
+  boxGrad.addColorStop(0.15, 'rgba(0,0,0,0.15)');
+  boxGrad.addColorStop(0.5, 'rgba(0,0,0,0.3)');
+  boxGrad.addColorStop(1, 'rgba(0,0,0,0.45)');
   ctx.fillStyle = boxGrad;
   ctx.fillRect(boxX, effectiveBOX_Y - 60, boxW, effectiveBOX_H + 60);
 
@@ -986,9 +986,12 @@ export async function generateVideo(
     filterParts.push(
       // 하단 4/5(1080×1536)를 사진/영상으로 꽉 채움(cover, 무왜곡, 넘치면 좌우 크롭),
       // 상단 1/5(BAND_H)은 검은 밴드. 슬라이드쇼는 이미 1080×1536 cover라 여기선 크롭 노옵.
-      `[0:v]scale=1080:${H_FULL - BAND_H}:force_original_aspect_ratio=increase,` +
-      `crop=1080:${H_FULL - BAND_H}:(iw-1080)/2:(ih-${H_FULL - BAND_H})/2,` +
-      `pad=1080:${H_FULL}:0:${BAND_H}:black,setsar=1[bg0]`
+      `[0:v]split=2[src_fg][src_bg];` +
+      `[src_bg]scale=1080:${H_FULL}:force_original_aspect_ratio=increase,` +
+      `crop=1080:${H_FULL}:(iw-1080)/2:(ih-${H_FULL})/2,gblur=sigma=40,setsar=1[bgblur];` +
+      `[src_fg]scale=1080:${H_FULL - BAND_H}:force_original_aspect_ratio=increase,` +
+      `crop=1080:${H_FULL - BAND_H}:(iw-1080)/2:(ih-${H_FULL - BAND_H})/2,setsar=1[fg];` +
+      `[bgblur][fg]overlay=0:${BAND_H}[bg0]`
     );
 
     // Use between(t, start, end) so only ONE overlay is active at a time.

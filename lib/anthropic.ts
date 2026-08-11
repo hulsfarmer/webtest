@@ -50,6 +50,8 @@ export interface PromoInput {
   cta?: string;
   duration: number;
   tone: string;
+  mode?: 'business' | 'event';
+  eventDate?: string;
 }
 
 export async function generatePromoScript(input: PromoInput): Promise<VideoScript> {
@@ -57,15 +59,9 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
     return getMockPromoScript(input);
   }
 
-  const { businessName, businessType, sellingPoints, cta, duration, tone } = input;
+  const { businessName, businessType, sellingPoints, cta, duration, tone, mode, eventDate, location } = input;
 
-  const message = await getClient().messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: 1024,
-    messages: [
-      {
-        role: 'user',
-        content: `SNS 홍보 영상 스크립트를 한국어로 작성해주세요.
+  const businessPrompt = `SNS 홍보 영상 스크립트를 한국어로 작성해주세요.
 
 업체명: ${businessName}
 업종: ${businessType}
@@ -115,7 +111,70 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
 - 전화번호, 주소, 연락처 등 구체적인 연락 정보는 절대 스크립트에 포함하지 마세요 (화면 하단에 자동 표시됩니다)
 - CTA는 방문 또는 검색 유도로만 마무리
 - bgKeyword는 업종(${businessType})에 어울리는 영어 스톡영상 검색어
-- 총 duration이 ${duration}초에 맞도록 조정`,
+- 총 duration이 ${duration}초에 맞도록 조정`;
+
+  const eventPrompt = `행사(이벤트) 홍보 영상 스크립트를 한국어로 작성해주세요.
+
+행사명: ${businessName}
+행사 종류: ${businessType}
+일시: ${eventDate || '(미입력)'}
+장소: ${location || '(미입력)'}
+주요 내용·프로그램: ${sellingPoints}
+영상 길이: ${duration}초
+톤: ${tone}
+원하는 마무리 멘트: ${cta || '참여·방문 유도'}
+
+다음 JSON 형식으로 응답해주세요 (코드 블록 없이 순수 JSON만):
+{
+  "title": "행사를 알리는 임팩트 있는 캐치프레이즈 제목 (20자 이내, 예: '이번 주말, 놓치지 마세요')",
+  "bgKeyword": "배경으로 쓸 Pexels 스톡 영상 검색어 (영어 1-2단어, 행사 분위기에 맞게, 예: festival crowd, live concert, street market)",
+  "hashtags": ["해시태그1", "해시태그2", "해시태그3", "해시태그4", "해시태그5"],
+  "sections": [
+    {
+      "type": "hook",
+      "text": "3-5초 안에 기대감을 폭발시키는 오프닝 (행사명 언급, 호기심·설렘 유발)",
+      "duration": 5
+    },
+    {
+      "type": "main",
+      "text": "주요 볼거리·프로그램 1 소개",
+      "duration": ${Math.floor(duration * 0.25)}
+    },
+    {
+      "type": "main",
+      "text": "추가 프로그램·즐길거리·혜택 소개",
+      "duration": ${Math.floor(duration * 0.25)}
+    },
+    {
+      "type": "main",
+      "text": "일시와 장소를 명확히 안내 (예: 'O월 O일, OO에서 만나요')",
+      "duration": ${Math.floor(duration * 0.2)}
+    },
+    {
+      "type": "cta",
+      "text": "지금 아니면 놓친다는 긴급성으로 참여를 유도하는 마무리 (일시·장소 다시 강조, 전화번호는 넣지 말 것)",
+      "duration": ${Math.floor(duration * 0.15)}
+    }
+  ],
+  "totalDuration": ${duration}
+}
+
+중요:
+- 각 section의 text는 TTS로 읽기 자연스럽게 작성 (음성으로 읽을 내용)
+- 행사명(${businessName})을 hook에 자연스럽게 포함
+- **일시(${eventDate || '미입력'})와 장소(${location || '미입력'})는 반드시 스크립트에 음성으로 안내** (행사는 언제·어디서가 가장 중요)
+- 전화번호 등 세부 연락처는 스크립트에 넣지 마세요 (화면 하단에 자동 표시됩니다)
+- 마감·한정·선착순 같은 긴급성을 살려 참여를 유도
+- bgKeyword는 행사 분위기(${businessType})에 어울리는 영어 스톡영상 검색어
+- 총 duration이 ${duration}초에 맞도록 조정`;
+
+  const message = await getClient().messages.create({
+    model: 'claude-haiku-4-5',
+    max_tokens: 1024,
+    messages: [
+      {
+        role: 'user',
+        content: mode === 'event' ? eventPrompt : businessPrompt,
       },
     ],
   });
@@ -141,7 +200,9 @@ export async function generatePromoScriptFromImages(
     return getMockPromoScript(input);
   }
 
-  const { businessName, businessType, sellingPoints, cta, duration, tone } = input;
+  const { businessName, businessType, sellingPoints, cta, duration, tone, mode, eventDate, location } = input;
+  const isEvent = mode === 'event';
+  const subject = isEvent ? '행사' : '업체';
   const n = imagePaths.length;
   const perDuration = Math.floor(duration / n);
 
@@ -149,6 +210,24 @@ export async function generatePromoScriptFromImages(
     type: i === 0 ? 'hook' : i === n - 1 && n > 1 ? 'cta' : 'main',
     duration: perDuration,
   }));
+
+  const infoLines = isEvent
+    ? `행사명: ${businessName}\n행사 종류: ${businessType}\n일시: ${eventDate || '(미입력)'}\n장소: ${location || '(미입력)'}\n주요 내용·프로그램: ${sellingPoints}`
+    : `업체명: ${businessName}\n업종: ${businessType}\n핵심 홍보 포인트: ${sellingPoints}`;
+
+  const rules = isEvent
+    ? `- 각 섹션의 text는 해당 사진(순서대로)의 장면/분위기와 자연스럽게 연결되도록
+- 행사명(${businessName})을 첫 섹션에 자연스럽게 포함
+- **일시(${eventDate || '미입력'})와 장소(${location || '미입력'})는 반드시 스크립트에 음성으로 안내** (행사는 언제·어디서가 가장 중요)
+- 마감·한정·선착순 같은 긴급성을 살려 참여를 유도
+- 전화번호 등 세부 연락처는 스크립트에 넣지 마세요 (화면 하단에 자동 표시됩니다)
+- text는 TTS로 읽기 자연스러운 한국어 (음성으로 읽을 내용)
+- bgKeyword는 행사 분위기(${businessType})에 어울리는 영어 스톡영상 검색어`
+    : `- 각 섹션의 text는 해당 사진(순서대로)의 장면/분위기와 자연스럽게 연결되도록
+- 업체명(${businessName})을 첫 섹션에 자연스럽게 포함
+- 전화번호, 주소, 연락처 등 구체적인 연락 정보는 절대 스크립트에 포함하지 마세요
+- text는 TTS로 읽기 자연스러운 한국어 (음성으로 읽을 내용)
+- bgKeyword는 업종(${businessType})에 어울리는 영어 스톡영상 검색어`;
 
   const message = await getClient().messages.create({
     model: 'claude-haiku-4-5',
@@ -160,25 +239,23 @@ export async function generatePromoScriptFromImages(
           ...imagePaths.map(fileToImageBlock),
           {
             type: 'text',
-            text: `위 ${n}장의 업체 사진을 순서대로 사용하여 SNS 홍보 영상 스크립트를 한국어로 작성해주세요.
+            text: `위 ${n}장의 ${subject} 사진을 순서대로 사용하여 ${isEvent ? '행사(이벤트)' : 'SNS'} 홍보 영상 스크립트를 한국어로 작성해주세요.
 
-업체명: ${businessName}
-업종: ${businessType}
-핵심 홍보 포인트: ${sellingPoints}
+${infoLines}
 영상 길이: ${duration}초
 톤: ${tone}
-CTA: ${cta || '방문 또는 검색 유도'}
+${isEvent ? '원하는 마무리 멘트' : 'CTA'}: ${cta || (isEvent ? '참여·방문 유도' : '방문 또는 검색 유도')}
 섹션 수: ${n}개 (사진 1장당 섹션 1개)
 
 다음 JSON 형식으로 응답해주세요 (코드 블록 없이 순수 JSON만):
 {
-  "title": "캐치프레이즈 형식의 영상 제목 — 업체명을 그대로 반복하지 말고, 핵심 혜택·차별점을 임팩트 있게 20자 이내로 요약 (예: '지금 바로 경험하세요', '가격은 낮추고 효과는 높이고')",
+  "title": "캐치프레이즈 형식의 영상 제목 — ${subject}명을 그대로 반복하지 말고, ${isEvent ? '행사의 기대감·핵심을' : '핵심 혜택·차별점을'} 임팩트 있게 20자 이내로 요약",
   "bgKeyword": "배경 Pexels 검색어 (영어 1-2단어, 사진 없을 때 대체용)",
   "hashtags": ["해시태그1", "해시태그2", "해시태그3", "해시태그4", "해시태그5"],
   "sections": [
     ${sectionSpecs.map((s, i) => JSON.stringify({
       type: s.type,
-      text: `사진 ${i + 1}의 장면에 어울리는 ${s.type === 'hook' ? '강력한 홍보 훅 (업체명 포함)' : s.type === 'cta' ? '방문/문의 유도 마무리 멘트' : '핵심 홍보 포인트 멘트'}`,
+      text: `사진 ${i + 1}의 장면에 어울리는 ${s.type === 'hook' ? `강력한 홍보 훅 (${subject}명 포함)` : s.type === 'cta' ? (isEvent ? '참여 유도 마무리 멘트 (일시·장소 강조)' : '방문/문의 유도 마무리 멘트') : (isEvent ? '볼거리·프로그램 멘트' : '핵심 홍보 포인트 멘트')}`,
       duration: s.duration,
     })).join(',\n    ')}
   ],
@@ -186,11 +263,7 @@ CTA: ${cta || '방문 또는 검색 유도'}
 }
 
 중요:
-- 각 섹션의 text는 해당 사진(순서대로)의 장면/분위기와 자연스럽게 연결되도록
-- 업체명(${businessName})을 첫 섹션에 자연스럽게 포함
-- 전화번호, 주소, 연락처 등 구체적인 연락 정보는 절대 스크립트에 포함하지 마세요
-- text는 TTS로 읽기 자연스러운 한국어 (음성으로 읽을 내용)
-- bgKeyword는 업종(${businessType})에 어울리는 영어 스톡영상 검색어`,
+${rules}`,
           },
         ],
       },

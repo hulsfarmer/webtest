@@ -1,11 +1,20 @@
 import type { Plan } from './usageStore';
 
 /**
- * PortOne V2 정기결제(빌링) — 플랜별 월 청구 금액(원) 및 주문명.
+ * PortOne V2 정기결제(빌링) — 구독 플랜별 월 청구 금액(원, VAT 포함) 및 주문명.
  */
 export const PORTONE_PLAN_AMOUNT: Record<string, { plan: Plan; amount: number; orderName: string }> = {
-  pro: { plan: 'pro', amount: 5500, orderName: 'ShortsAI Pro 월 정기결제' },
-  business: { plan: 'business', amount: 15950, orderName: 'ShortsAI Business 월 정기결제' },
+  lite: { plan: 'lite', amount: 2000, orderName: 'ShortsAI Lite(10회) 월 정기결제' },
+  pro: { plan: 'pro', amount: 4000, orderName: 'ShortsAI Pro(30회) 월 정기결제' },
+  business: { plan: 'business', amount: 10000, orderName: 'ShortsAI Business(100회) 월 정기결제' },
+};
+
+/**
+ * 단건(크레딧) 팩 — 1회 결제로 영상 생성 횟수를 잔액으로 충전. 금액은 VAT 포함 실청구가.
+ */
+export const CREDIT_PACKS: Record<string, { credits: number; amount: number; orderName: string }> = {
+  credit10: { credits: 10, amount: 3000, orderName: 'ShortsAI 10회 이용권' },
+  credit30: { credits: 30, amount: 5000, orderName: 'ShortsAI 30회 이용권' },
 };
 
 /** 서버에 PortOne 시크릿이 설정돼 있는지 (없으면 결제 비활성) */
@@ -49,5 +58,40 @@ export async function chargeBillingKey(
     return { ok: true };
   } catch (err) {
     return { ok: false, error: `청구 예외: ${String(err).slice(0, 150)}` };
+  }
+}
+
+/**
+ * 단건 결제 검증 — 프론트에서 결제 완료된 paymentId를 서버가 PortOne에 조회해
+ * 실제 결제상태(PAID)와 금액이 기대값과 일치하는지 확인(위변조 방지).
+ */
+export async function verifyPayment(
+  paymentId: string,
+  expectedAmount: number,
+): Promise<{ ok: boolean; error?: string }> {
+  const secret = process.env.PORTONE_API_SECRET;
+  if (!secret) return { ok: false, error: '결제 미설정' };
+
+  try {
+    const res = await fetch(
+      `https://api.portone.io/payments/${encodeURIComponent(paymentId)}`,
+      { headers: { Authorization: `PortOne ${secret}` } },
+    );
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      return { ok: false, error: `PortOne ${res.status}: ${body.slice(0, 200)}` };
+    }
+    const payment = await res.json();
+    const status = payment?.status;
+    const paidTotal = payment?.amount?.total;
+    if (status !== 'PAID') {
+      return { ok: false, error: `결제 상태 비정상: ${status}` };
+    }
+    if (typeof paidTotal !== 'number' || paidTotal !== expectedAmount) {
+      return { ok: false, error: `금액 불일치: 결제 ${paidTotal} ≠ 기대 ${expectedAmount}` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: `검증 예외: ${String(err).slice(0, 150)}` };
   }
 }

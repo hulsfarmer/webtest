@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { ArrowRight, Play, Sparkles, MonitorPlay } from 'lucide-react';
+import { ArrowRight, Play, Sparkles, MonitorPlay, Store, CalendarDays } from 'lucide-react';
 import Header from '@/components/Header';
 import HowItWorks from '@/components/HowItWorks';
 import PricingSection from '@/components/PricingSection';
@@ -17,14 +17,6 @@ const DEFAULT_SAMPLES = [
 
 const businessTypes = ['카페', '식당', '헬스장', '미용실', '네일샵', '꽃집', '베이커리', '학원'];
 
-const headlineTexts = [
-  '우리 가게 홍보영상',
-  '매매 주택 홍보영상',
-  '우리 회사 홍보영상',
-  '우리 학교 홍보영상',
-  '우리 농장 홍보영상',
-];
-
 interface ShowcaseVideo {
   videoUrl: string;
   posterUrl: string | null;
@@ -34,20 +26,7 @@ interface ShowcaseVideo {
 }
 
 export default function HomePage() {
-  const [headlineIndex, setHeadlineIndex] = useState(0);
-  const [fade, setFade] = useState(true);
   const [showcaseVideos, setShowcaseVideos] = useState<ShowcaseVideo[]>([]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setFade(false);
-      setTimeout(() => {
-        setHeadlineIndex((prev) => (prev + 1) % headlineTexts.length);
-        setFade(true);
-      }, 400);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     fetch('/api/showcase')
@@ -89,14 +68,6 @@ export default function HomePage() {
 
           {/* Headline — fixed height to prevent CLS */}
           <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extrabold leading-tight mb-4 sm:mb-6">
-            <span className="inline-block h-[1.2em] overflow-hidden">
-              <span
-                className={`inline-block transition-all duration-400 ${fade ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}
-              >
-                {headlineTexts[headlineIndex]}
-              </span>
-            </span>
-            <br />
             <span className="gradient-text">고화질 3분 완성!</span>
           </h1>
 
@@ -110,18 +81,35 @@ export default function HomePage() {
             모두 자동으로 완성. 전문 영상 제작사 없이도 SNS 홍보 쇼츠 완성.
           </p>
 
-          {/* Single CTA */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-10">
+          {/* Two entry cards: 업체 / 행사 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-w-2xl mx-auto mb-5">
             <Link
               href="/promo"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 md:px-10 md:py-5 rounded-xl bg-gradient-brand text-white font-bold text-base md:text-lg hover:opacity-90 transition-all glow-purple active:opacity-80"
+              className="group relative rounded-2xl p-5 sm:p-6 bg-gradient-brand text-white text-left hover:opacity-95 transition-all glow-purple active:opacity-85"
             >
-              무료로 홍보영상 만들기
-              <ArrowRight className="w-5 h-5" />
+              <Store className="w-7 h-7 mb-3" />
+              <div className="text-lg font-bold mb-1">업체 홍보영상</div>
+              <p className="text-white/80 text-sm mb-3">가게·회사·농장·병원 등 사업장 소개</p>
+              <span className="inline-flex items-center gap-1 text-sm font-semibold">
+                무료로 시작 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              </span>
             </Link>
+            <Link
+              href="/promo?mode=event"
+              className="group relative rounded-2xl p-5 sm:p-6 bg-white/5 border border-white/10 text-white text-left hover:bg-white/10 hover:border-emerald-500/40 transition-all active:bg-white/15"
+            >
+              <CalendarDays className="w-7 h-7 mb-3 text-emerald-400" />
+              <div className="text-lg font-bold mb-1">행사 홍보영상</div>
+              <p className="text-gray-400 text-sm mb-3">축제·공연·세일·오픈 등 이벤트 안내</p>
+              <span className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-300">
+                무료로 시작 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </Link>
+          </div>
+          <div className="flex justify-center mb-8 sm:mb-10">
             <a
               href="#how-it-works"
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/5 text-white font-semibold text-base sm:text-lg hover:bg-white/10 transition-all border border-white/10 active:bg-white/15"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/5 text-white font-semibold text-sm sm:text-base hover:bg-white/10 transition-all border border-white/10 active:bg-white/15"
             >
               <Play className="w-4 h-4" />
               작동 방식 보기

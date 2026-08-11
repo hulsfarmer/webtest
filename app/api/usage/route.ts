@@ -17,8 +17,9 @@ export async function GET() {
     plan: usage.plan,
     used: usage.count,
     limit: limit === Infinity ? null : limit,
-    remaining: usage.remaining,
+    remaining: limit === Infinity ? null : usage.remaining + usage.credits,
     month: usage.month,
+    credits: usage.credits,
   });
 }
 

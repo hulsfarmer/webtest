@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2, Settings2, Upload, Volume2, MessageSquarePlus } from 'lucide-react';
+import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Calendar, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2, Settings2, Upload, Volume2, MessageSquarePlus } from 'lucide-react';
 import ReviewModal from '@/components/ReviewModal';
 import { BGM_CATALOG, recommendBgm, type BgmId } from '@/lib/bgm-catalog';
 
@@ -55,6 +55,15 @@ const BUSINESS_TYPES = [
   '쇼핑 · 의류',
   '부동산',
   '숙박 · 펜션',
+  '기타',
+];
+
+const EVENT_TYPES = [
+  '축제 · 마켓',
+  '공연 · 전시',
+  '세일 · 프로모션',
+  '오픈 · 개업',
+  '모집 · 클래스',
   '기타',
 ];
 
@@ -151,6 +160,8 @@ export default function PromoPage() {
   const [contact, setContact]               = useState('');
   const [location, setLocation]             = useState('');
   const [cta, setCta]                       = useState('');
+  const [mode, setMode]                     = useState<'business' | 'event'>('business');
+  const [eventDate, setEventDate]           = useState('');
   const [duration, setDuration]             = useState(60);
   const [tone, setTone]                     = useState('친근한');
   const [voice, setVoice]                   = useState('ko-KR-Chirp3-HD-Zephyr');
@@ -192,6 +203,17 @@ export default function PromoPage() {
   const [videoSubMsg, setVideoSubMsg] = useState('');
   const fakeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const videoStartedRef = useRef(false);
+
+  // 업체/행사 모드 선택 (?mode=event)
+  const modeInitRef = useRef(false);
+  useEffect(() => {
+    if (modeInitRef.current) return;
+    modeInitRef.current = true;
+    if (searchParams.get('mode') === 'event') {
+      setMode('event');
+      setTone((t) => (t === '친근한' ? '긴급한' : t)); // 행사는 긴급성 기본
+    }
+  }, [searchParams]);
 
   // 히스토리에서 스크립트 수정/재생성으로 온 경우 입력값 복원
   const restoredRef = useRef(false);
@@ -431,6 +453,7 @@ export default function PromoPage() {
 
   async function generateScriptPreview() {
     if (!businessName.trim() || !businessType || !sellingPoints.trim()) return;
+    if (mode === 'event' && (!eventDate.trim() || !location.trim())) return;
     setError(null);
     // loadingScript를 먼저 설정해서 form이 깜빡이지 않도록
     setLoadingScript(true);
@@ -461,6 +484,8 @@ export default function PromoPage() {
           cta: cta.trim() || undefined,
           duration,
           tone,
+          mode,
+          eventDate: eventDate.trim() || undefined,
           uploadId: currentUploadId,
         }),
       });
@@ -501,6 +526,8 @@ export default function PromoPage() {
       if (contact.trim())  formData.append('contact',  contact.trim());
       if (location.trim()) formData.append('location', location.trim());
       if (cta.trim())      formData.append('cta',      cta.trim());
+      formData.append('mode', mode);
+      if (eventDate.trim()) formData.append('eventDate', eventDate.trim());
       formData.append('duration',   String(duration));
       formData.append('tone',       tone);
       formData.append('voice',      voice);
@@ -678,7 +705,33 @@ export default function PromoPage() {
   const isFailed        = jobStatus?.status === 'failed';
   const isScriptReview  = !loading && !loadingScript && !jobId && scriptDraft !== null && !isDone && !isFailed;
   const showForm        = !loading && !isGenerating && !isDone && !isFailed && !isScriptReview && !loadingScript;
-  const canStart        = businessName.trim().length > 0 && businessType.length > 0 && sellingPoints.trim().length > 0 && images.length >= MIN_IMAGES && !loading && !loadingScript;
+
+  const isEvent = mode === 'event';
+  const ui = isEvent
+    ? {
+        heroTitle: '행사 홍보 영상',
+        heroSub: '행사 정보를 입력하면 AI가 홍보 영상을 만들어드립니다',
+        nameLabel: '행사명', namePh: '예: 함덕 봄맞이 플리마켓',
+        typeLabel: '행사 종류', types: EVENT_TYPES,
+        pointsLabel: '주요 내용 · 프로그램',
+        pointsPh: '예: 수공예 60팀, 푸드트럭, 라이브 공연 무대, 경품추첨',
+        pointsHint: '무엇을 즐길 수 있는지 — 볼거리·프로그램·혜택을 적어주세요',
+        photoLabel: '행사 · 포스터 사진',
+        ctaPh: '예: 이번 주말, 놓치지 마세요! / 선착순 마감!',
+      }
+    : {
+        heroTitle: '홍보 영상',
+        heroSub: '업체 정보를 입력하면 AI가 SNS 홍보 영상을 만들어드립니다',
+        nameLabel: '업체명', namePh: '예: 스타벅스 강남점, 홍길동 영어학원',
+        typeLabel: '업종', types: BUSINESS_TYPES,
+        pointsLabel: '핵심 홍보 포인트',
+        pointsPh: '예: 10년 경력 원어민 강사, 소규모 수업(최대 5명), 수능 합격률 98%, 첫 달 50% 할인',
+        pointsHint: '구체적인 강점, 가격 혜택, 특징을 적어주세요',
+        photoLabel: '매장 사진',
+        ctaPh: '예: 지금 바로 전화하세요! / 이번 달만 특가!',
+      };
+  const eventReady      = mode !== 'event' || (eventDate.trim().length > 0 && location.trim().length > 0);
+  const canStart        = businessName.trim().length > 0 && businessType.length > 0 && sellingPoints.trim().length > 0 && eventReady && images.length >= MIN_IMAGES && !loading && !loadingScript;
 
   return (
     <main className="min-h-screen bg-[#0F172A] text-white">
@@ -706,12 +759,12 @@ export default function PromoPage() {
       <div className="max-w-2xl mx-auto px-6 py-10">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">
-            홍보 영상{' '}
+            {ui.heroTitle}{' '}
             <span style={{ background: 'linear-gradient(135deg, #10b981, #059669)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               자동 생성
             </span>
           </h1>
-          <p className="text-gray-400">업체 정보를 입력하면 AI가 SNS 홍보 영상을 만들어드립니다</p>
+          <p className="text-gray-400">{ui.heroSub}</p>
         </div>
 
         {/* Usage warning */}
@@ -719,9 +772,9 @@ export default function PromoPage() {
           <div className="mb-6 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-yellow-300 font-medium text-sm">이번 달 한도 초과</p>
+              <p className="text-yellow-300 font-medium text-sm">생성 가능 횟수 소진</p>
               <p className="text-yellow-400/70 text-xs mt-0.5">
-                더 만들려면 <Link href="/#pricing" className="underline">플랜을 업그레이드</Link>해주세요
+                더 만들려면 <Link href="/#pricing" className="underline">이용권 구매 또는 구독</Link>해주세요
               </p>
             </div>
           </div>
@@ -731,27 +784,27 @@ export default function PromoPage() {
         {showForm && (
           <div className="glass-card p-6 space-y-5">
 
-            {/* 업체명 */}
+            {/* 업체명 / 행사명 */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                업체명 <span className="text-red-400">*</span>
+                {ui.nameLabel} <span className="text-red-400">*</span>
               </label>
               <input
                 type="text"
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
-                placeholder="예: 스타벅스 강남점, 홍길동 영어학원"
+                placeholder={ui.namePh}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-white/8 transition-all text-sm"
               />
             </div>
 
-            {/* 업종 */}
+            {/* 업종 / 행사 종류 */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                업종 <span className="text-red-400">*</span>
+                {ui.typeLabel} <span className="text-red-400">*</span>
               </label>
               <div className="flex flex-wrap gap-2">
-                {BUSINESS_TYPES.map((t) => (
+                {ui.types.map((t) => (
                   <button
                     key={t}
                     type="button"
@@ -768,26 +821,56 @@ export default function PromoPage() {
               </div>
             </div>
 
-            {/* 핵심 홍보 포인트 */}
+            {/* 일시 · 장소 (행사 전용) */}
+            {isEvent && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-emerald-400" /> 일시 <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={eventDate}
+                    onChange={(e) => setEventDate(e.target.value)}
+                    placeholder="예: 4/20(토) 10:00~18:00"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-white/8 transition-all text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-400" /> 장소 <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="예: 함덕 서우봉 해변 일대"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-white/8 transition-all text-sm"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 핵심 홍보 포인트 / 주요 내용·프로그램 */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                핵심 홍보 포인트 <span className="text-red-400">*</span>
+                {ui.pointsLabel} <span className="text-red-400">*</span>
               </label>
               <textarea
                 value={sellingPoints}
                 onChange={(e) => setSellingPoints(e.target.value)}
-                placeholder="예: 10년 경력 원어민 강사, 소규모 수업(최대 5명), 수능 합격률 98%, 첫 달 50% 할인"
+                placeholder={ui.pointsPh}
                 rows={3}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-white/8 transition-all resize-none text-sm"
               />
-              <p className="text-gray-600 text-xs mt-1">구체적인 강점, 가격 혜택, 특징을 적어주세요</p>
+              <p className="text-gray-600 text-xs mt-1">{ui.pointsHint}</p>
             </div>
 
             {/* ── 사진 업로드 ── */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-1.5">
                 <ImagePlus className="w-4 h-4 text-emerald-400" />
-                매장 사진
+                {ui.photoLabel}
                 <span className="text-red-400 text-xs ml-1">* 필수 — {MIN_IMAGES}~{MAX_IMAGES}장 (영상 배경으로 사용)</span>
               </label>
 
@@ -873,35 +956,51 @@ export default function PromoPage() {
               )}
             </div>
 
-            {/* 연락처 / 주소 (선택) */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* 연락처 / 위치 (선택) — 행사는 문의만 (장소는 상단 입력) */}
+            {isEvent ? (
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-1">
-                  <Phone className="w-3.5 h-3.5" /> 연락처
+                  <Phone className="w-3.5 h-3.5" /> 참가 · 문의
                   <span className="text-gray-600 text-xs ml-1">(선택)</span>
                 </label>
                 <input
                   type="text"
                   value={contact}
                   onChange={(e) => setContact(e.target.value)}
-                  placeholder="010-1234-5678"
+                  placeholder="예: 무료입장 / 문의 010-1234-5678"
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 transition-all text-sm"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5" /> 위치
-                  <span className="text-gray-600 text-xs ml-1">(선택)</span>
-                </label>
-                <input
-                  type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="강남역 3번 출구"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 transition-all text-sm"
-                />
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-1">
+                    <Phone className="w-3.5 h-3.5" /> 연락처
+                    <span className="text-gray-600 text-xs ml-1">(선택)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={contact}
+                    onChange={(e) => setContact(e.target.value)}
+                    placeholder="010-1234-5678"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 transition-all text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5" /> 위치
+                    <span className="text-gray-600 text-xs ml-1">(선택)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="강남역 3번 출구"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 transition-all text-sm"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* CTA 문구 (선택) */}
             <div>
@@ -912,7 +1011,7 @@ export default function PromoPage() {
                 type="text"
                 value={cta}
                 onChange={(e) => setCta(e.target.value)}
-                placeholder="예: 지금 바로 전화하세요! / 이번 달만 특가!"
+                placeholder={ui.ctaPh}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 transition-all text-sm"
               />
             </div>

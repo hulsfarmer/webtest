@@ -11,10 +11,12 @@ interface SubscriptionInfo {
   plan: string;
   monthlyUsage: number;
   usageLimit: number;
+  credits: number;
 }
 
 const PLAN_LABELS: Record<string, string> = {
   free: '무료',
+  lite: 'Lite',
   pro: 'Pro',
   business: 'Business',
   admin: '관리자',
@@ -22,6 +24,7 @@ const PLAN_LABELS: Record<string, string> = {
 
 const PLAN_LIMITS: Record<string, number> = {
   free: 3,
+  lite: 10,
   pro: 30,
   business: 100,
   admin: Infinity,
@@ -51,7 +54,8 @@ export default function AccountPage() {
         portalUrl: sub.portalUrl || null,
         plan,
         monthlyUsage: usage.used || 0,
-        usageLimit: usage.limit === null ? Infinity : (usage.limit || PLAN_LIMITS[plan] || 3),
+        usageLimit: usage.limit === null ? Infinity : (usage.limit ?? PLAN_LIMITS[plan] ?? 0),
+        credits: usage.credits || 0,
       });
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -122,18 +126,29 @@ export default function AccountPage() {
               </span>
             </div>
 
-            <div className="flex justify-between items-center">
-              <span className="text-gray-400">이번 달 사용량</span>
-              <span className="text-white">
-                {info?.monthlyUsage || 0} / {info?.usageLimit === Infinity || !info?.usageLimit ? '무제한' : `${info.usageLimit}회`}
-              </span>
-            </div>
+            {info?.usageLimit === Infinity ? (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">이번 달 사용량</span>
+                <span className="text-white">{info?.monthlyUsage || 0} / 무제한</span>
+              </div>
+            ) : (info?.usageLimit || 0) > 0 ? (
+              <>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">이번 달 구독 사용량</span>
+                  <span className="text-white">{info?.monthlyUsage || 0} / {info?.usageLimit}회</span>
+                </div>
+                <div className="w-full bg-white/10 rounded-full h-2">
+                  <div
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all"
+                    style={{ width: `${Math.min(((info?.monthlyUsage || 0) / (info?.usageLimit || 1)) * 100, 100)}%` }}
+                  />
+                </div>
+              </>
+            ) : null}
 
-            <div className="w-full bg-white/10 rounded-full h-2">
-              <div
-                className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all"
-                style={{ width: `${Math.min(((info?.monthlyUsage || 0) / (info?.usageLimit || 3)) * 100, 100)}%` }}
-              />
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">이용권 잔액</span>
+              <span className="text-white">{info?.credits || 0}회</span>
             </div>
           </div>
 

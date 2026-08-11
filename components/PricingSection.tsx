@@ -465,7 +465,8 @@ export default function PricingSection() {
                 )}
                 <div className="text-lg font-bold mb-1">{p.credits}회 이용권</div>
                 <div className="text-2xl sm:text-3xl font-bold mb-1">₩{p.amount.toLocaleString()}</div>
-                <p className="text-gray-500 text-xs mb-4">부가세(VAT) 포함 · 영상 {p.credits}개 · 유효기간 3개월</p>
+                <p className="text-gray-500 text-xs mb-1">부가세(VAT) 포함 · 영상 {p.credits}개</p>
+                <p className="text-gray-500 text-xs mb-4">유효기간 3개월</p>
                 <button
                   onClick={() => handleBuyCredit(p.id)}
                   disabled={loading !== null}

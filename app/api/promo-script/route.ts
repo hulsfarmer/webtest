@@ -22,11 +22,12 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const { businessName, businessType, sellingPoints, contact, location, cta, duration = 60, tone = '친근한', uploadId } = body;
+  const { businessName, businessType, sellingPoints, contact, location, cta, duration = 60, tone = '친근한', uploadId, mode, eventDate } = body;
+  const isEvent = mode === 'event';
 
-  if (!businessName?.trim()) return NextResponse.json({ error: '업체명을 입력해주세요.' }, { status: 400 });
-  if (!businessType?.trim()) return NextResponse.json({ error: '업종을 선택해주세요.' }, { status: 400 });
-  if (!sellingPoints?.trim()) return NextResponse.json({ error: '홍보 포인트를 입력해주세요.' }, { status: 400 });
+  if (!businessName?.trim()) return NextResponse.json({ error: isEvent ? '행사명을 입력해주세요.' : '업체명을 입력해주세요.' }, { status: 400 });
+  if (!businessType?.trim()) return NextResponse.json({ error: isEvent ? '행사 종류를 선택해주세요.' : '업종을 선택해주세요.' }, { status: 400 });
+  if (!sellingPoints?.trim()) return NextResponse.json({ error: isEvent ? '주요 내용·프로그램을 입력해주세요.' : '홍보 포인트를 입력해주세요.' }, { status: 400 });
 
   const input: PromoInput = {
     businessName: businessName.trim(),
@@ -37,6 +38,8 @@ export async function POST(req: NextRequest) {
     cta: cta?.trim() || undefined,
     duration,
     tone,
+    mode: isEvent ? 'event' : 'business',
+    eventDate: eventDate?.trim() || undefined,
   };
 
   try {

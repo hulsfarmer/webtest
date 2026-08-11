@@ -93,14 +93,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 },
                 {
                   '@type': 'Offer',
-                  price: '5000',
+                  price: '2000',
+                  priceCurrency: 'KRW',
+                  name: 'Lite',
+                  description: '월 10회 홍보영상',
+                },
+                {
+                  '@type': 'Offer',
+                  price: '4000',
                   priceCurrency: 'KRW',
                   name: 'Pro',
                   description: '월 30회 홍보영상',
                 },
                 {
                   '@type': 'Offer',
-                  price: '14500',
+                  price: '10000',
                   priceCurrency: 'KRW',
                   name: 'Business',
                   description: '월 100회 홍보영상',
