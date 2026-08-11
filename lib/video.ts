@@ -775,7 +775,8 @@ export async function generateVideo(
   const bgmVolume = externalBgmVolume !== undefined
     ? externalBgmVolume.toFixed(2)
     : (bgmId === 'calm' || bgmId === 'trendy') ? '0.95'
-    : (bgmId === 'professional' || bgmId === 'energetic') ? '0.21' : '0.42';
+    : bgmId === 'professional' ? '0.31'   // 전문 비즈니스 10%p 상향 (0.21→0.31)
+    : bgmId === 'energetic' ? '0.21' : '0.42';
 
   const outputDir = path.dirname(outputPath);
   if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
