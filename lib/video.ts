@@ -270,7 +270,7 @@ const EM_COLORS = ['#FFE600', '#00E5FF', '#FF2D78', '#A6FF00'];
 function drawEmphasisCaption(ctx: any, text: string, o: {
   W: number; boxY: number; boxH: number; maxWidth: number;
   baseSize: number; baseColor: string; emColors: string[]; fontFamily: string;
-  shadowColor: string; shadowBlur: number;
+  shadowColor: string; shadowBlur: number; colorOffset?: number;
 }): void {
   const emSize = Math.round(o.baseSize * 1.3);
   const lineGap = 18;
@@ -308,7 +308,7 @@ function drawEmphasisCaption(ctx: any, text: string, o: {
     const y = startY + li * lineHeight;
     for (const tk of line) {
       ctx.font = `bold ${sizeOf(tk)}px ${o.fontFamily}`;
-      ctx.fillStyle = tk.em ? o.emColors[tk.ci % o.emColors.length] : o.baseColor;
+      ctx.fillStyle = tk.em ? o.emColors[((o.colorOffset || 0) + tk.ci) % o.emColors.length] : o.baseColor;
       ctx.fillText(tk.t, x, y);
       x += tk.w;
     }
@@ -512,7 +512,7 @@ async function createTextOverlay(
   // 본문 자막 — *강조* 구절은 크게+헤더 accent색으로 (핵심 단어 시선 유도)
   drawEmphasisCaption(ctx, text, {
     W, boxY: effectiveBOX_Y, boxH: effectiveBOX_H, maxWidth: W - 120,
-    baseSize: 62, baseColor: p.subtitleColor, emColors: EM_COLORS,
+    baseSize: 62, baseColor: p.subtitleColor, emColors: EM_COLORS, colorOffset: frameIndex,
     fontFamily, shadowColor: 'rgba(0,0,0,0.95)', shadowBlur: 18,
   });
 
@@ -763,7 +763,7 @@ async function createFrameImage(
   // 본문 자막 — *강조* 구절은 크게+헤더 accent색으로
   drawEmphasisCaption(ctx, text, {
     W, boxY: effectiveBOX_Y, boxH: effectiveBOX_H, maxWidth: W - 120,
-    baseSize: 62, baseColor: 'white', emColors: EM_COLORS,
+    baseSize: 62, baseColor: 'white', emColors: EM_COLORS, colorOffset: frameIndex,
     fontFamily, shadowColor: 'rgba(0,0,0,0.9)', shadowBlur: 16,
   });
 
