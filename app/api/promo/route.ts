@@ -176,7 +176,7 @@ async function processPromoJob(
     await generateVideo(
       script, audioPath, videoPath, userImagePaths,
       bottomInfo, sentenceDurations, input.businessName,
-      bgmPath ?? undefined, bgmId, bgmVolume, showWatermark, input.tone,
+      bgmPath ?? undefined, bgmId, bgmVolume, showWatermark, input.tone, input.headerTheme,
     );
 
     // Cleanup audio and custom BGM (uploaded images are kept for history reuse)
@@ -226,6 +226,7 @@ export async function POST(req: NextRequest) {
   let eventDate = '';
   let duration = 60;
   let tone = '친근한';
+  let headerTheme: string | undefined;
   let voice = 'ko-KR-Chirp3-HD-Aoede';
   let speed = 1.0;
   let bgmId: BgmId = 'none';
@@ -248,6 +249,7 @@ export async function POST(req: NextRequest) {
     voice         = (formData.get('voice')         as string | null) ?? 'ko-KR-Chirp3-HD-Aoede';
     duration      = parseInt((formData.get('duration') as string | null) ?? '60', 10);
     tone          = (formData.get('tone')          as string | null) ?? '친근한';
+    headerTheme   = (formData.get('headerTheme')   as string | null) ?? undefined;
     speed         = parseFloat((formData.get('speed') as string | null) ?? '1.0');
     bgmId         = ((formData.get('bgmId') as string | null) ?? 'none') as BgmId;
     const bgmVolumeRaw = formData.get('bgmVolume') as string | null;
@@ -346,6 +348,7 @@ export async function POST(req: NextRequest) {
       cta: cta?.trim() || undefined,
       duration,
       tone,
+      headerTheme,
       mode: isEvent ? 'event' : 'business',
       eventDate: eventDate?.trim() || undefined,
     };
@@ -370,6 +373,7 @@ export async function POST(req: NextRequest) {
     } = body);
     bgmId = (body.bgmId ?? 'none') as BgmId;
     prebuiltScript = body.prebuiltScript ?? undefined;
+    headerTheme = body.headerTheme ?? undefined;
 
     if (!businessName?.trim()) {
       return NextResponse.json({ error: '업체명을 입력해주세요.' }, { status: 400 });
@@ -409,6 +413,7 @@ export async function POST(req: NextRequest) {
       cta: cta?.trim() || undefined,
       duration,
       tone,
+      headerTheme,
     };
 
     processPromoJob(jobId, input, voice, Number(speed), [], prebuiltScript, bgmId, undefined, undefined, showWatermark2).catch(console.error);

@@ -74,6 +74,20 @@ const TONES = [
   { id: '따뜻한',   label: '따뜻한',   emoji: '🤝' },
 ];
 
+// 상단 밴드(업체명·제목) 헤더 디자인 — bg는 미리보기용, 실제 렌더는 서버 video.ts와 동일
+const HEADER_THEMES = [
+  { id: 'blur',     label: '글래스',         desc: '사진 블러',  bg: 'linear-gradient(135deg,#4b4b4b,#7a7a7a)', bn: '#FDE047', title: '#FFFFFF' },
+  { id: 'black',    label: '클래식 블랙',     desc: '정보·뉴스',  bg: '#121212', bn: '#FFE600', title: '#FFFFFF' },
+  { id: 'navy',     label: '테크 네이비',     desc: 'IT·재테크',  bg: '#0A192F', bn: '#00E5FF', title: '#FFFFFF' },
+  { id: 'neon',     label: '네온 옐로우',     desc: '핫이슈·썰',  bg: '#E5FF00', bn: '#000000', title: '#D32F2F' },
+  { id: 'violet',   label: '트렌디 바이올렛', desc: '엔터·뷰티',  bg: '#1A0B2E', bn: '#FF2A85', title: '#FFFFFF' },
+  { id: 'burgundy', label: '버건디 골드',     desc: '리뷰·경고',  bg: '#4A0E17', bn: '#FFC107', title: '#FFFFFF' },
+];
+// 톤별 기본 헤더 (서버 video.ts와 동일하게 유지)
+const TONE_DEFAULT_HEADER: Record<string, string> = {
+  '친근한': 'blur', '전문적인': 'navy', '긴급한': 'burgundy', '따뜻한': 'violet',
+};
+
 const VOICES = [
   // Chirp3-HD (최신, 가장 자연스러운)
   { id: 'ko-KR-Chirp3-HD-Zephyr', label: '수아',   desc: '여성 · 활기찬',     badge: '추천' },
@@ -164,6 +178,7 @@ export default function PromoPage() {
   const [eventDate, setEventDate]           = useState('');
   const [duration, setDuration]             = useState(60);
   const [tone, setTone]                     = useState('친근한');
+  const [headerTheme, setHeaderTheme]       = useState('blur');
   const [voice, setVoice]                   = useState('ko-KR-Chirp3-HD-Zephyr');
   const [speed, setSpeed]                   = useState(1.0);
   const [showAdvanced, setShowAdvanced]     = useState(false);
@@ -319,6 +334,11 @@ export default function PromoPage() {
       setBgmVolume(getDefaultVolume(recommended));
     }
   }, [businessType, tone]);
+
+  // 톤 변경 시 어울리는 헤더 디자인 자동 선택 (고급설정에서 직접 바꾸면 그게 우선, 톤 재변경 시 다시 맞춤)
+  useEffect(() => {
+    setHeaderTheme(TONE_DEFAULT_HEADER[tone] || 'blur');
+  }, [tone]);
 
   async function fetchUsage() {
     try {
@@ -530,6 +550,7 @@ export default function PromoPage() {
       if (eventDate.trim()) formData.append('eventDate', eventDate.trim());
       formData.append('duration',   String(duration));
       formData.append('tone',       tone);
+      formData.append('headerTheme', headerTheme);
       formData.append('voice',      voice);
       formData.append('speed',      String(speed));
       formData.append('bgmId',      customBgm ? 'custom' : bgmId);
@@ -1152,12 +1173,44 @@ export default function PromoPage() {
                 <ChevronDown className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
                 고급 설정
                 <span className="text-xs text-gray-600 ml-1">
-                  {VOICES.find(v => v.id === voice)?.label} · {speed}×
+                  {HEADER_THEMES.find(h => h.id === headerTheme)?.label} · {VOICES.find(v => v.id === voice)?.label} · {speed}×
                 </span>
               </button>
 
               {showAdvanced && (
                 <div className="mt-4 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      🎨 헤더 디자인
+                      <span className="text-xs text-gray-600 ml-1">· 상단 업체명·제목 배경/글자색</span>
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {HEADER_THEMES.map((h) => (
+                        <button
+                          key={h.id}
+                          type="button"
+                          onClick={() => setHeaderTheme(h.id)}
+                          className={`relative p-2 rounded-xl border transition-all ${
+                            headerTheme === h.id
+                              ? 'border-emerald-500/60 ring-1 ring-emerald-500/40'
+                              : 'border-white/8 hover:border-white/20'
+                          }`}
+                        >
+                          <div
+                            className="h-10 rounded-lg flex items-center justify-center mb-1.5"
+                            style={{ background: h.bg }}
+                          >
+                            <span style={{ color: h.bn }} className="text-sm font-extrabold">가</span>
+                            <span style={{ color: h.title }} className="text-sm font-extrabold ml-0.5">나</span>
+                          </div>
+                          <p className={`text-[11px] font-semibold leading-tight ${headerTheme === h.id ? 'text-emerald-200' : 'text-gray-300'}`}>{h.label}</p>
+                          <p className="text-[9px] text-gray-500 leading-tight">{h.desc}</p>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-gray-600 mt-1.5">톤을 바꾸면 어울리는 헤더가 자동 선택됩니다. 원하면 직접 고르세요.</p>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">🎙 나레이터 음성</label>
                     <div className="grid grid-cols-2 gap-2">

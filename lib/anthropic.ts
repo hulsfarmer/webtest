@@ -50,6 +50,7 @@ export interface PromoInput {
   cta?: string;
   duration: number;
   tone: string;
+  headerTheme?: string;
   mode?: 'business' | 'event';
   eventDate?: string;
 }

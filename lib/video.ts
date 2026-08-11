@@ -132,6 +132,32 @@ const TONE_PALETTES: Record<string, TonePalette> = {
   },
 };
 
+// ── 헤더 디자인(상단 밴드) 테마 ──
+// bg='blur'면 사진 블러 헤더, 그 외는 단색 밴드(hex). 업체명/제목 색은 헤더가 결정(톤 무관).
+interface HeaderTheme {
+  id: string;
+  bg: string;               // 'blur' 또는 hex 예: '#121212'
+  businessNameColor: string;
+  titleColor: string;
+}
+const HEADER_THEMES: Record<string, HeaderTheme> = {
+  blur:     { id: 'blur',     bg: 'blur',    businessNameColor: '#FDE047', titleColor: '#FFFFFF' },
+  black:    { id: 'black',    bg: '#121212', businessNameColor: '#FFE600', titleColor: '#FFFFFF' },
+  navy:     { id: 'navy',     bg: '#0A192F', businessNameColor: '#00E5FF', titleColor: '#FFFFFF' },
+  neon:     { id: 'neon',     bg: '#E5FF00', businessNameColor: '#000000', titleColor: '#D32F2F' },
+  violet:   { id: 'violet',   bg: '#1A0B2E', businessNameColor: '#FF2A85', titleColor: '#FFFFFF' },
+  burgundy: { id: 'burgundy', bg: '#4A0E17', businessNameColor: '#FFC107', titleColor: '#FFFFFF' },
+};
+// 톤별 기본 헤더 (고급설정에서 미변경 시 자동 연결)
+const TONE_DEFAULT_HEADER: Record<string, string> = {
+  '친근한': 'blur', '전문적인': 'navy', '긴급한': 'burgundy', '따뜻한': 'violet',
+};
+function resolveHeaderTheme(headerTheme?: string, tone?: string): HeaderTheme {
+  if (headerTheme && HEADER_THEMES[headerTheme]) return HEADER_THEMES[headerTheme];
+  const mapped = (tone && TONE_DEFAULT_HEADER[tone]) || 'blur';
+  return HEADER_THEMES[mapped] || HEADER_THEMES.blur;
+}
+
 function getTonePalette(tone?: string): TonePalette {
   if (tone && TONE_PALETTES[tone]) return TONE_PALETTES[tone];
   return TONE_PALETTES['친근한']; // 기본값
@@ -238,6 +264,8 @@ async function createTextOverlay(
   displayBusinessName?: string,
   showWatermark?: boolean,
   palette?: TonePalette,
+  headerBnColor?: string,
+  headerTitleColor?: string,
 ): Promise<void> {
   const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
 
@@ -308,7 +336,7 @@ async function createTextOverlay(
       ctx.strokeStyle = 'rgba(0,0,0,0.9)';
       ctx.lineWidth = 6;
       ctx.strokeText(displayBusinessName, W / 2, bnBaseline);
-      ctx.fillStyle = '#FDE047'; // 밝은 노랑 고정 (톤 무관, 가독성 우선)
+      ctx.fillStyle = headerBnColor || '#FDE047'; // 헤더 테마 업체명 색 (기본 노랑)
       ctx.fillText(displayBusinessName, W / 2, bnBaseline);
       ctx.shadowBlur = 0;
       // Thin separator glow under business name
@@ -338,7 +366,7 @@ async function createTextOverlay(
       const titleStartY   = catchyZoneTop + (catchyZoneH - titleBlockH) / 2 + titleFontSize * 0.85;
 
       ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
-      ctx.fillStyle = 'white'; // 검은 밴드 위 순백색 제목 (업체명은 노랑)
+      ctx.fillStyle = headerTitleColor || 'white'; // 헤더 테마 제목 색 (기본 흰색)
       ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 3;
       ctx.shadowColor = 'rgba(0,0,0,1)';
@@ -445,6 +473,8 @@ async function createFrameImage(
   displayBusinessName?: string,
   showWatermark?: boolean,
   palette?: TonePalette,
+  headerBnColor?: string,
+  headerTitleColor?: string,
 ): Promise<void> {
   const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
 
@@ -561,7 +591,7 @@ async function createFrameImage(
       ctx.strokeStyle = 'rgba(0,0,0,0.9)';
       ctx.lineWidth = 6;
       ctx.strokeText(displayBusinessName, W / 2, bnBaseline);
-      ctx.fillStyle = '#FDE047'; // 밝은 노랑 고정 (톤 무관, 가독성 우선)
+      ctx.fillStyle = headerBnColor || '#FDE047'; // 헤더 테마 업체명 색 (기본 노랑)
       ctx.fillText(displayBusinessName, W / 2, bnBaseline);
       ctx.shadowBlur = 0;
       // Thin separator glow under business name
@@ -590,7 +620,7 @@ async function createFrameImage(
       const titleStartY   = catchyZoneTop + (catchyZoneH - titleBlockH) / 2 + titleFontSize * 0.85;
 
       ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
-      ctx.fillStyle = 'white'; // 검은 밴드 위 순백색 제목 (업체명은 노랑)
+      ctx.fillStyle = headerTitleColor || 'white'; // 헤더 테마 제목 색 (기본 흰색)
       ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 3;
       ctx.shadowColor = 'rgba(0,0,0,1)';
@@ -739,12 +769,14 @@ export async function generateVideo(
   externalBgmVolume?: number,
   showWatermark?: boolean,
   tone?: string,
+  headerTheme?: string,
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const ffmpegPath = require('ffmpeg-static') as string;
 
   const palette = getTonePalette(tone);
-  console.log(`[Video] Tone: ${tone || '(default)'} → palette: ${JSON.stringify({ hook: palette.hook, main: palette.main, businessName: palette.businessName })}`);
+  const header = resolveHeaderTheme(headerTheme, tone);
+  console.log(`[Video] Tone: ${tone || '(default)'} → palette: ${JSON.stringify({ hook: palette.hook, main: palette.main })} | Header: ${header.id} (bg=${header.bg})`);
 
   // BGM volume: use user-specified value, or auto (calm/trendy louder, others softer)
   const bgmVolume = externalBgmVolume !== undefined
@@ -963,6 +995,7 @@ export async function generateVideo(
         script.title, text, sectionType,
         idx, allChunks.length, overlayPath,
         bottomInfo, displayBusinessName, showWatermark, palette,
+        header.businessNameColor, header.titleColor,
       );
       overlayPaths.push(overlayPath);
     }
@@ -982,17 +1015,26 @@ export async function generateVideo(
 
     // Build filter_complex:
     // Scale bg → chain overlay each text PNG with enable='between(t, start, end)'
+    // 하단 4/5(1080×1536)를 사진/영상으로 꽉 채움(cover, 무왜곡, 넘치면 좌우 크롭).
+    // 상단 1/5(BAND_H)은 헤더 테마: blur=사진 블러 헤더, 그 외=단색 밴드.
     const filterParts: string[] = [];
-    filterParts.push(
-      // 하단 4/5(1080×1536)를 사진/영상으로 꽉 채움(cover, 무왜곡, 넘치면 좌우 크롭),
-      // 상단 1/5(BAND_H)은 검은 밴드. 슬라이드쇼는 이미 1080×1536 cover라 여기선 크롭 노옵.
-      `[0:v]split=2[src_fg][src_bg];` +
-      `[src_bg]scale=1080:${H_FULL}:force_original_aspect_ratio=increase,` +
-      `crop=1080:${H_FULL}:(iw-1080)/2:(ih-${H_FULL})/2,gblur=sigma=40,setsar=1[bgblur];` +
-      `[src_fg]scale=1080:${H_FULL - BAND_H}:force_original_aspect_ratio=increase,` +
-      `crop=1080:${H_FULL - BAND_H}:(iw-1080)/2:(ih-${H_FULL - BAND_H})/2,setsar=1[fg];` +
-      `[bgblur][fg]overlay=0:${BAND_H}[bg0]`
-    );
+    if (header.bg === 'blur') {
+      filterParts.push(
+        `[0:v]split=2[src_fg][src_bg];` +
+        `[src_bg]scale=1080:${H_FULL}:force_original_aspect_ratio=increase,` +
+        `crop=1080:${H_FULL}:(iw-1080)/2:(ih-${H_FULL})/2,gblur=sigma=40,setsar=1[bgblur];` +
+        `[src_fg]scale=1080:${H_FULL - BAND_H}:force_original_aspect_ratio=increase,` +
+        `crop=1080:${H_FULL - BAND_H}:(iw-1080)/2:(ih-${H_FULL - BAND_H})/2,setsar=1[fg];` +
+        `[bgblur][fg]overlay=0:${BAND_H}[bg0]`
+      );
+    } else {
+      const bandColor = '0x' + header.bg.replace('#', '');
+      filterParts.push(
+        `[0:v]scale=1080:${H_FULL - BAND_H}:force_original_aspect_ratio=increase,` +
+        `crop=1080:${H_FULL - BAND_H}:(iw-1080)/2:(ih-${H_FULL - BAND_H})/2,` +
+        `pad=1080:${H_FULL}:0:${BAND_H}:${bandColor},setsar=1[bg0]`
+      );
+    }
 
     // Use between(t, start, end) so only ONE overlay is active at a time.
     // End time = next segment's start time → gap-free transitions.
@@ -1076,6 +1118,7 @@ export async function generateVideo(
         script.title, text, sectionType,
         idx, allChunks.length, framePath, keyword,
         bottomInfo, displayBusinessName, showWatermark, palette,
+        header.businessNameColor, header.titleColor,
       );
       framePaths.push({ path: framePath, duration: chunkDurations[idx] });
     }
