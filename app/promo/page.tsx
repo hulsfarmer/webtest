@@ -327,7 +327,8 @@ export default function PromoPage() {
   const getDefaultVolume = (id: string) =>
     (id === 'calm' || id === 'trendy') ? 95
     : id === 'professional' ? 31   // 전문 비즈니스 10%p 상향 (21→31)
-    : id === 'energetic' ? 21 : 42;
+    : id === 'energetic' ? 31   // 활기찬 10%p 상향 (21→31)
+    : 42;
 
   // BGM 미리듣기 토글 (mixkit 원음 재생)
   const toggleBgmPreview = (id: string, url: string) => {
