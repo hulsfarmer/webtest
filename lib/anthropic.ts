@@ -55,6 +55,21 @@ export interface PromoInput {
   eventDate?: string;
 }
 
+// AI가 제목에 업체명/행사명을 다시 넣는 경우 제거 (상단 밴드에 이름이 이미 별도 표기됨)
+function stripNameFromTitle(title: string, name?: string): string {
+  if (!title) return title;
+  const original = title.trim();
+  let t = original;
+  const n = (name || '').trim();
+  if (n) {
+    const esc = n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    t = t.replace(new RegExp(`\\s*[-–—~|:,]*\\s*${esc}\\s*[-–—~|:,]*\\s*`, 'g'), ' ');
+    t = t.replace(/\s{2,}/g, ' ').trim();
+    t = t.replace(/^[-–—~|:,\s]+|[-–—~|:,\s]+$/g, '').trim();
+  }
+  return t || original; // 전부 지워지면 원본 유지
+}
+
 export async function generatePromoScript(input: PromoInput): Promise<VideoScript> {
   if (!process.env.ANTHROPIC_API_KEY) {
     return getMockPromoScript(input);
@@ -187,7 +202,9 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
 
   try {
     const raw = content.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    return JSON.parse(raw) as VideoScript;
+    const parsed = JSON.parse(raw) as VideoScript;
+    parsed.title = stripNameFromTitle(parsed.title, input.businessName);
+    return parsed;
   } catch {
     throw new Error('Claude returned invalid JSON: ' + content.text.slice(0, 200));
   }
@@ -276,7 +293,9 @@ ${rules}`,
 
   try {
     const raw = content.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    return JSON.parse(raw) as VideoScript;
+    const parsed = JSON.parse(raw) as VideoScript;
+    parsed.title = stripNameFromTitle(parsed.title, input.businessName);
+    return parsed;
   } catch {
     throw new Error('Claude returned invalid JSON: ' + content.text.slice(0, 200));
   }
@@ -285,7 +304,7 @@ ${rules}`,
 function getMockPromoScript(input: PromoInput): VideoScript {
   const { businessName, businessType, duration } = input;
   return {
-    title: `${businessName} - 지금 방문하세요!`,
+    title: `지금 바로 방문하세요!`,
     bgKeyword: 'business storefront',
     hashtags: [`#${businessName}`, `#${businessType}`, '#홍보', '#추천', '#지역맛집'],
     sections: [
