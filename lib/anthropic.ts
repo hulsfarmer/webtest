@@ -94,7 +94,7 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
   "sections": [
     {
       "type": "hook",
-      "text": "3-5초 안에 관심을 끄는 강력한 오프닝 (업체명 또는 핵심 혜택 언급)",
+      "text": "첫 3초에 스크롤을 멈추게 하는 강력한 훅 — 질문·반전·숫자·호기심 중 하나로 시작(뻔한 인사말 금지). 예: '이 가격, 실화예요?' / '왜 여기만 줄 서는지 아세요?' / '딱 3초만 보고 가세요'",
       "duration": 5
     },
     {
@@ -126,6 +126,7 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
 - 업체명(${businessName})을 자연스럽게 포함
 - 전화번호, 주소, 연락처 등 구체적인 연락 정보는 절대 스크립트에 포함하지 마세요 (화면 하단에 자동 표시됩니다)
 - CTA는 방문 또는 검색 유도로만 마무리
+- **첫 문장(hook)은 스크롤을 멈추게 임팩트 있게**, 전체는 짧고 리듬감 있는 문장 + 생생한 동사·감탄으로 지루하지 않게 (선택한 톤 "${tone}"은 유지하되 밋밋하지 않게)
 - bgKeyword는 업종(${businessType})에 어울리는 영어 스톡영상 검색어
 - 총 duration이 ${duration}초에 맞도록 조정`;
 
@@ -148,7 +149,7 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
   "sections": [
     {
       "type": "hook",
-      "text": "3-5초 안에 기대감을 폭발시키는 오프닝 (행사명 언급, 호기심·설렘 유발)",
+      "text": "첫 3초에 설렘·호기심을 폭발시키는 훅 — 질문·반전·카운트다운 중 하나로 시작(행사명 자연스럽게, 뻔한 인사말 금지). 예: '이번 주말, 여기 안 가면 후회해요' / '딱 이틀만 열립니다'",
       "duration": 5
     },
     {
@@ -181,6 +182,7 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
 - **일시(${eventDate || '미입력'})와 장소(${location || '미입력'})는 반드시 스크립트에 음성으로 안내** (행사는 언제·어디서가 가장 중요)
 - 전화번호 등 세부 연락처는 스크립트에 넣지 마세요 (화면 하단에 자동 표시됩니다)
 - 마감·한정·선착순 같은 긴급성을 살려 참여를 유도
+- **첫 문장(hook)은 스크롤을 멈추게 임팩트 있게**, 전체는 짧고 경쾌한 리듬 + 생생한 표현으로 지루하지 않게 (선택한 톤 "${tone}" 유지)
 - bgKeyword는 행사 분위기(${businessType})에 어울리는 영어 스톡영상 검색어
 - 총 duration이 ${duration}초에 맞도록 조정`;
 
@@ -273,7 +275,7 @@ ${isEvent ? '원하는 마무리 멘트' : 'CTA'}: ${cta || (isEvent ? '참여·
   "sections": [
     ${sectionSpecs.map((s, i) => JSON.stringify({
       type: s.type,
-      text: `사진 ${i + 1}의 장면에 어울리는 ${s.type === 'hook' ? `강력한 홍보 훅 (${subject}명 포함)` : s.type === 'cta' ? (isEvent ? '참여 유도 마무리 멘트 (일시·장소 강조)' : '방문/문의 유도 마무리 멘트') : (isEvent ? '볼거리·프로그램 멘트' : '핵심 홍보 포인트 멘트')}`,
+      text: `사진 ${i + 1}의 장면에 어울리는 ${s.type === 'hook' ? `첫 3초에 스크롤을 멈추게 하는 강력한 훅 — 질문·반전·숫자·호기심 중 하나로 (${subject}명 자연스럽게, 뻔한 인사말 금지)` : s.type === 'cta' ? (isEvent ? '참여 유도 마무리 멘트 (일시·장소 강조)' : '방문/문의 유도 마무리 멘트') : (isEvent ? '볼거리·프로그램 멘트' : '핵심 홍보 포인트 멘트')}`,
       duration: s.duration,
     })).join(',\n    ')}
   ],
@@ -281,7 +283,8 @@ ${isEvent ? '원하는 마무리 멘트' : 'CTA'}: ${cta || (isEvent ? '참여·
 }
 
 중요:
-${rules}`,
+${rules}
+- 첫 문장(hook)은 스크롤을 멈추게 임팩트 있게, 전체는 짧고 리듬감 있게 생생한 표현으로 지루하지 않게 (선택한 톤 "${tone}" 유지)`,
           },
         ],
       },
