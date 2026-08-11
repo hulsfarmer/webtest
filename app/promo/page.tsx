@@ -1127,7 +1127,7 @@ export default function PromoPage() {
                         role="button"
                         aria-label="미리듣기"
                         title="미리듣기"
-                        onClick={(e) => { e.stopPropagation(); toggleBgmPreview(track.id, track.url); }}
+                        onClick={(e) => { e.stopPropagation(); toggleBgmPreview(track.id, `/api/bgm/${track.id}`); }}
                         className="ml-0.5 -mr-1 p-0.5 rounded hover:bg-white/10 text-gray-400 hover:text-emerald-300 cursor-pointer"
                       >
                         {previewBgm === track.id ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
