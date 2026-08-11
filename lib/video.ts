@@ -732,11 +732,13 @@ async function createImageSlideshowVideo(
     `-loop 1 -t ${dur[i].toFixed(3)} -i "${p}"`
   ).join(' ');
 
-  // 켄번스: 1.1배 프리스케일 후 zoompan(줌인, 이미지마다 속도 살짝 다르게)
+  // 켄번스: 1.1배 프리스케일 후 zoompan. 줌 속도를 이미지 길이에 비례시켜
+  // 이미지 전체 구간 내내 "끊김없이 계속" 줌인 (긴 이미지에서 중간에 멈추는 문제 방지).
+  const ZMAX = 1.18;
   const zoom = imagePaths.map((_, i) => {
-    const zi = (0.0009 + (i % 3) * 0.0002).toFixed(4);
+    const inc = ((ZMAX - 1) / df[i]).toFixed(6); // 프레임당 증가량 = 전체구간에 걸쳐 1.0→ZMAX
     return `[${i}:v]scale=1188:1690:force_original_aspect_ratio=increase,crop=1188:1690,` +
-      `zoompan=z='min(zoom+${zi}\\,1.15)':d=${df[i]}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x${PHOTO_H}:fps=${fps},setsar=1[v${i}]`;
+      `zoompan=z='min(zoom+${inc}\\,${ZMAX})':d=${df[i]}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x${PHOTO_H}:fps=${fps},setsar=1[v${i}]`;
   });
 
   // 장면전환(xfade) 체인 — 이미지마다 다른 효과
