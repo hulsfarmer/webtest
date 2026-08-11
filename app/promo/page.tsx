@@ -79,7 +79,7 @@ const HEADER_THEMES = [
   { id: 'blur',     label: '글래스',         desc: '사진 블러',  bg: 'linear-gradient(135deg,#4b4b4b,#7a7a7a)', bn: '#FDE047', title: '#FFFFFF' },
   { id: 'black',    label: '클래식 블랙',     desc: '정보·뉴스',  bg: '#121212', bn: '#FFE600', title: '#FFFFFF' },
   { id: 'navy',     label: '테크 네이비',     desc: 'IT·재테크',  bg: '#0A192F', bn: '#00E5FF', title: '#FFFFFF' },
-  { id: 'neon',     label: '네온 옐로우',     desc: '핫이슈·썰',  bg: '#E5FF00', bn: '#000000', title: '#D32F2F' },
+  { id: 'neon',     label: '네온 옐로우',     desc: '핫이슈·썰',  bg: '#E5FF00', bn: '#14213D', title: '#D32F2F' },
   { id: 'violet',   label: '트렌디 바이올렛', desc: '엔터·뷰티',  bg: '#1A0B2E', bn: '#FF2A85', title: '#FFFFFF' },
   { id: 'burgundy', label: '버건디 골드',     desc: '리뷰·경고',  bg: '#4A0E17', bn: '#FFC107', title: '#FFFFFF' },
 ];

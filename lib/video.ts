@@ -139,15 +139,17 @@ interface HeaderTheme {
   bg: string;               // 'blur' 또는 hex 예: '#121212'
   businessNameColor: string;
   titleColor: string;
-  accent: string;           // 맨위 바·자막 구분선·진행바 색 (헤더와 통일)
+  accent: string;           // 자막 구분선·진행바 색 (헤더와 통일)
+  outline: string;          // 글자 외곽선 색 (밝은 배경 테마는 transparent로 얇게)
 }
+const DARK_OUTLINE = 'rgba(0,0,0,0.85)';
 const HEADER_THEMES: Record<string, HeaderTheme> = {
-  blur:     { id: 'blur',     bg: 'blur',    businessNameColor: '#FDE047', titleColor: '#FFFFFF', accent: '#FDE047' },
-  black:    { id: 'black',    bg: '#121212', businessNameColor: '#FFE600', titleColor: '#FFFFFF', accent: '#FFE600' },
-  navy:     { id: 'navy',     bg: '#0A192F', businessNameColor: '#00E5FF', titleColor: '#FFFFFF', accent: '#00E5FF' },
-  neon:     { id: 'neon',     bg: '#E5FF00', businessNameColor: '#000000', titleColor: '#D32F2F', accent: '#D32F2F' },
-  violet:   { id: 'violet',   bg: '#1A0B2E', businessNameColor: '#FF2A85', titleColor: '#FFFFFF', accent: '#FF2A85' },
-  burgundy: { id: 'burgundy', bg: '#4A0E17', businessNameColor: '#FFC107', titleColor: '#FFFFFF', accent: '#FFC107' },
+  blur:     { id: 'blur',     bg: 'blur',    businessNameColor: '#FDE047', titleColor: '#FFFFFF', accent: '#FDE047', outline: DARK_OUTLINE },
+  black:    { id: 'black',    bg: '#121212', businessNameColor: '#FFE600', titleColor: '#FFFFFF', accent: '#FFE600', outline: DARK_OUTLINE },
+  navy:     { id: 'navy',     bg: '#0A192F', businessNameColor: '#00E5FF', titleColor: '#FFFFFF', accent: '#00E5FF', outline: DARK_OUTLINE },
+  neon:     { id: 'neon',     bg: '#E5FF00', businessNameColor: '#14213D', titleColor: '#D32F2F', accent: '#D32F2F', outline: 'rgba(0,0,0,0)' },
+  violet:   { id: 'violet',   bg: '#1A0B2E', businessNameColor: '#FF2A85', titleColor: '#FFFFFF', accent: '#FF2A85', outline: DARK_OUTLINE },
+  burgundy: { id: 'burgundy', bg: '#4A0E17', businessNameColor: '#FFC107', titleColor: '#FFFFFF', accent: '#FFC107', outline: DARK_OUTLINE },
 };
 // 톤별 기본 헤더 (고급설정에서 미변경 시 자동 연결)
 const TONE_DEFAULT_HEADER: Record<string, string> = {
@@ -268,6 +270,7 @@ async function createTextOverlay(
   headerBnColor?: string,
   headerTitleColor?: string,
   headerAccent?: string,
+  headerOutline?: string,
 ): Promise<void> {
   const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
 
@@ -296,14 +299,7 @@ async function createTextOverlay(
   };
   const accentColor = headerAccent || badgeColors[sectionType] || p.hook;
 
-  // Top accent bar
-  const topGrad = ctx.createLinearGradient(0, 0, W, 0);
-  topGrad.addColorStop(0, 'transparent');
-  topGrad.addColorStop(0.3, accentColor + 'CC');
-  topGrad.addColorStop(0.7, accentColor + 'CC');
-  topGrad.addColorStop(1, 'transparent');
-  ctx.fillStyle = topGrad;
-  ctx.fillRect(0, 0, W, 8);
+  // (상단 색띠 제거 — 사용자 요청)
 
   // 모든 텍스트 중앙 정렬
   ctx.textAlign = 'center';
@@ -335,7 +331,7 @@ async function createTextOverlay(
       const bnBaseline = TITLE_ZONE_Y + bnSize * 0.82;
       ctx.shadowColor = 'transparent'; // 업체명 그림자 제거 (네온 등 밝은 배경 얼룩 방지) — 외곽선만 유지
       ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+      ctx.strokeStyle = headerOutline || 'rgba(0,0,0,0.9)';
       ctx.lineWidth = 6;
       ctx.strokeText(displayBusinessName, W / 2, bnBaseline);
       ctx.fillStyle = headerBnColor || '#FDE047'; // 헤더 테마 업체명 색 (기본 노랑)
@@ -369,7 +365,7 @@ async function createTextOverlay(
 
       ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
       ctx.fillStyle = headerTitleColor || 'white'; // 헤더 테마 제목 색 (기본 흰색)
-      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.strokeStyle = headerOutline || 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 3;
       ctx.shadowColor = 'transparent'; // 제목 그림자 제거 (사용자 요청) — 외곽선만으로 가독성 유지
       ctx.shadowBlur = 0;
@@ -478,6 +474,7 @@ async function createFrameImage(
   headerBnColor?: string,
   headerTitleColor?: string,
   headerAccent?: string,
+  headerOutline?: string,
 ): Promise<void> {
   const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
 
@@ -555,14 +552,7 @@ async function createFrameImage(
   };
   const accentColor = headerAccent || badgeColors[sectionType] || p.hook;
 
-  // Top accent bar
-  const topGrad = ctx.createLinearGradient(0, 0, W, 0);
-  topGrad.addColorStop(0, 'transparent');
-  topGrad.addColorStop(0.3, accentColor);
-  topGrad.addColorStop(0.7, accentColor);
-  topGrad.addColorStop(1, 'transparent');
-  ctx.fillStyle = topGrad;
-  ctx.fillRect(0, 0, W, 8);
+  // (상단 색띠 제거 — 사용자 요청)
 
   // 모든 텍스트 중앙 정렬
   ctx.textAlign = 'center';
@@ -591,7 +581,7 @@ async function createFrameImage(
       const bnBaseline = TITLE_ZONE_Y + bnSize * 0.82;
       ctx.shadowColor = 'transparent'; // 업체명 그림자 제거 (네온 등 밝은 배경 얼룩 방지) — 외곽선만 유지
       ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+      ctx.strokeStyle = headerOutline || 'rgba(0,0,0,0.9)';
       ctx.lineWidth = 6;
       ctx.strokeText(displayBusinessName, W / 2, bnBaseline);
       ctx.fillStyle = headerBnColor || '#FDE047'; // 헤더 테마 업체명 색 (기본 노랑)
@@ -624,7 +614,7 @@ async function createFrameImage(
 
       ctx.font = `bold ${titleFontSize}px ${fontFamily}`;
       ctx.fillStyle = headerTitleColor || 'white'; // 헤더 테마 제목 색 (기본 흰색)
-      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.strokeStyle = headerOutline || 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 3;
       ctx.shadowColor = 'transparent'; // 제목 그림자 제거 (사용자 요청) — 외곽선만으로 가독성 유지
       ctx.shadowBlur = 0;
@@ -998,7 +988,7 @@ export async function generateVideo(
         script.title, text, sectionType,
         idx, allChunks.length, overlayPath,
         bottomInfo, displayBusinessName, showWatermark, palette,
-        header.businessNameColor, header.titleColor, header.accent,
+        header.businessNameColor, header.titleColor, header.accent, header.outline,
       );
       overlayPaths.push(overlayPath);
     }
@@ -1121,7 +1111,7 @@ export async function generateVideo(
         script.title, text, sectionType,
         idx, allChunks.length, framePath, keyword,
         bottomInfo, displayBusinessName, showWatermark, palette,
-        header.businessNameColor, header.titleColor, header.accent,
+        header.businessNameColor, header.titleColor, header.accent, header.outline,
       );
       framePaths.push({ path: framePath, duration: chunkDurations[idx] });
     }
