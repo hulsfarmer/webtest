@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Calendar, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2, Settings2, Upload, Volume2, MessageSquarePlus } from 'lucide-react';
+import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Calendar, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2, Settings2, Upload, Volume2, MessageSquarePlus, Play, Pause } from 'lucide-react';
 import ReviewModal from '@/components/ReviewModal';
 import { BGM_CATALOG, recommendBgm, type BgmId } from '@/lib/bgm-catalog';
 
@@ -187,6 +187,8 @@ export default function PromoPage() {
   const [customBgm, setCustomBgm]           = useState<File | null>(null);
   const [customBgmName, setCustomBgmName]   = useState('');
   const bgmInputRef                         = useRef<HTMLInputElement>(null);
+  const [previewBgm, setPreviewBgm]         = useState<string | null>(null); // 미리듣기 중인 BGM id
+  const previewAudioRef                     = useRef<HTMLAudioElement | null>(null);
 
   // Image upload state
   const [images, setImages]                 = useState<File[]>([]);
@@ -326,6 +328,22 @@ export default function PromoPage() {
     (id === 'calm' || id === 'trendy') ? 95
     : id === 'professional' ? 31   // 전문 비즈니스 10%p 상향 (21→31)
     : id === 'energetic' ? 21 : 42;
+
+  // BGM 미리듣기 토글 (mixkit 원음 재생)
+  const toggleBgmPreview = (id: string, url: string) => {
+    const audio = previewAudioRef.current;
+    if (!audio || !url) return;
+    if (previewBgm === id) {
+      audio.pause();
+      setPreviewBgm(null);
+    } else {
+      audio.src = url;
+      audio.currentTime = 0;
+      audio.volume = 0.6;
+      audio.play().catch(() => {});
+      setPreviewBgm(id);
+    }
+  };
 
   // 업종·톤 변경 시 배경음악 자동 추천
   useEffect(() => {
@@ -1089,6 +1107,7 @@ export default function PromoPage() {
                   <span className="text-[11px] text-emerald-400/70 ml-1 font-normal">· AI 자동추천</span>
                 )}
               </label>
+              <audio ref={previewAudioRef} onEnded={() => setPreviewBgm(null)} className="hidden" />
               <div className="flex flex-wrap gap-2">
                 {BGM_CATALOG.map((track) => (
                   <button
@@ -1103,6 +1122,17 @@ export default function PromoPage() {
                   >
                     <span>{track.emoji}</span>
                     <span>{track.label}</span>
+                    {track.url && (
+                      <span
+                        role="button"
+                        aria-label="미리듣기"
+                        title="미리듣기"
+                        onClick={(e) => { e.stopPropagation(); toggleBgmPreview(track.id, track.url); }}
+                        className="ml-0.5 -mr-1 p-0.5 rounded hover:bg-white/10 text-gray-400 hover:text-emerald-300 cursor-pointer"
+                      >
+                        {previewBgm === track.id ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                      </span>
+                    )}
                   </button>
                 ))}
                 {/* 직접 업로드 버튼 */}

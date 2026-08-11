@@ -39,12 +39,9 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
-  // Showcase videos first, fill remaining with default samples (up to 6)
+  // 실제 승인된 쇼케이스 영상만 표시(최대 6). 없을 때만 기본 샘플로 대체.
   const sampleSources: { src: string; poster: string | null; showcase?: ShowcaseVideo }[] = showcaseVideos.length > 0
-    ? [
-        ...showcaseVideos.map(v => ({ src: v.videoUrl, poster: v.posterUrl, showcase: v })),
-        ...DEFAULT_SAMPLES.slice(showcaseVideos.length).map(s => ({ src: s.src, poster: s.poster as string | null })),
-      ].slice(0, 6)
+    ? showcaseVideos.slice(0, 6).map(v => ({ src: v.videoUrl, poster: v.posterUrl, showcase: v }))
     : DEFAULT_SAMPLES.map(s => ({ src: s.src, poster: s.poster }));
 
   return (
