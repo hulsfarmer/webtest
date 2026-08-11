@@ -333,8 +333,8 @@ async function createTextOverlay(
         ctx.font = `bold ${bnSize}px ${fontFamily}`;
       }
       const bnBaseline = TITLE_ZONE_Y + bnSize * 0.82;
-      ctx.shadowColor = 'rgba(0,0,0,0.8)';
-      ctx.shadowBlur = 12;
+      ctx.shadowColor = 'transparent'; // 업체명 그림자 제거 (네온 등 밝은 배경 얼룩 방지) — 외곽선만 유지
+      ctx.shadowBlur = 0;
       ctx.strokeStyle = 'rgba(0,0,0,0.9)';
       ctx.lineWidth = 6;
       ctx.strokeText(displayBusinessName, W / 2, bnBaseline);
@@ -589,8 +589,8 @@ async function createFrameImage(
         ctx.font = `bold ${bnSize}px ${fontFamily}`;
       }
       const bnBaseline = TITLE_ZONE_Y + bnSize * 0.82;
-      ctx.shadowColor = 'rgba(0,0,0,0.8)';
-      ctx.shadowBlur = 12;
+      ctx.shadowColor = 'transparent'; // 업체명 그림자 제거 (네온 등 밝은 배경 얼룩 방지) — 외곽선만 유지
+      ctx.shadowBlur = 0;
       ctx.strokeStyle = 'rgba(0,0,0,0.9)';
       ctx.lineWidth = 6;
       ctx.strokeText(displayBusinessName, W / 2, bnBaseline);
