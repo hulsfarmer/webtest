@@ -369,8 +369,8 @@ async function createTextOverlay(
       ctx.fillStyle = headerTitleColor || 'white'; // 헤더 테마 제목 색 (기본 흰색)
       ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 3;
-      ctx.shadowColor = 'rgba(0,0,0,1)';
-      ctx.shadowBlur = 28;
+      ctx.shadowColor = 'transparent'; // 제목 그림자 제거 (사용자 요청) — 외곽선만으로 가독성 유지
+      ctx.shadowBlur = 0;
       titleLines.forEach((line, i) => {
         ctx.strokeText(line, W / 2, titleStartY + i * titleLineH);
         ctx.fillText(line, W / 2, titleStartY + i * titleLineH);
@@ -623,8 +623,8 @@ async function createFrameImage(
       ctx.fillStyle = headerTitleColor || 'white'; // 헤더 테마 제목 색 (기본 흰색)
       ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 3;
-      ctx.shadowColor = 'rgba(0,0,0,1)';
-      ctx.shadowBlur = 28;
+      ctx.shadowColor = 'transparent'; // 제목 그림자 제거 (사용자 요청) — 외곽선만으로 가독성 유지
+      ctx.shadowBlur = 0;
       titleLines.forEach((line, i) => {
         ctx.strokeText(line, W / 2, titleStartY + i * titleLineH);
         ctx.fillText(line, W / 2, titleStartY + i * titleLineH);
