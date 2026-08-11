@@ -193,6 +193,7 @@ function stripEmoji(text: string): string {
   return text
     // 이모지를 공백으로 치환(빈문자 X) → 앞뒤 단어가 붙어 읽히는 문제 방지
     .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}]/gu, ' ')
+    .replace(/\*/g, '')  // 강조 마커 제거(음성이 별표 안 읽게)
     .replace(/\s{2,}/g, ' ')
     .replace(/\s+([.,!?])/g, '$1')  // 구두점 앞 공백 정리
     .trim();

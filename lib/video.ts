@@ -262,6 +262,56 @@ const BOX_H = 380;
 const BOX_Y = H_FULL - SAFE_BOTTOM - BOX_H + 60; // Safe Zone 바로 위
 
 // ── Text overlay PNG (transparent background) for Pexels video mode ──
+// 자막에서 *강조* 마커 구간을 크게+강조색으로 렌더 (자동 줄바꿈·중앙정렬)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function drawEmphasisCaption(ctx: any, text: string, o: {
+  W: number; boxY: number; boxH: number; maxWidth: number;
+  baseSize: number; baseColor: string; emColor: string; fontFamily: string;
+  shadowColor: string; shadowBlur: number;
+}): void {
+  const emSize = Math.round(o.baseSize * 1.3);
+  const lineGap = 18;
+  const lineHeight = emSize + lineGap;
+  type Tk = { t: string; em: boolean; sp: boolean; w: number };
+  const toks: Tk[] = [];
+  text.split('*').forEach((seg, si) => {
+    const em = si % 2 === 1;
+    seg.split(/(\s+)/).forEach(part => {
+      if (part.length) toks.push({ t: part, em, sp: /^\s+$/.test(part), w: 0 });
+    });
+  });
+  const sizeOf = (tk: Tk) => (tk.em ? emSize : o.baseSize);
+  const lines: Tk[][] = [[]];
+  let lw = 0;
+  for (const tk of toks) {
+    ctx.font = `bold ${sizeOf(tk)}px ${o.fontFamily}`;
+    tk.w = ctx.measureText(tk.t).width;
+    const cur = lines[lines.length - 1];
+    if (!tk.sp && lw + tk.w > o.maxWidth && cur.length > 0) { lines.push([]); lw = 0; }
+    const line = lines[lines.length - 1];
+    if (line.length === 0 && tk.sp) continue; // 줄머리 공백 스킵
+    line.push(tk); lw += tk.w;
+  }
+  const startY = o.boxY + (o.boxH - lines.length * lineHeight) / 2 + o.baseSize * 0.85;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.shadowColor = o.shadowColor;
+  ctx.shadowBlur = o.shadowBlur;
+  lines.forEach((line, li) => {
+    const lineW = line.reduce((a, tk) => a + tk.w, 0);
+    let x = (o.W - lineW) / 2;
+    const y = startY + li * lineHeight;
+    for (const tk of line) {
+      ctx.font = `bold ${sizeOf(tk)}px ${o.fontFamily}`;
+      ctx.fillStyle = tk.em ? o.emColor : o.baseColor;
+      ctx.fillText(tk.t, x, y);
+      x += tk.w;
+    }
+  });
+  ctx.shadowBlur = 0;
+  ctx.textAlign = 'center';
+}
+
 async function createTextOverlay(
   title: string,
   text: string,
@@ -401,22 +451,12 @@ async function createTextOverlay(
   ctx.fillStyle = boxGrad;
   ctx.fillRect(boxX, effectiveBOX_Y - 60, boxW, effectiveBOX_H + 60);
 
-  // Text centered vertically within the fixed box — fixed font size for consistency
-  const wrapped = wrapKorean(text, 14);
-  const textLines = wrapped.split('\n');
-  const fontSize = 62;
-  const lineHeight = fontSize + 18;
-  const textBlockH = textLines.length * lineHeight;
-  const textStartY = effectiveBOX_Y + (effectiveBOX_H - textBlockH) / 2 + fontSize * 0.85;
-
-  ctx.font = `bold ${fontSize}px ${fontFamily}`;
-  ctx.fillStyle = p.subtitleColor;
-  ctx.shadowColor = 'rgba(0,0,0,0.95)';
-  ctx.shadowBlur = 18;
-  textLines.forEach((line, i) => {
-    ctx.fillText(line, W / 2, textStartY + i * lineHeight);
+  // 본문 자막 — *강조* 구절은 크게+헤더 accent색으로 (핵심 단어 시선 유도)
+  drawEmphasisCaption(ctx, text, {
+    W, boxY: effectiveBOX_Y, boxH: effectiveBOX_H, maxWidth: W - 120,
+    baseSize: 62, baseColor: p.subtitleColor, emColor: headerAccent || p.hook,
+    fontFamily, shadowColor: 'rgba(0,0,0,0.95)', shadowBlur: 18,
   });
-  ctx.shadowBlur = 0;
 
   // ── BOTTOM INFO BAR: 본문 박스 바로 아래 ──
   if (bottomInfo) {
@@ -652,22 +692,12 @@ async function createFrameImage(
   ctx.fillStyle = boxGrad;
   ctx.fillRect(boxX, effectiveBOX_Y - 60, boxW, effectiveBOX_H + 60);
 
-  // Fixed font size for consistency across all frames
-  const wrapped = wrapKorean(text, 14);
-  const textLines = wrapped.split('\n');
-  const fontSize = 62;
-  const lineHeight = fontSize + 18;
-  const textBlockH = textLines.length * lineHeight;
-  const textStartY = effectiveBOX_Y + (effectiveBOX_H - textBlockH) / 2 + fontSize * 0.85;
-
-  ctx.font = `bold ${fontSize}px ${fontFamily}`;
-  ctx.fillStyle = 'white';
-  ctx.shadowColor = 'rgba(0,0,0,0.9)';
-  ctx.shadowBlur = 16;
-  textLines.forEach((line, i) => {
-    ctx.fillText(line, W / 2, textStartY + i * lineHeight);
+  // 본문 자막 — *강조* 구절은 크게+헤더 accent색으로
+  drawEmphasisCaption(ctx, text, {
+    W, boxY: effectiveBOX_Y, boxH: effectiveBOX_H, maxWidth: W - 120,
+    baseSize: 62, baseColor: 'white', emColor: headerAccent || accentColor,
+    fontFamily, shadowColor: 'rgba(0,0,0,0.9)', shadowBlur: 16,
   });
-  ctx.shadowBlur = 0;
 
   // ── BOTTOM INFO BAR: 본문 박스 바로 아래 ──
   if (bottomInfo) {
@@ -750,6 +780,7 @@ async function createImageSlideshowVideo(
   const zoom = imagePaths.map((_, i) => {
     const inc = ((ZMAX - 1) / df[i]).toFixed(6); // 프레임당 증가량 = 전체구간에 걸쳐 1.0→ZMAX
     return `[${i}:v]scale=1188:1690:force_original_aspect_ratio=increase,crop=1188:1690,` +
+      `unsharp=5:5:0.8:5:5:0.0,` +   // 샤프닝(선명하게)
       `zoompan=z='min(zoom+${inc}\\,${ZMAX})':d=${df[i]}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x${PHOTO_H}:fps=${fps},setsar=1[v${i}]`;
   });
 
