@@ -27,3 +27,6 @@ data/bgm/
 # local backups
 *.bak_*
 .env.local.bak*
+
+# 컬러 이모지 폰트(서버에만 보관, 10MB)
+public/fonts/NotoColorEmoji.ttf

@@ -87,6 +87,12 @@ function findFont(): string {
   return '';
 }
 
+// 컬러 이모지 폰트 (자막 이모지용). 없으면 이모지 미표시(안전).
+function findEmojiFont(): string {
+  const p = path.join(process.cwd(), 'public/fonts/NotoColorEmoji.ttf');
+  return fs.existsSync(p) ? p : '';
+}
+
 // ── 톤별 색상 팔레트 ──
 interface TonePalette {
   hook: string;      // hook 섹션 강조색
@@ -275,13 +281,16 @@ async function createTextOverlay(
   const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
 
   const fontPath = findFont();
-  let fontFamily = 'sans-serif';
+  const emojiPath = findEmojiFont();
+  const fams: string[] = [];
   if (fontPath) {
-    try {
-      GlobalFonts.registerFromPath(fontPath, 'KoreanFont');
-      fontFamily = 'KoreanFont, sans-serif';
-    } catch { /* use system fonts */ }
+    try { GlobalFonts.registerFromPath(fontPath, 'KoreanFont'); fams.push('KoreanFont'); } catch { /* system font */ }
   }
+  if (emojiPath) {
+    try { GlobalFonts.registerFromPath(emojiPath, 'EmojiFont'); fams.push('EmojiFont'); } catch { /* no emoji */ }
+  }
+  fams.push('sans-serif');
+  const fontFamily = fams.join(', ');
 
   const W = 1080;
   const H = 1920;
@@ -479,13 +488,16 @@ async function createFrameImage(
   const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
 
   const fontPath = findFont();
-  let fontFamily = 'sans-serif';
+  const emojiPath = findEmojiFont();
+  const fams: string[] = [];
   if (fontPath) {
-    try {
-      GlobalFonts.registerFromPath(fontPath, 'KoreanFont');
-      fontFamily = 'KoreanFont, sans-serif';
-    } catch { /* use system fonts */ }
+    try { GlobalFonts.registerFromPath(fontPath, 'KoreanFont'); fams.push('KoreanFont'); } catch { /* system font */ }
   }
+  if (emojiPath) {
+    try { GlobalFonts.registerFromPath(emojiPath, 'EmojiFont'); fams.push('EmojiFont'); } catch { /* no emoji */ }
+  }
+  fams.push('sans-serif');
+  const fontFamily = fams.join(', ');
 
   const W = 1080;
   const H = 1920;

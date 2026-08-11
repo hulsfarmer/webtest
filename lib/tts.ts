@@ -188,6 +188,14 @@ function escapeXml(text: string): string {
     .replace(/'/g, '&apos;');
 }
 
+// 이모지·변형선택자·ZWJ 제거 (TTS가 이모지를 읽지 않게). 공백 정리.
+function stripEmoji(text: string): string {
+  return text
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 /**
  * Generate audio from a list of sentences using Google Cloud TTS SSML marks.
  * Returns the duration (in seconds) of each sentence.
@@ -200,6 +208,8 @@ export async function generateAudioWithTimepoints(
   speed = 1.0,
   onProgress?: (percent: number) => void,
 ): Promise<number[]> {
+  // 음성엔 이모지가 읽히지 않도록 제거 (자막엔 이모지 유지, 여긴 TTS 입력만)
+  sentences = sentences.map(s => stripEmoji(s));
   const apiKey = process.env.GOOGLE_TTS_API_KEY;
 
   if (apiKey) {
