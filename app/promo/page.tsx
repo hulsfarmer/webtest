@@ -95,8 +95,6 @@ const VOICES = [
   { id: 'ko-KR-Chirp3-HD-Charon', label: '민준',   desc: '남성 · 자연스러운', badge: '' },
   // Neural2 (안정적, 경제적)
   { id: 'ko-KR-Neural2-A',        label: '서연',   desc: '여성 · 차분한',     badge: '' },
-  { id: 'ko-KR-Neural2-B',        label: '하나',   desc: '여성 · 부드러운',   badge: '' },
-  { id: 'ko-KR-Neural2-C',        label: '도윤',   desc: '남성 · 밝은',       badge: '' },
 ];
 
 const SPEEDS = [
