@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Loader2, X } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { useSession } from 'next-auth/react';
@@ -18,28 +18,35 @@ const ALL_PAY_METHODS = [
 const PAY_METHODS = ALL_PAY_METHODS.filter((m) => m.channelKey);
 
 const PLAN_AMOUNT: Record<string, { amount: number; orderName: string }> = {
-  pro: { amount: 5500, orderName: 'ShortsAI Pro 월 정기결제' },
-  business: { amount: 15950, orderName: 'ShortsAI Business 월 정기결제' },
+  lite: { amount: 2000, orderName: 'ShortsAI Lite(10회) 월 정기결제' },
+  pro: { amount: 4000, orderName: 'ShortsAI Pro(30회) 월 정기결제' },
+  business: { amount: 10000, orderName: 'ShortsAI Business(100회) 월 정기결제' },
 };
+
+// 단건(크레딧) 팩 — PortOne 일반결제(requestPayment). 채널키 설정 시에만 노출.
+const ONETIME_CHANNEL_KEY = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_ONETIME;
+const CREDIT_PACKS = [
+  { id: 'credit10', label: '10회 이용권', credits: 10, amount: 3000, badge: null as string | null },
+  { id: 'credit30', label: '30회 이용권', credits: 30, amount: 5000, badge: '인기' as string | null },
+];
 
 const plans = [
   {
-    name: '무료',
-    nameEn: 'Free',
-    price: 0,
-    priceDisplay: '₩0',
-    period: '영원히 무료',
-    description: '먼저 체험해보세요',
+    name: 'Lite',
+    nameEn: 'Lite',
+    price: 2000,
+    priceDisplay: '₩2,000',
+    period: '월',
+    description: '가볍게 시작하는 사장님께',
     features: [
-      '월 3회 홍보영상',
-      '1080×1920 쇼츠 포맷',
-      'AI 홍보 스크립트 생성',
-      '한국어 TTS 내레이션',
-      'BGM 자동 추천',
+      '월 10회 홍보영상',
+      '워터마크 없음',
+      '모든 나래이터 (Chirp3-HD + Neural2)',
+      '모든 BGM + 커스텀 BGM',
       'MP4 다운로드',
     ],
-    cta: '무료로 시작',
-    planId: 'free',
+    cta: 'Lite 시작',
+    planId: 'lite',
     variantId: null as number | null,
     highlighted: false,
     badge: null as string | null,
@@ -47,8 +54,8 @@ const plans = [
   {
     name: 'Pro',
     nameEn: 'Pro',
-    price: 5000,
-    priceDisplay: '₩5,000',
+    price: 4000,
+    priceDisplay: '₩4,000',
     period: '월',
     description: '매달 꾸준히 홍보하는 사장님께',
     features: [
@@ -63,14 +70,14 @@ const plans = [
     cta: 'Pro 시작',
     planId: 'pro',
     variantId: 1409976,
-    highlighted: true,
-    badge: '인기',
+    highlighted: false,
+    badge: null,
   },
   {
     name: 'Business',
     nameEn: 'Business',
-    price: 14500,
-    priceDisplay: '₩14,500',
+    price: 10000,
+    priceDisplay: '₩10,000',
     period: '월',
     description: '여러 매장을 운영하거나 매일 홍보하는 분께',
     features: [
@@ -98,6 +105,15 @@ export default function PricingSection() {
   const [currentPlan, setCurrentPlan] = useState('free');
   const [portalUrl, setPortalUrl] = useState<string | null>(null);
   const [pendingPlan, setPendingPlan] = useState<string | null>(null); // 결제수단 선택 모달 대상 플랜
+  const [phone, setPhone] = useState('');
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerEmail, setBuyerEmail] = useState('');
+  const [pendingCredit, setPendingCredit] = useState<string | null>(null);
+  useEffect(() => {
+    const u = session?.user as { name?: string; email?: string } | undefined;
+    if (u?.name) setBuyerName((v) => v || (u.name as string));
+    if (u?.email) setBuyerEmail((v) => v || (u.email as string));
+  }, [session]);
 
   useEffect(() => {
     if (session?.user) {
@@ -155,6 +171,20 @@ export default function PricingSection() {
       return;
     }
 
+    const phoneDigits = phone.replace(/[^0-9]/g, '');
+    if (!buyerName.trim()) {
+      alert('이름을 입력해주세요.');
+      return;
+    }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(buyerEmail.trim())) {
+      alert('이메일을 정확히 입력해주세요.');
+      return;
+    }
+    if (phoneDigits.length < 10) {
+      alert('휴대폰 번호를 정확히 입력해주세요.');
+      return;
+    }
+
     setPendingPlan(null);
     flushSync(() => setLoading(planId));
     try {
@@ -164,12 +194,19 @@ export default function PricingSection() {
         storeId,
         channelKey: method.channelKey,
         billingKeyMethod: method.billingKeyMethod,
+        issueId: `sa-${String(userId).slice(0, 8)}-${Date.now().toString(36)}`,
         issueName: target.orderName,
-        customer: { customerId: userId },
+        customer: {
+          customerId: userId,
+          fullName: buyerName.trim(),
+          phoneNumber: phoneDigits,
+          email: buyerEmail.trim(),
+        },
       });
 
       if (!issue || issue.code != null) {
-        if (issue?.message) alert(issue.message);
+        console.error("[PortOne] billingkey issue failed:", issue);
+        alert(issue?.message ? `[${issue.code}] ${issue.message}` : "billingkey issue failed (no response)");
         setLoading(null);
         return;
       }
@@ -188,10 +225,76 @@ export default function PricingSection() {
         return;
       }
       alert(data.error || '결제에 실패했습니다. 결제수단을 확인해주세요.');
-    } catch {
-      alert('결제 처리 중 오류가 발생했습니다.');
+    } catch (e) {
+      console.error('[PortOne] payment exception:', e);
+      alert('payment error: ' + (e instanceof Error ? e.message : String(e)));
     }
     setLoading(null);
+  };
+
+  // 단건(크레딧) 결제 — PortOne 일반결제(requestPayment) → 서버 검증 → 크레딧 충전
+  const payOnce = async () => {
+    const packId = pendingCredit;
+    if (!packId) return;
+    const pack = CREDIT_PACKS.find((p) => p.id === packId);
+    const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
+    if (!pack || !storeId || !ONETIME_CHANNEL_KEY) {
+      alert('결제가 아직 준비 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+    const phoneDigits = phone.replace(/[^0-9]/g, '');
+    if (!buyerName.trim()) { alert('이름을 입력해주세요.'); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(buyerEmail.trim())) { alert('이메일을 정확히 입력해주세요.'); return; }
+    if (phoneDigits.length < 10) { alert('휴대폰 번호를 정확히 입력해주세요.'); return; }
+
+    setPendingCredit(null);
+    flushSync(() => setLoading(packId));
+    try {
+      const userId = (session!.user as { id?: string }).id;
+      const paymentId = `sao-${String(userId).slice(0, 8)}-${Date.now().toString(36)}`;
+      const payment = await PortOne.requestPayment({
+        storeId,
+        channelKey: ONETIME_CHANNEL_KEY,
+        paymentId,
+        orderName: pack.label,
+        totalAmount: pack.amount,
+        currency: 'KRW',
+        payMethod: 'CARD',
+        customer: {
+          customerId: userId,
+          fullName: buyerName.trim(),
+          phoneNumber: phoneDigits,
+          email: buyerEmail.trim(),
+        },
+      });
+      if (!payment || payment.code != null) {
+        if (payment?.message) alert(payment.message);
+        setLoading(null);
+        return;
+      }
+      const res = await fetch('/api/payment/portone/pay-once', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentId, pack: packId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`${pack.credits}회 이용권이 충전되었습니다!`);
+        window.location.href = '/promo';
+        return;
+      }
+      alert(data.error || '결제 검증에 실패했습니다.');
+    } catch (e) {
+      console.error('[PortOne] 단건 결제 예외:', e);
+      alert('결제 처리 중 오류: ' + (e instanceof Error ? e.message : String(e)));
+    }
+    setLoading(null);
+  };
+
+  const handleBuyCredit = (packId: string) => {
+    if (!session) { window.location.href = '/api/auth/signin'; return; }
+    if (!ONETIME_CHANNEL_KEY) { alert('단건 결제가 곧 오픈됩니다. 잠시만 기다려주세요!'); return; }
+    setPendingCredit(packId);
   };
 
   return (
@@ -224,6 +327,39 @@ export default function PricingSection() {
               {pendingPlan === 'business' ? 'Business' : 'Pro'} · 월 ₩
               {PLAN_AMOUNT[pendingPlan]?.amount.toLocaleString()} 정기결제
             </p>
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="block text-gray-300 text-sm mb-1.5">이름</label>
+                <input
+                  type="text"
+                  value={buyerName}
+                  onChange={(e) => setBuyerName(e.target.value)}
+                  placeholder="홍길동"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-300 text-sm mb-1.5">이메일</label>
+                <input
+                  type="email"
+                  value={buyerEmail}
+                  onChange={(e) => setBuyerEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-300 text-sm mb-1.5">휴대폰 번호</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="01012345678"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                />
+              </div>
+              <p className="text-gray-500 text-xs">결제 영수증 발급을 위해 필요합니다.</p>
+            </div>
             <div className="space-y-2">
               {PAY_METHODS.map((m) => (
                 <button
@@ -241,6 +377,50 @@ export default function PricingSection() {
           </div>
         </div>
       )}
+
+      {pendingCredit && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => setPendingCredit(null)}
+        >
+          <div
+            className="bg-brand-card border border-white/10 rounded-2xl p-6 w-full max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-bold text-white">이용권 구매</h3>
+              <button onClick={() => setPendingCredit(null)} className="text-gray-400 hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-gray-400 text-sm mb-5">
+              {CREDIT_PACKS.find((p) => p.id === pendingCredit)?.credits}회 이용권 · ₩
+              {CREDIT_PACKS.find((p) => p.id === pendingCredit)?.amount.toLocaleString()} · 구매일로부터 3개월 이내 사용 (1회 결제)
+            </p>
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="block text-gray-300 text-sm mb-1.5">이름</label>
+                <input type="text" value={buyerName} onChange={(e) => setBuyerName(e.target.value)} placeholder="홍길동" className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
+              </div>
+              <div>
+                <label className="block text-gray-300 text-sm mb-1.5">이메일</label>
+                <input type="email" value={buyerEmail} onChange={(e) => setBuyerEmail(e.target.value)} placeholder="you@example.com" className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
+              </div>
+              <div>
+                <label className="block text-gray-300 text-sm mb-1.5">휴대폰 번호</label>
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="01012345678" className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
+              </div>
+              <p className="text-gray-500 text-xs">결제 영수증 발급을 위해 필요합니다.</p>
+            </div>
+            <button onClick={payOnce} className="w-full py-3 rounded-xl bg-gradient-brand text-white font-semibold hover:opacity-90 transition-all">
+              결제하기
+            </button>
+            <p className="text-gray-500 text-xs mt-4 text-center">
+              자동갱신 없이 구매한 횟수만큼 사용합니다.
+            </p>
+          </div>
+        </div>
+      )}
     <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-10 sm:mb-16">
@@ -254,17 +434,69 @@ export default function PricingSection() {
 
         </div>
 
-        {/* Pricing cards */}
-        <div className="grid md:grid-cols-3 gap-4 sm:gap-6 mb-10 sm:mb-16">
+        {/* 필요한 만큼만 이용 (무료 + 단건 크레딧) */}
+        <div className="max-w-3xl mx-auto mb-12 sm:mb-16">
+          <div className="text-center mb-6">
+            <h3 className="text-xl sm:text-2xl font-bold mb-2">필요한 만큼만 이용</h3>
+            <p className="text-gray-400 text-sm">구독 없이 횟수만. 자동결제 없음 · 카드/간편결제</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="rounded-2xl p-5 border bg-brand-card border-white/10 text-center">
+              <div className="text-lg font-bold mb-1">무료</div>
+              <div className="text-2xl sm:text-3xl font-bold mb-1">3회</div>
+              <p className="text-gray-500 text-xs mb-4">가입 시 3회 무료 제공</p>
+              <button
+                onClick={() => handleUpgrade('free')}
+                className="w-full py-3 rounded-xl font-semibold text-sm bg-white/10 text-white hover:bg-white/15 border border-white/10 transition-all"
+              >
+                무료로 시작
+              </button>
+            </div>
+            {CREDIT_PACKS.map((p) => (
+              <div key={p.id} className={`relative rounded-2xl p-5 border transition-all text-center ${
+                p.badge
+                  ? 'bg-gradient-to-b from-purple-900/40 to-brand-card border-purple-500/50 glow-purple'
+                  : 'bg-brand-card border-white/10 hover:border-purple-500/30'
+              }`}>
+                {p.badge && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-brand text-white text-xs font-bold">
+                    {p.badge}
+                  </div>
+                )}
+                <div className="text-lg font-bold mb-1">{p.credits}회 이용권</div>
+                <div className="text-2xl sm:text-3xl font-bold mb-1">₩{p.amount.toLocaleString()}</div>
+                <p className="text-gray-500 text-xs mb-4">부가세(VAT) 포함 · 영상 {p.credits}개 · 유효기간 3개월</p>
+                <button
+                  onClick={() => handleBuyCredit(p.id)}
+                  disabled={loading !== null}
+                  className="w-full py-3 rounded-xl font-semibold text-sm bg-white/10 text-white hover:bg-white/15 border border-white/10 transition-all disabled:opacity-50"
+                >
+                  {loading === p.id ? (
+                    <span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" />처리 중...</span>
+                  ) : '구매하기'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 구독 (매달 자동, 더 저렴) */}
+        <div className="max-w-3xl mx-auto mb-10 sm:mb-16">
+          <div className="text-center mb-6">
+            <h3 className="text-xl sm:text-2xl font-bold mb-2">매달 자동, 더 저렴한 구독</h3>
+            <p className="text-gray-400 text-sm">자주 만든다면 구독이 영상당 훨씬 저렴합니다</p>
+          </div>
+          {/* Pricing cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {plans.map((plan) => {
             const isCurrentPlan = currentPlan === plan.planId;
-            const planOrder = ['free', 'pro', 'business'];
+            const planOrder = ['free', 'lite', 'pro', 'business'];
             const isLowerPlan = planOrder.indexOf(plan.planId) < planOrder.indexOf(currentPlan);
 
             return (
               <div
                 key={plan.name}
-                className={`relative rounded-2xl p-4 sm:p-6 border transition-all ${
+                className={`relative rounded-2xl p-5 border transition-all text-center ${
                   plan.highlighted
                     ? 'bg-gradient-to-b from-purple-900/40 to-brand-card border-purple-500/50 glow-purple'
                     : 'bg-brand-card border-white/10 hover:border-purple-500/30'
@@ -276,21 +508,13 @@ export default function PricingSection() {
                   </div>
                 )}
 
-                <div className="mb-4 sm:mb-6">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-lg sm:text-xl font-bold">{plan.name}</h3>
-                    {plan.name !== plan.nameEn && (
-                      <span className="text-gray-500 text-sm">{plan.nameEn}</span>
-                    )}
+                <div className="mb-4">
+                  <div className="text-lg font-bold mb-1">{plan.name}</div>
+                  <div className="text-2xl sm:text-3xl font-bold mb-1">
+                    {plan.priceDisplay}
+                    <span className="text-gray-400 text-sm font-normal">/{plan.period}</span>
                   </div>
-                  <p className="text-gray-400 text-sm mb-4">{plan.description}</p>
-                  <div className="flex items-end gap-1">
-                    <span className="text-2xl sm:text-3xl md:text-4xl font-bold">{plan.priceDisplay}</span>
-                    <span className="text-gray-400 mb-1 text-sm">{plan.price > 0 ? `/${plan.period}` : plan.period}</span>
-                  </div>
-                  {plan.price > 0 && (
-                    <p className="text-gray-500 text-xs mt-1">부가세(VAT) 별도</p>
-                  )}
+                  <p className="text-gray-500 text-xs">{plan.features[0]} · 부가세 포함</p>
                 </div>
 
                 {isCurrentPlan ? (
@@ -350,17 +574,10 @@ export default function PricingSection() {
                   </button>
                 )}
 
-                <ul className="space-y-3">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-3 text-sm text-gray-300">
-                      <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
               </div>
             );
           })}
+          </div>
         </div>
 
       </div>
