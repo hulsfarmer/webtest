@@ -317,6 +317,49 @@ function drawEmphasisCaption(ctx: any, text: string, o: {
   ctx.textAlign = 'center';
 }
 
+// 마무리 CTA 엔드카드 (영상 끝 cta 구간) — 업체명·CTA·연락처 강조, 색은 헤더 테마 연동
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function drawEndcard(ctx: any, W: number, H: number, o: {
+  businessName: string; ctaText?: string; contact?: string;
+  bnColor: string; accentColor: string; fontFamily: string;
+}): void {
+  const rr = (x: number, y: number, w: number, h: number, r: number) => {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  };
+  const lum = (hex: string) => {
+    const m = hex.replace('#', ''); if (m.length < 6) return 0.5;
+    const r = parseInt(m.slice(0, 2), 16), g = parseInt(m.slice(2, 4), 16), b = parseInt(m.slice(4, 6), 16);
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  };
+  ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.font = `bold 50px ${o.fontFamily}`; ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.fillText('지금 바로 👇', W / 2, H * 0.33);
+  // 업체명 (폭 자동맞춤)
+  let bn = 108; ctx.font = `bold ${bn}px ${o.fontFamily}`;
+  while (bn > 56 && ctx.measureText(o.businessName).width > W - 140) { bn -= 4; ctx.font = `bold ${bn}px ${o.fontFamily}`; }
+  ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 20;
+  ctx.fillStyle = o.bnColor; ctx.fillText(o.businessName, W / 2, H * 0.43);
+  ctx.shadowBlur = 0;
+  if (o.ctaText) {
+    ctx.font = `bold 60px ${o.fontFamily}`; ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 12;
+    wrapKorean(o.ctaText, 16).split('\n').forEach((ln, i) => ctx.fillText(ln, W / 2, H * 0.51 + i * 74));
+    ctx.shadowBlur = 0;
+  }
+  if (o.contact) {
+    let ps = 48; ctx.font = `bold ${ps}px ${o.fontFamily}`;
+    while (ps > 30 && ctx.measureText(o.contact).width > W - 160) { ps -= 3; ctx.font = `bold ${ps}px ${o.fontFamily}`; }
+    const tw = ctx.measureText(o.contact).width;
+    const pw = Math.min(W - 60, tw + 90), ph = ps + 56, px = (W - pw) / 2, py = H * 0.62;
+    ctx.fillStyle = o.accentColor; rr(px, py, pw, ph, ph / 2); ctx.fill();
+    ctx.fillStyle = lum(o.accentColor) > 0.6 ? '#111111' : '#ffffff';
+    ctx.textBaseline = 'middle'; ctx.fillText(o.contact, W / 2, py + ph / 2); ctx.textBaseline = 'alphabetic';
+  }
+}
+
 async function createTextOverlay(
   title: string,
   text: string,
@@ -362,6 +405,16 @@ async function createTextOverlay(
     cta: p.cta,
   };
   const accentColor = headerAccent || badgeColors[sectionType] || p.hook;
+
+  // 마지막(cta) 구간은 엔드카드로 렌더 (업체명·CTA·연락처 강조)
+  if (sectionType === 'cta' && displayBusinessName) {
+    drawEndcard(ctx, W, H, {
+      businessName: displayBusinessName, ctaText: text, contact: bottomInfo,
+      bnColor: headerBnColor || '#FDE047', accentColor, fontFamily,
+    });
+    fs.writeFileSync(outputPath, canvas.toBuffer('image/png'));
+    return;
+  }
 
   // (상단 색띠 제거 — 사용자 요청)
 
@@ -608,6 +661,16 @@ async function createFrameImage(
     hook: p.hook, main: p.main, cta: p.cta,
   };
   const accentColor = headerAccent || badgeColors[sectionType] || p.hook;
+
+  // 마지막(cta) 구간은 엔드카드로 렌더 (업체명·CTA·연락처 강조)
+  if (sectionType === 'cta' && displayBusinessName) {
+    drawEndcard(ctx, W, H, {
+      businessName: displayBusinessName, ctaText: text, contact: bottomInfo,
+      bnColor: headerBnColor || '#FDE047', accentColor, fontFamily,
+    });
+    fs.writeFileSync(outputPath, canvas.toBuffer('image/png'));
+    return;
+  }
 
   // (상단 색띠 제거 — 사용자 요청)
 
