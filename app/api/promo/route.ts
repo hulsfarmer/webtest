@@ -176,7 +176,7 @@ async function processPromoJob(
     await generateVideo(
       script, audioPath, videoPath, userImagePaths,
       bottomInfo, sentenceDurations, input.businessName,
-      bgmPath ?? undefined, bgmId, bgmVolume, showWatermark, input.tone, input.headerTheme,
+      bgmPath ?? undefined, bgmId, bgmVolume, showWatermark, input.tone, input.headerTheme, input.beatPulse,
     );
 
     // Cleanup audio and custom BGM (uploaded images are kept for history reuse)
@@ -227,6 +227,7 @@ export async function POST(req: NextRequest) {
   let duration = 60;
   let tone = '친근한';
   let headerTheme: string | undefined;
+  let beatPulse = false;
   let voice = 'ko-KR-Chirp3-HD-Aoede';
   let speed = 1.0;
   let bgmId: BgmId = 'none';
@@ -250,6 +251,7 @@ export async function POST(req: NextRequest) {
     duration      = parseInt((formData.get('duration') as string | null) ?? '60', 10);
     tone          = (formData.get('tone')          as string | null) ?? '친근한';
     headerTheme   = (formData.get('headerTheme')   as string | null) ?? undefined;
+    beatPulse     = (formData.get('beatPulse')     as string | null) === 'true';
     speed         = parseFloat((formData.get('speed') as string | null) ?? '1.0');
     bgmId         = ((formData.get('bgmId') as string | null) ?? 'none') as BgmId;
     const bgmVolumeRaw = formData.get('bgmVolume') as string | null;
@@ -349,6 +351,7 @@ export async function POST(req: NextRequest) {
       duration,
       tone,
       headerTheme,
+      beatPulse,
       mode: isEvent ? 'event' : 'business',
       eventDate: eventDate?.trim() || undefined,
     };
@@ -374,6 +377,7 @@ export async function POST(req: NextRequest) {
     bgmId = (body.bgmId ?? 'none') as BgmId;
     prebuiltScript = body.prebuiltScript ?? undefined;
     headerTheme = body.headerTheme ?? undefined;
+    beatPulse = body.beatPulse === true;
 
     if (!businessName?.trim()) {
       return NextResponse.json({ error: '업체명을 입력해주세요.' }, { status: 400 });
@@ -414,6 +418,7 @@ export async function POST(req: NextRequest) {
       duration,
       tone,
       headerTheme,
+      beatPulse,
     };
 
     processPromoJob(jobId, input, voice, Number(speed), [], prebuiltScript, bgmId, undefined, undefined, showWatermark2).catch(console.error);

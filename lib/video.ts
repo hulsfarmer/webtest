@@ -750,11 +750,17 @@ async function createFrameImage(
 }
 
 // ── Mode 3: Create slideshow video from user-uploaded images ──────────────────
+// BGM 트랙별 측정 BPM (비트 펄스용)
+const BGM_BPM: Record<string, number> = {
+  cafe: 85, professional: 119, energetic: 115, warm: 93, trendy: 119, calm: 108,
+};
+
 async function createImageSlideshowVideo(
   imagePaths: string[],
   totalDuration: number,
   outputPath: string,
   perImageDurations?: number[],
+  bpm = 0,   // 0이면 비트 펄스 없음
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const ffmpegPath = require('ffmpeg-static') as string;
@@ -782,11 +788,20 @@ async function createImageSlideshowVideo(
   // 켄번스: 1.1배 프리스케일 후 zoompan. 줌 속도를 이미지 길이에 비례시켜
   // 이미지 전체 구간 내내 "끊김없이 계속" 줌인 (긴 이미지에서 중간에 멈추는 문제 방지).
   const ZMAX = 1.18;
+  // 비트 펄스(옵션): bpm>0이면 매 박자마다 살짝 줌 팝(1.5%). 이미지 넘어가도 위상 유지.
+  const BF = bpm ? Math.round(60 / bpm * fps) : 0;
+  const pAmp = 0.015, pDecay = BF ? (BF * 0.4).toFixed(1) : '1';
+  const starts: number[] = [0];
+  for (let i = 1; i < N; i++) starts.push(starts[i - 1] + dur[i - 1] - T);
   const zoom = imagePaths.map((_, i) => {
     const inc = ((ZMAX - 1) / df[i]).toFixed(6); // 프레임당 증가량 = 전체구간에 걸쳐 1.0→ZMAX
+    const sf = Math.round(starts[i] * fps);
+    const zexpr = bpm
+      ? `1.0+${inc}*on+${pAmp}*max(0\\,1-mod(on+${sf}\\,${BF})/${pDecay})`
+      : `min(zoom+${inc}\\,${ZMAX})`;
     return `[${i}:v]scale=1188:1690:force_original_aspect_ratio=increase,crop=1188:1690,` +
       `unsharp=5:5:0.8:5:5:0.0,` +   // 샤프닝(선명하게)
-      `zoompan=z='min(zoom+${inc}\\,${ZMAX})':d=${df[i]}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x${PHOTO_H}:fps=${fps},setsar=1[v${i}]`;
+      `zoompan=z='${zexpr}':d=${df[i]}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x${PHOTO_H}:fps=${fps},setsar=1[v${i}]`;
   });
 
   // 장면전환(xfade) 체인 — 이미지마다 다른 효과
@@ -836,6 +851,7 @@ export async function generateVideo(
   showWatermark?: boolean,
   tone?: string,
   headerTheme?: string,
+  beatPulse?: boolean,
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const ffmpegPath = require('ffmpeg-static') as string;
@@ -1022,7 +1038,7 @@ export async function generateVideo(
       perImageDurations[perImageDurations.length - 1] += 2;
 
       console.log(`[Video] Image durations (sentence-aligned): ${perImageDurations.map(d => d.toFixed(1) + 's').join(', ')}`);
-      await createImageSlideshowVideo(validUserImages, audioDuration + 2, slideshowPath, perImageDurations);
+      await createImageSlideshowVideo(validUserImages, audioDuration + 2, slideshowPath, perImageDurations, beatPulse ? (BGM_BPM[bgmId || ''] || 0) : 0);
       videoPath = slideshowPath;
       console.log('[Video] Slideshow video ready');
     } catch (e) {

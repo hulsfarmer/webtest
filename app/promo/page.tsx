@@ -177,6 +177,7 @@ export default function PromoPage() {
   const [duration, setDuration]             = useState(60);
   const [tone, setTone]                     = useState('친근한');
   const [headerTheme, setHeaderTheme]       = useState('blur');
+  const [beatPulse, setBeatPulse]           = useState(true); // 비트 펄스(음악 박자에 맞춰 줌 팝)
   const [voice, setVoice]                   = useState('ko-KR-Chirp3-HD-Zephyr');
   const [speed, setSpeed]                   = useState(1.0);
   const [showAdvanced, setShowAdvanced]     = useState(false);
@@ -569,6 +570,7 @@ export default function PromoPage() {
       formData.append('duration',   String(duration));
       formData.append('tone',       tone);
       formData.append('headerTheme', headerTheme);
+      formData.append('beatPulse',  String(beatPulse));
       formData.append('voice',      voice);
       formData.append('speed',      String(speed));
       formData.append('bgmId',      customBgm ? 'custom' : bgmId);
@@ -1209,6 +1211,22 @@ export default function PromoPage() {
 
               {showAdvanced && (
                 <div className="mt-4 space-y-4">
+                  {/* 비트 펄스 토글 */}
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-300">
+                      🎵 비트 펄스
+                      <span className="text-xs text-gray-600 ml-1">· 음악 박자에 맞춰 화면이 살짝 튐</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setBeatPulse(v => !v)}
+                      aria-label="비트 펄스 켜기/끄기"
+                      className={`relative w-12 h-6 rounded-full transition-all flex-shrink-0 ${beatPulse ? 'bg-emerald-500' : 'bg-white/15'}`}
+                    >
+                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${beatPulse ? 'left-[26px]' : 'left-0.5'}`} />
+                    </button>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       🎨 헤더 디자인

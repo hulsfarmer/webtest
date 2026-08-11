@@ -51,6 +51,7 @@ export interface PromoInput {
   duration: number;
   tone: string;
   headerTheme?: string;
+  beatPulse?: boolean;
   mode?: 'business' | 'event';
   eventDate?: string;
 }
