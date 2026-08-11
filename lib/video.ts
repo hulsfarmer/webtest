@@ -139,14 +139,15 @@ interface HeaderTheme {
   bg: string;               // 'blur' 또는 hex 예: '#121212'
   businessNameColor: string;
   titleColor: string;
+  accent: string;           // 맨위 바·자막 구분선·진행바 색 (헤더와 통일)
 }
 const HEADER_THEMES: Record<string, HeaderTheme> = {
-  blur:     { id: 'blur',     bg: 'blur',    businessNameColor: '#FDE047', titleColor: '#FFFFFF' },
-  black:    { id: 'black',    bg: '#121212', businessNameColor: '#FFE600', titleColor: '#FFFFFF' },
-  navy:     { id: 'navy',     bg: '#0A192F', businessNameColor: '#00E5FF', titleColor: '#FFFFFF' },
-  neon:     { id: 'neon',     bg: '#E5FF00', businessNameColor: '#000000', titleColor: '#D32F2F' },
-  violet:   { id: 'violet',   bg: '#1A0B2E', businessNameColor: '#FF2A85', titleColor: '#FFFFFF' },
-  burgundy: { id: 'burgundy', bg: '#4A0E17', businessNameColor: '#FFC107', titleColor: '#FFFFFF' },
+  blur:     { id: 'blur',     bg: 'blur',    businessNameColor: '#FDE047', titleColor: '#FFFFFF', accent: '#FDE047' },
+  black:    { id: 'black',    bg: '#121212', businessNameColor: '#FFE600', titleColor: '#FFFFFF', accent: '#FFE600' },
+  navy:     { id: 'navy',     bg: '#0A192F', businessNameColor: '#00E5FF', titleColor: '#FFFFFF', accent: '#00E5FF' },
+  neon:     { id: 'neon',     bg: '#E5FF00', businessNameColor: '#000000', titleColor: '#D32F2F', accent: '#D32F2F' },
+  violet:   { id: 'violet',   bg: '#1A0B2E', businessNameColor: '#FF2A85', titleColor: '#FFFFFF', accent: '#FF2A85' },
+  burgundy: { id: 'burgundy', bg: '#4A0E17', businessNameColor: '#FFC107', titleColor: '#FFFFFF', accent: '#FFC107' },
 };
 // 톤별 기본 헤더 (고급설정에서 미변경 시 자동 연결)
 const TONE_DEFAULT_HEADER: Record<string, string> = {
@@ -266,6 +267,7 @@ async function createTextOverlay(
   palette?: TonePalette,
   headerBnColor?: string,
   headerTitleColor?: string,
+  headerAccent?: string,
 ): Promise<void> {
   const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
 
@@ -292,7 +294,7 @@ async function createTextOverlay(
     main: p.main,
     cta: p.cta,
   };
-  const accentColor = badgeColors[sectionType] || p.hook;
+  const accentColor = headerAccent || badgeColors[sectionType] || p.hook;
 
   // Top accent bar
   const topGrad = ctx.createLinearGradient(0, 0, W, 0);
@@ -450,7 +452,7 @@ async function createTextOverlay(
   const fillW = Math.max(barW * progress, barH);
   const fillGrad = ctx.createLinearGradient(barPad, 0, barPad + barW, 0);
   fillGrad.addColorStop(0, accentColor);
-  fillGrad.addColorStop(1, '#EC4899');
+  fillGrad.addColorStop(1, accentColor); // 진행바도 헤더 accent로 통일
   ctx.fillStyle = fillGrad;
   ctx.beginPath();
   ctx.roundRect(barPad, barY, fillW, barH, 5);
@@ -475,6 +477,7 @@ async function createFrameImage(
   palette?: TonePalette,
   headerBnColor?: string,
   headerTitleColor?: string,
+  headerAccent?: string,
 ): Promise<void> {
   const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
 
@@ -550,7 +553,7 @@ async function createFrameImage(
   const badgeColors: Record<string, string> = {
     hook: p.hook, main: p.main, cta: p.cta,
   };
-  const accentColor = badgeColors[sectionType] || p.hook;
+  const accentColor = headerAccent || badgeColors[sectionType] || p.hook;
 
   // Top accent bar
   const topGrad = ctx.createLinearGradient(0, 0, W, 0);
@@ -699,7 +702,7 @@ async function createFrameImage(
   const fillW = Math.max(barW * progress, barH);
   const fillGrad = ctx.createLinearGradient(barPad, 0, barPad + barW, 0);
   fillGrad.addColorStop(0, accentColor);
-  fillGrad.addColorStop(1, '#EC4899');
+  fillGrad.addColorStop(1, accentColor); // 진행바도 헤더 accent로 통일
   ctx.fillStyle = fillGrad;
   ctx.beginPath();
   ctx.roundRect(barPad, barY, fillW, barH, 4);
@@ -995,7 +998,7 @@ export async function generateVideo(
         script.title, text, sectionType,
         idx, allChunks.length, overlayPath,
         bottomInfo, displayBusinessName, showWatermark, palette,
-        header.businessNameColor, header.titleColor,
+        header.businessNameColor, header.titleColor, header.accent,
       );
       overlayPaths.push(overlayPath);
     }
@@ -1118,7 +1121,7 @@ export async function generateVideo(
         script.title, text, sectionType,
         idx, allChunks.length, framePath, keyword,
         bottomInfo, displayBusinessName, showWatermark, palette,
-        header.businessNameColor, header.titleColor,
+        header.businessNameColor, header.titleColor, header.accent,
       );
       framePaths.push({ path: framePath, duration: chunkDurations[idx] });
     }
