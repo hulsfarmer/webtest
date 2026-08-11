@@ -1014,6 +1014,7 @@ export async function generateVideo(
   const allChunks: ChunkItem[] = [];
   const chunkDurations: number[] = [];
   const chunkTimestamps: number[] = [];
+  const CAPTION_LEAD = 0.2; // 자막을 나레이션보다 살짝 먼저 띄워 싱크 개선(늦게 뜨는 느낌 방지)
   for (let i = 0; i < allSentences.length; i++) {
     const { sentence, sectionType, sectionIndex } = allSentences[i];
     const sentDur = sentenceDurations[i];
@@ -1026,7 +1027,7 @@ export async function generateVideo(
       cumLen += c.length;
       const endFrac = cumLen / totalLen;
       allChunks.push({ text: c, sectionType, sectionIndex });
-      chunkTimestamps.push(sentStart + startFrac * sentDur);
+      chunkTimestamps.push(Math.max(0, sentStart + startFrac * sentDur - CAPTION_LEAD));
       chunkDurations.push(Math.max((endFrac - startFrac) * sentDur, 0.25));
     }
   }
