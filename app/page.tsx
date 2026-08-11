@@ -39,12 +39,12 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
-  // Showcase videos first, fill remaining with default samples (always show 3)
+  // Showcase videos first, fill remaining with default samples (up to 6)
   const sampleSources: { src: string; poster: string | null; showcase?: ShowcaseVideo }[] = showcaseVideos.length > 0
     ? [
         ...showcaseVideos.map(v => ({ src: v.videoUrl, poster: v.posterUrl, showcase: v })),
         ...DEFAULT_SAMPLES.slice(showcaseVideos.length).map(s => ({ src: s.src, poster: s.poster as string | null })),
-      ].slice(0, 3)
+      ].slice(0, 6)
     : DEFAULT_SAMPLES.map(s => ({ src: s.src, poster: s.poster }));
 
   return (
@@ -143,10 +143,10 @@ export default function HomePage() {
           <p className="text-gray-400 text-sm sm:text-base mb-6 sm:mb-8">
             {showcaseVideos.length > 0 ? '실제 사용자가 만든 홍보영상입니다' : 'AI가 자동으로 만든 실제 홍보영상입니다'}
           </p>
-          {/* Horizontal scroll on mobile, flex row on desktop */}
-          <div className="flex gap-4 sm:gap-6 justify-start sm:justify-center overflow-x-auto sm:overflow-visible pb-4 sm:pb-0 snap-x snap-mandatory sm:snap-none -mx-4 px-4 sm:mx-0 sm:px-0">
-            {sampleSources.map((item, i) => (
-              <div key={item.src} className="glass-card p-2 sm:p-3 rounded-2xl w-[220px] sm:w-full sm:max-w-xs flex-shrink-0 snap-center">
+          {/* 반응형 그리드: 모바일 2열, 데스크톱 3열 (최대 6개 = 2행) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
+            {sampleSources.map((item) => (
+              <div key={item.src} className="glass-card p-2 sm:p-3 rounded-2xl">
                 <video
                   src={item.src}
                   poster={item.poster || undefined}

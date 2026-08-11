@@ -46,7 +46,7 @@ export async function GET() {
         rating: r.rating,
       };
     })
-    .slice(0, 3); // 최대 3개
+    .slice(0, 6); // 최대 6개
 
   return NextResponse.json({ videos });
 }
