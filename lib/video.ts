@@ -717,29 +717,52 @@ async function createImageSlideshowVideo(
     ? perImageDurations
     : imagePaths.map(() => totalDuration / imagePaths.length);
 
-  // Build inputs: each image looped for its duration
+  // 하단 사진영역(1080×1536)을 켄번스(천천히 줌인) + 장면전환(xfade)으로 생동감 부여.
+  // 넘치면 좌우 크롭(무왜곡). 메모리 안전 위해 헤드룸 1.1배·ultrafast·threads 2·nice.
+  const PHOTO_H = 1536; // 1920 - 384(상단 밴드)
+  const N = imagePaths.length;
+  const fps = 30;
+  const T = 0.5; // 전환(xfade) 길이(초)
+  // xfade 오버랩만큼 각 이미지 길이를 늘려 전체 길이를 totalDuration로 유지
+  const pad = N > 1 ? (N - 1) * T / N : 0;
+  const dur = durations.map(d => d + pad);
+  const df = dur.map(d => Math.max(1, Math.round(d * fps)));
+
   const inputs = imagePaths.map((p, i) =>
-    `-loop 1 -t ${durations[i].toFixed(3)} -i "${p}"`
+    `-loop 1 -t ${dur[i].toFixed(3)} -i "${p}"`
   ).join(' ');
 
-  // 하단 사진영역(1080×1536)을 꽉 채움(cover, 비율유지·무왜곡). 넘치면 좌우를 크롭.
-  // 예전 이중 크롭(1920로 크롭 후 또 크롭) 방지 위해 처음부터 1536으로 한 번만 크롭.
-  const PHOTO_H = 1536; // 1920 - 384(상단 밴드)
-  const scaleFilters = imagePaths.map((_, i) =>
-    `[${i}:v]scale=1080:${PHOTO_H}:force_original_aspect_ratio=increase,` +
-    `crop=1080:${PHOTO_H}:(iw-1080)/2:(ih-${PHOTO_H})/2,setsar=1,fps=30[v${i}]`
-  );
-  const concatInputLabels = imagePaths.map((_, i) => `[v${i}]`).join('');
-  const filterComplex = [
-    ...scaleFilters,
-    `${concatInputLabels}concat=n=${imagePaths.length}:v=1[out]`,
-  ].join(';');
+  // 켄번스: 1.1배 프리스케일 후 zoompan(줌인, 이미지마다 속도 살짝 다르게)
+  const zoom = imagePaths.map((_, i) => {
+    const zi = (0.0009 + (i % 3) * 0.0002).toFixed(4);
+    return `[${i}:v]scale=1188:1690:force_original_aspect_ratio=increase,crop=1188:1690,` +
+      `zoompan=z='min(zoom+${zi}\\,1.15)':d=${df[i]}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x${PHOTO_H}:fps=${fps},setsar=1[v${i}]`;
+  });
+
+  // 장면전환(xfade) 체인 — 이미지마다 다른 효과
+  const TRANS = ['slideleft', 'fade', 'wiperight', 'slideup', 'circleopen'];
+  const parts = [...zoom];
+  let outLabel = 'v0';
+  if (N > 1) {
+    let cum = dur[0];
+    let prev = 'v0';
+    for (let k = 0; k < N - 1; k++) {
+      const off = (cum - T).toFixed(3);
+      const lbl = (k === N - 2) ? 'out' : `x${k + 1}`;
+      parts.push(`[${prev}][v${k + 1}]xfade=transition=${TRANS[k % TRANS.length]}:duration=${T}:offset=${off}[${lbl}]`);
+      prev = lbl;
+      cum += dur[k + 1];
+    }
+    outLabel = 'out';
+  }
+  const filterComplex = parts.join(';');
 
   const cmd = [
-    `"${ffmpegPath}"`,
+    `nice -n 12 "${ffmpegPath}"`,
     inputs,
     `-filter_complex "${filterComplex}"`,
-    `-map "[out]"`,
+    `-map "[${outLabel}]"`,
+    `-threads 2`,
     `-c:v libx264 -preset ultrafast -crf 26`,
     `-pix_fmt yuv420p`,
     `-t ${totalDuration.toFixed(3)}`,
