@@ -242,6 +242,8 @@ export default function PromoPage() {
     const durParam = searchParams.get('duration');
     const toneParam = searchParams.get('tone');
     const imageJobId = searchParams.get('imageJobId');
+    const eventDateParam = searchParams.get('eventDate');
+    const locationParam = searchParams.get('location');
 
     if (scriptParam || bnParam) {
       restoredRef.current = true;
@@ -250,6 +252,8 @@ export default function PromoPage() {
       if (topicParam) setSellingPoints(topicParam);
       if (durParam) setDuration(Number(durParam) || 60);
       if (toneParam) setTone(toneParam);
+      if (eventDateParam) setEventDate(eventDateParam);
+      if (locationParam) setLocation(locationParam);
       if (scriptParam) {
         try {
           const parsed = JSON.parse(scriptParam) as VideoScript;

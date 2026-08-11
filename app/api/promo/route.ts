@@ -113,7 +113,7 @@ async function processPromoJob(
       updateJob(jobId, {
         status: 'generating_audio',
         progress: 30,
-        script: JSON.stringify(script),
+        script: JSON.stringify({ ...script, _meta: { mode: input.mode || 'business', eventDate: input.eventDate, location: input.location } }),
         steps: { script: 'done', audio: 'running', video: 'pending' },
       });
     } else {
@@ -128,7 +128,7 @@ async function processPromoJob(
 
       updateJob(jobId, {
         progress: 30,
-        script: JSON.stringify(script),
+        script: JSON.stringify({ ...script, _meta: { mode: input.mode || 'business', eventDate: input.eventDate, location: input.location } }),
         steps: { script: 'done', audio: 'running', video: 'pending' },
         status: 'generating_audio',
       });

@@ -114,6 +114,13 @@ export default function HistoryPage() {
     if (job.duration) params.set('duration', String(job.duration));
     if (job.tone) params.set('tone', job.tone);
     if (job.imageCount > 0) params.set('imageJobId', job.id);
+    // 행사 영상이면 mode·일시·장소 복원 (script._meta에 저장됨)
+    const meta = (job.script as { _meta?: { mode?: string; eventDate?: string; location?: string } } | null)?._meta;
+    if (meta?.mode === 'event') {
+      params.set('mode', 'event');
+      if (meta.eventDate) params.set('eventDate', meta.eventDate);
+      if (meta.location) params.set('location', meta.location);
+    }
     router.push(`/promo?${params.toString()}`);
   };
 
