@@ -3,7 +3,7 @@ import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import type { VideoScript } from './anthropic';
-import { fetchPexelsVideoUrl, downloadVideo, getPexelsKeyword } from './pexels';
+import { fetchPexelsVideoUrls, downloadVideo, getPexelsKeyword } from './pexels';
 
 const execAsync = promisify(exec);
 
@@ -900,6 +900,51 @@ async function createImageSlideshowVideo(
   await execAsync(cmd, { maxBuffer: 1024 * 1024 * 100 });
 }
 
+// 여러 Pexels 클립을 이어붙여 targetDuration을 채우는 배경 릴 생성.
+// 짧은 클립 하나를 무한 반복하던 문제 해결 — 각 클립이 균등 구간을 차지하며 장면 전환.
+// 메모리 안전: 1080×1920로 통일, ultrafast·threads 2·nice 12 (슬라이드쇼 패스와 동일 수준).
+async function createPexelsReel(
+  clipPaths: string[],
+  targetDuration: number,
+  outputPath: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const ffmpegPath = require('ffmpeg-static') as string;
+  const N = clipPaths.length;
+  const fps = 30;
+  const seg = targetDuration / N; // 클립별 구간 길이
+
+  // 각 클립을 자기 구간 길이만큼 루프(짧은 클립도 구간을 꽉 채움 → 총 길이 정확)
+  const inputs = clipPaths
+    .map(p => `-stream_loop -1 -t ${seg.toFixed(3)} -i "${p}"`)
+    .join(' ');
+
+  // 1080×1920 cover(무왜곡, 넘치면 좌우/상하 크롭)로 통일 후 하드컷 concat
+  const scaleParts = clipPaths.map((_, i) =>
+    `[${i}:v]scale=1080:1920:force_original_aspect_ratio=increase,` +
+    `crop=1080:1920,fps=${fps},setsar=1,setpts=PTS-STARTPTS[v${i}]`
+  );
+  const concatIn = clipPaths.map((_, i) => `[v${i}]`).join('');
+  const filterComplex = [
+    ...scaleParts,
+    `${concatIn}concat=n=${N}:v=1:a=0[outv]`,
+  ].join(';');
+
+  const cmd = [
+    `nice -n 12 "${ffmpegPath}"`,
+    inputs,
+    `-filter_complex "${filterComplex}"`,
+    `-map "[outv]"`,
+    `-threads 2`,
+    `-c:v libx264 -preset ultrafast -crf 26`,
+    `-pix_fmt yuv420p`,
+    `-t ${targetDuration.toFixed(3)}`,
+    `-y "${outputPath}"`,
+  ].join(' ');
+
+  await execAsync(cmd, { maxBuffer: 1024 * 1024 * 100 });
+}
+
 export async function generateVideo(
   script: VideoScript,
   audioPath: string,
@@ -1111,17 +1156,36 @@ export async function generateVideo(
   }
 
   // ── Try to get Pexels video background (if no user images) ──
+  // 짧은 클립 하나 무한반복 대신 여러 클립을 이어붙인 릴을 사용해 반복감 제거.
   const pexelsKey = process.env.PEXELS_API_KEY;
   if (!videoPath && pexelsKey) {
     try {
-      console.log(`[Video] Fetching Pexels video: "${pexelsKeyword}"`);
-      const videoUrl = await fetchPexelsVideoUrl(pexelsKeyword, pexelsKey);
-      if (videoUrl) {
-        const rawPath = path.join(tmpDir, 'bg_raw.mp4');
-        console.log('[Video] Downloading Pexels video...');
-        await downloadVideo(videoUrl, rawPath);
-        videoPath = rawPath;
-        console.log('[Video] Pexels video ready');
+      const NUM_CLIPS = 4;
+      console.log(`[Video] Fetching Pexels videos: "${pexelsKeyword}" (up to ${NUM_CLIPS})`);
+      const videoUrls = await fetchPexelsVideoUrls(pexelsKeyword, pexelsKey, NUM_CLIPS);
+
+      // 여러 개 받으면 다운로드 후 릴로 합침
+      const clipPaths: string[] = [];
+      for (let i = 0; i < videoUrls.length; i++) {
+        const cp = path.join(tmpDir, `bg_clip_${i}.mp4`);
+        try {
+          await downloadVideo(videoUrls[i], cp);
+          clipPaths.push(cp);
+        } catch (e) {
+          console.warn(`[Video] Pexels clip ${i} download failed:`, e);
+        }
+      }
+
+      if (clipPaths.length > 1) {
+        const reelPath = path.join(tmpDir, 'bg_reel.mp4');
+        const reelTarget = audioDuration + 2.5; // Mode1 bgLoopDuration 이상으로 채워 반복 제거
+        console.log(`[Video] Building Pexels reel from ${clipPaths.length} clips...`);
+        await createPexelsReel(clipPaths, reelTarget, reelPath);
+        videoPath = reelPath;
+        console.log('[Video] Pexels reel ready');
+      } else if (clipPaths.length === 1) {
+        videoPath = clipPaths[0];
+        console.log('[Video] Pexels single clip (only 1 available/downloaded)');
       }
     } catch (e) {
       console.warn('[Video] Pexels failed, using gradient:', e);

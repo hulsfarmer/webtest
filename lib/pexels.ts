@@ -86,7 +86,12 @@ export function getPexelsKeyword(text: string): string {
   return 'lifestyle';
 }
 
-export async function fetchPexelsVideoUrl(keyword: string, apiKey: string): Promise<string | null> {
+// 서로 다른 세로 영상 후보 URL을 최대 count개 반환 (짧은 클립 반복 방지용 릴 소재)
+export async function fetchPexelsVideoUrls(
+  keyword: string,
+  apiKey: string,
+  count: number,
+): Promise<string[]> {
   try {
     const { data } = await axios.get<PexelsResponse>('https://api.pexels.com/videos/search', {
       headers: { Authorization: apiKey },
@@ -94,15 +99,15 @@ export async function fetchPexelsVideoUrl(keyword: string, apiKey: string): Prom
         query: keyword,
         orientation: 'portrait',
         size: 'medium',
-        per_page: 10,
+        per_page: Math.max(count * 3, 15),
       },
       timeout: 12000,
     });
 
     const videos = data?.videos ?? [];
-    if (!videos.length) return null;
+    if (!videos.length) return [];
 
-    // 후보 링크들 수집 후 랜덤 선택 (매번 다른 영상)
+    // 영상별 최적 세로 파일 링크 1개씩 수집
     const candidates: string[] = [];
     for (const video of videos) {
       const files = video.video_files ?? [];
@@ -114,14 +119,23 @@ export async function fetchPexelsVideoUrl(keyword: string, apiKey: string): Prom
         files[0];
       if (chosen?.link) candidates.push(chosen.link);
     }
-    if (!candidates.length) return null;
+    if (!candidates.length) return [];
 
-    // 랜덤 선택
-    return candidates[Math.floor(Math.random() * candidates.length)];
+    // 셔플 후 서로 다른 것 count개 선택
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
+    return candidates.slice(0, count);
   } catch (e) {
     console.warn('[Pexels] API error:', e);
-    return null;
+    return [];
   }
+}
+
+export async function fetchPexelsVideoUrl(keyword: string, apiKey: string): Promise<string | null> {
+  const urls = await fetchPexelsVideoUrls(keyword, apiKey, 1);
+  return urls[0] ?? null;
 }
 
 export async function downloadVideo(url: string, outputPath: string): Promise<void> {
