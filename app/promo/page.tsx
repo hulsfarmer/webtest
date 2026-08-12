@@ -986,12 +986,6 @@ export default function PromoPage() {
                 </div>
               )}
 
-              {images.length === 0 && (
-                <p className="text-gray-500 text-xs mt-2 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  사진을 올리지 않아도 됩니다 — AI가 주제에 맞는 영상 배경을 자동으로 넣어드립니다
-                </p>
-              )}
               {images.length > 0 && (
                 <p className="text-emerald-400/70 text-xs mt-2 flex items-center gap-1">
                   <Check className="w-3 h-3" />
