@@ -123,7 +123,6 @@ const VIDEO_SUB_STEPS = [
 ];
 
 const MAX_IMAGES = 5;
-const MIN_IMAGES = 4;
 
 function StepIndicator({ label, status, subMessage }: { label: string; status: StepStatus; subMessage?: string }) {
   return (
@@ -776,7 +775,7 @@ export default function PromoPage() {
         ctaPh: '예: 지금 바로 전화하세요! / 이번 달만 특가!',
       };
   const eventReady      = mode !== 'event' || (eventDate.trim().length > 0 && location.trim().length > 0);
-  const canStart        = businessName.trim().length > 0 && businessType.length > 0 && sellingPoints.trim().length > 0 && eventReady && images.length >= MIN_IMAGES && !loading && !loadingScript;
+  const canStart        = businessName.trim().length > 0 && businessType.length > 0 && sellingPoints.trim().length > 0 && eventReady && !loading && !loadingScript;
 
   return (
     <main className="min-h-screen bg-[#0F172A] text-white">
@@ -916,7 +915,7 @@ export default function PromoPage() {
               <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-1.5">
                 <ImagePlus className="w-4 h-4 text-emerald-400" />
                 {ui.photoLabel}
-                <span className="text-red-400 text-xs ml-1">* 필수 — {MIN_IMAGES}~{MAX_IMAGES}장 (영상 배경으로 사용)</span>
+                <span className="text-gray-500 text-xs ml-1">(선택) 최대 {MAX_IMAGES}장 — 안 올리면 AI가 어울리는 영상 배경을 자동 사용</span>
               </label>
 
               {/* Drop zone */}
@@ -987,13 +986,13 @@ export default function PromoPage() {
                 </div>
               )}
 
-              {images.length > 0 && images.length < MIN_IMAGES && (
-                <p className="text-amber-400/70 text-xs mt-2 flex items-center gap-1">
+              {images.length === 0 && (
+                <p className="text-gray-500 text-xs mt-2 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  {images.length}장 선택됨 — 최소 {MIN_IMAGES}장 필요합니다 ({MIN_IMAGES - images.length}장 더 추가)
+                  사진을 올리지 않아도 됩니다 — AI가 주제에 맞는 영상 배경을 자동으로 넣어드립니다
                 </p>
               )}
-              {images.length >= MIN_IMAGES && (
+              {images.length > 0 && (
                 <p className="text-emerald-400/70 text-xs mt-2 flex items-center gap-1">
                   <Check className="w-3 h-3" />
                   {images.length}장 선택됨 — 업로드된 사진이 영상 배경으로 사용됩니다
