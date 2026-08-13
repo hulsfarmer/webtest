@@ -60,10 +60,12 @@ export default function PromoCharacterPage() {
       if (d.description) setSellingPoints(d.description);
       if (d.imageUrl) { setProductPreview(d.imageUrl); setImportedImagePath(d.imageUrl); setProductFile(null); }
       const got = [d.title && '제품명', d.imageUrl && '이미지', d.description && '홍보포인트'].filter(Boolean).join('·');
-      setImportNote(
-        (got ? `✅ ${got} 불러왔어요. ` : '') +
-        (d.descriptionSkipped || !d.description ? '이 쇼핑몰은 실제 홍보 포인트를 제공하지 않아요 — 아래 "홍보 포인트"에 제품의 핵심 특징을 직접 적어주세요 (대본 품질을 좌우해요).' : '내용을 확인·수정한 뒤 진행하세요.')
-      );
+      const tail = d.descriptionSource === 'images'
+        ? '📄 상세페이지 이미지를 읽어 홍보 포인트를 자동 추출했어요 — 사실과 맞는지 확인·수정하세요.'
+        : !d.description
+          ? '홍보 포인트를 못 찾았어요 — 아래에 제품 핵심 특징을 직접 적어주세요 (대본 품질을 좌우해요).'
+          : '내용을 확인·수정한 뒤 진행하세요.';
+      setImportNote((got ? `✅ ${got} 불러왔어요. ` : '') + tail);
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); setImportNote(''); }
     finally { setImportBusy(false); }
   }

@@ -4,7 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
-import { extractOgMeta, isSeoJunkDescription } from '@/lib/product-import';
+import { extractOgMeta, isSeoJunkDescription, extractDetailImages } from '@/lib/product-import';
+import { extractSellingPointsFromImages } from '@/lib/product-vision';
 
 const BROWSER_HEADERS: Record<string, string> = {
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
@@ -90,12 +91,21 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 쇼핑몰 SEO성 설명(별점·리뷰·"더 저렴하게")은 홍보포인트로 부적합 → 비움
-  const description = isSeoJunkDescription(meta.description) ? '' : (meta.description || '');
+  // 홍보 포인트: og 설명이 SEO 문구면 → 상세페이지 이미지를 Claude 가 읽어 추출
+  let description = isSeoJunkDescription(meta.description) ? '' : (meta.description || '');
+  let descriptionSource: 'meta' | 'images' | '' = description ? 'meta' : '';
+  if (!description) {
+    const detailImgs = extractDetailImages(html, url, 3);
+    if (detailImgs.length) {
+      const pts = await extractSellingPointsFromImages(detailImgs, meta.title || '');
+      if (pts) { description = pts; descriptionSource = 'images'; }
+    }
+  }
+
   return NextResponse.json({
     title: meta.title || '',
     description,
-    descriptionSkipped: isSeoJunkDescription(meta.description), // 프론트 안내용
+    descriptionSource, // '' | 'meta' | 'images'
     imageUrl: imageUrl || '',
   });
 }
