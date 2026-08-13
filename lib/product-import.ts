@@ -78,12 +78,24 @@ export function extractDetailImages(html: string, baseUrl: string, max = 4): str
   push(/(?:https?:)?\/\/[a-z.]*coupangcdn\.com\/image\/vendor_inventory\/[^"'\s)\\]+\.(?:jpg|jpeg|png)/gi, 0);
   // 3) 쿠팡: thumbnails/remote/q## (사이즈 제한 없는 전체폭 상세)
   push(/(?:https?:)?\/\/[a-z.]*coupangcdn\.com\/thumbnails\/remote\/q\d+\/[^"'\s)\\]+\.(?:jpg|jpeg|png)/gi, 0);
-  // 4) 일반몰 fallback: 상세영역 안의 큰 이미지
+  // 4) 쿠팡 신형(twc-) fallback: 상세이미지가 JS로딩 → retail/images 원본(q89)으로 대체
+  if (urls.length === 0) {
+    const seen = new Set<string>();
+    const re = /coupangcdn\.com\/thumbnails\/remote\/[^/]+\/image\/retail\/images\/([^"'\s)\\]+\.(?:jpg|jpeg|png))/gi;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) && seen.size < 30) {
+      const id = m[1];
+      if (!seen.has(id)) { seen.add(id); urls.push(`https://thumbnail.coupangcdn.com/thumbnails/remote/q89/image/retail/images/${id}`); }
+    }
+  }
+  // 5) 일반몰 fallback: 상세영역 안의 큰 이미지
   if (urls.length === 0) {
     const start = html.search(/(product-detail|goods[-_]?detail|detail[-_]?content|prod[-_]?detail)/i);
     if (start >= 0) {
       const seg = html.slice(start, start + 200000);
-      push(new RegExp(`<img[^>]+src=["']([^"']+\\.(?:jpg|jpeg|png))["']`, 'gi'), 1);
+      const re2 = /<img[^>]+src=["']([^"']+\.(?:jpg|jpeg|png))["']/gi;
+      let m: RegExpExecArray | null;
+      while ((m = re2.exec(seg)) && urls.length < 40) urls.push(m[1]);
     }
   }
   const abs = urls.map((u) => {
