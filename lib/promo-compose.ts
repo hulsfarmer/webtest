@@ -23,7 +23,7 @@ const W = 1080, H = 1920;
 // PiP 레이아웃 (동그라미 크게 + 머리 윗부분 안 짤리게 crop 을 맨 위부터)
 export const PIP = 430;      // 원형 캐릭터 지름
 export const RING = 452;     // 흰 테두리 포함 지름
-export const CROP_Y = 0;     // 캐릭터 최상단부터 크롭(정수리 여유 확보)
+export const CROP_Y = 120;   // 줌아웃 크롭 시작 y (머리~어깨/가슴 프레이밍)
 const PIPX = W - RING - 44;  // 우하단
 const PIPY = H - RING - 330;
 
@@ -39,6 +39,37 @@ function findFont(bold = false): string {
   return '';
 }
 
+/** 이모지·기호 제거 (영상 텍스트용) */
+export function stripEmoji(s: string): string {
+  return (s || '')
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{1F1E6}-\u{1F1FF}]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/** 텍스트를 maxW 안에서 최대 maxLines 줄로 그리디 줄바꿈. 넘치면 폰트 줄여 재시도. */
+function fitLines(
+  ctx: import('@napi-rs/canvas').SKRSContext2D,
+  text: string, fontFamily: string, maxW: number, maxLines: number, startSize: number, minSize: number,
+): { lines: string[]; size: number } {
+  const words = text.split(/\s+/).filter(Boolean);
+  for (let size = startSize; size >= minSize; size -= 4) {
+    ctx.font = `${size}px "${fontFamily}"`;
+    const lines: string[] = [];
+    let cur = '';
+    for (const w of words) {
+      const test = cur ? `${cur} ${w}` : w;
+      if (ctx.measureText(test).width <= maxW || !cur) cur = test;
+      else { lines.push(cur); cur = w; }
+    }
+    if (cur) lines.push(cur);
+    if (lines.length <= maxLines && lines.every((l) => ctx.measureText(l).width <= maxW)) return { lines, size };
+  }
+  // 최소 폰트로도 넘치면 그냥 반환(자를지언정)
+  ctx.font = `${minSize}px "${fontFamily}"`;
+  return { lines: [text], size: minSize };
+}
+
 async function registerFonts() {
   const { GlobalFonts } = await import('@napi-rs/canvas');
   const titleFont = findFont(true), bodyFont = findFont(false);
@@ -48,19 +79,29 @@ async function registerFonts() {
   return fams;
 }
 
-/** 상단 제품명 헤더 오버레이 (전 구간에 표시) */
+/** 상단 제품명 헤더 오버레이 (전 구간에 표시). 길면 최대 2줄로 줄바꿈 */
 export async function renderHeaderOverlay(title: string, outPath: string): Promise<void> {
   const { createCanvas } = await import('@napi-rs/canvas');
   const fams = await registerFonts();
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext('2d');
-  const g = ctx.createLinearGradient(0, 0, 0, 300);
-  g.addColorStop(0, 'rgba(0,0,0,0.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, 300);
+
+  const clean = stripEmoji(title);
+  const { lines, size } = fitLines(ctx, clean, fams.title, W - 120, 2, 88, 52);
+  const lineH = Math.round(size * 1.18);
+  const bandBottom = 90 + lines.length * lineH + 30;
+
+  const g = ctx.createLinearGradient(0, 0, 0, bandBottom + 60);
+  g.addColorStop(0, 'rgba(0,0,0,0.6)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, bandBottom + 60);
+
   ctx.textAlign = 'center';
-  ctx.font = `88px "${fams.title}"`;
-  ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillText(title, W / 2 + 3, 150 + 3);
-  ctx.fillStyle = '#ffffff'; ctx.fillText(title, W / 2, 150);
+  ctx.font = `${size}px "${fams.title}"`;
+  lines.forEach((ln, i) => {
+    const y = 90 + i * lineH + size * 0.8;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillText(ln, W / 2 + 3, y + 3);
+    ctx.fillStyle = '#ffffff'; ctx.fillText(ln, W / 2, y);
+  });
   fs.writeFileSync(outPath, canvas.toBuffer('image/png'));
 }
 
@@ -74,9 +115,16 @@ export async function renderCtaOverlay(cta: string, outPath: string): Promise<vo
   g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.63)');
   ctx.fillStyle = g; ctx.fillRect(0, H - 320, W, 320);
   ctx.textAlign = 'center';
-  ctx.font = `52px "${fams.body}"`;
-  ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillText(cta, W / 2 + 2, H - 150 + 2);
-  ctx.fillStyle = '#ffffff'; ctx.fillText(cta, W / 2, H - 150);
+  const clean = stripEmoji(cta);
+  const { lines, size } = fitLines(ctx, clean, fams.body, W - 120, 2, 52, 36);
+  const lineH = Math.round(size * 1.2);
+  const startY = H - 150 - (lines.length - 1) * lineH;
+  ctx.font = `${size}px "${fams.body}"`;
+  lines.forEach((ln, i) => {
+    const y = startY + i * lineH;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillText(ln, W / 2 + 2, y + 2);
+    ctx.fillStyle = '#ffffff'; ctx.fillText(ln, W / 2, y);
+  });
   fs.writeFileSync(outPath, canvas.toBuffer('image/png'));
 }
 
@@ -123,12 +171,12 @@ export async function composePromoCharacter(opts: {
     `[v2]scale=${W}:${H},setsar=1[cf2a]`,
     `[cf2a][2:v]overlay=0:0[cf2b]`,
     `[cf2b][3:v]overlay=0:0[cf2]`,
-    // 중간 배경: 제품 + 헤더 + CTA
-    `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1[bgs]`,
+    // 중간 배경: 제품(원래 비율 전체표시, 흰 여백) + 헤더 + CTA
+    `[0:v]scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=white,setsar=1[bgs]`,
     `[bgs][2:v]overlay=0:0[bgh]`,
     `[bgh][3:v]overlay=0:0[bgt]`,
-    // 코너 원형 PiP
-    `[v3]crop=720:720:0:${CROP_Y},scale=${PIP}:${PIP}[pipraw]`,
+    // 코너 원형 PiP (폭 패드로 줌아웃 → 머리~어깨/가슴, 원에 맞춰 정사각)
+    `[v3]pad=900:1280:90:0:color=white,crop=900:900:0:${CROP_Y},scale=${PIP}:${PIP}[pipraw]`,
     `[pipraw][4:v]alphamerge[pipc]`,
     `[5:v][pipc]overlay=(W-w)/2:(H-h)/2[pipring]`,
     `[bgt][pipring]overlay=${PIPX}:${PIPY}[mid]`,
