@@ -92,18 +92,24 @@ export async function POST(req: NextRequest) {
   }
 
   // 홍보 포인트: og 설명이 SEO 문구면 → 상세페이지 이미지를 Claude 가 읽어 추출
+  // (실패해도 제품명·이미지는 반드시 반환되도록 try/catch)
   let description = isSeoJunkDescription(meta.description) ? '' : (meta.description || '');
   let descriptionSource: 'meta' | 'images' | '' = description ? 'meta' : '';
   if (!description) {
-    const detailImgs = extractDetailImages(html, url, 3);
-    if (detailImgs.length) {
-      const pts = await extractSellingPointsFromImages(detailImgs, meta.title || '');
-      if (pts) { description = pts; descriptionSource = 'images'; }
+    try {
+      const detailImgs = extractDetailImages(html, url, 3);
+      if (detailImgs.length) {
+        const pts = await extractSellingPointsFromImages(detailImgs, meta.title || '');
+        if (pts) { description = pts; descriptionSource = 'images'; }
+      }
+    } catch (e) {
+      console.error('[import] 상세이미지 홍보포인트 추출 실패:', e instanceof Error ? e.message : e);
     }
   }
 
   return NextResponse.json({
     title: meta.title || '',
+    businessType: meta.category || '',
     description,
     descriptionSource, // '' | 'meta' | 'images'
     imageUrl: imageUrl || '',

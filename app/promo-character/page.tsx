@@ -57,6 +57,7 @@ export default function PromoCharacterPage() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || '불러오기 실패');
       if (d.title) setBusinessName(d.title);
+      if (d.businessType) setBusinessType(d.businessType);
       if (d.description) setSellingPoints(d.description);
       if (d.imageUrl) { setProductPreview(d.imageUrl); setImportedImagePath(d.imageUrl); setProductFile(null); }
       const got = [d.title && '제품명', d.imageUrl && '이미지', d.description && '홍보포인트'].filter(Boolean).join('·');

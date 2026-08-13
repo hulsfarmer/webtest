@@ -25,6 +25,7 @@ function metaContent(html: string, key: string, attr: 'property' | 'name'): stri
 
 export interface ProductMeta {
   title?: string;
+  category?: string;
   description?: string;
   image?: string;
 }
@@ -42,6 +43,18 @@ export function cleanTitle(raw?: string): string {
     t = t.replace(/\s*[-–—]\s*[^-–—,]{1,15}$/, '').trim();
   }
   return t || (raw || '').trim();
+}
+
+/** og:title 에서 카테고리 추출: "제품 - 헤어스타일링 | 쿠팡" → "헤어스타일링" */
+export function extractCategory(raw?: string): string {
+  const t = (raw || '').trim();
+  const parts = t.split(/\s*[|｜]\s*/);
+  if (parts.length > 1 && SHOP_SITES.test(parts[parts.length - 1])) {
+    const body = parts.slice(0, -1).join(' | ');
+    const m = body.match(/[-–—]\s*([^-–—,]{1,15})\s*$/);
+    if (m) return m[1].trim();
+  }
+  return '';
 }
 
 /** 쿠팡 등의 SEO성 설명(별점·리뷰·"더 저렴하게")인지 — 홍보포인트로 부적합 */
@@ -91,8 +104,10 @@ export function extractOgMeta(html: string, baseUrl: string): ProductMeta {
   if (image && !/^https?:\/\//i.test(image)) {
     try { image = new URL(image, baseUrl).href; } catch { image = undefined; }
   }
+  const rawTitle = title ? decodeEntities(title) : undefined;
   return {
-    title: title ? cleanTitle(decodeEntities(title)) : undefined,
+    title: rawTitle ? cleanTitle(rawTitle) : undefined,
+    category: extractCategory(rawTitle),
     description: description ? decodeEntities(description) : undefined,
     image,
   };
