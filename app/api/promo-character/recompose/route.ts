@@ -9,7 +9,6 @@ import {
   renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle,
   composePromoCharacter, probeDuration,
 } from '@/lib/promo-compose';
-import { generateAudioWithTimepoints } from '@/lib/tts';
 
 const execAsync = promisify(exec);
 
@@ -142,12 +141,16 @@ async function transcribeGoogle(charPath: string, tmpDir: string, tag: string, m
   return segs;
 }
 
-/** Kling 오디오의 실제 발화 구간 [start,end] (앞뒤 무음 제거) — silencedetect */
-async function detectSpeechWindow(charPath: string, D: number): Promise<{ start: number; end: number }> {
+/**
+ * Kling 오디오의 실제 "발화 구간"(무음 사이 말하는 구간)들을 반환 — silencedetect.
+ * 홍보영상은 오디오=자막소스라 완벽 싱크. 우리는 Kling 오디오의 실제 쉼 위치를 찾아
+ * 그 쉼 구조에 자막을 정렬한다(말할 때만 진행, 쉴 때 멈춤 → 강제정렬 근사).
+ */
+async function detectSpeechSegments(charPath: string, D: number): Promise<{ s: number; e: number }[]> {
   const ffmpeg = require('ffmpeg-static') as string;
   let out = '';
   try {
-    const r = await execAsync(`"${ffmpeg}" -i "${charPath}" -af silencedetect=noise=-35dB:d=0.25 -f null - 2>&1`);
+    const r = await execAsync(`"${ffmpeg}" -i "${charPath}" -af silencedetect=noise=-35dB:d=0.18 -f null - 2>&1`);
     out = `${r.stdout || ''}${r.stderr || ''}`;
   } catch (e) {
     const ee = e as { stdout?: string; stderr?: string };
@@ -157,11 +160,17 @@ async function detectSpeechWindow(charPath: string, D: number): Promise<{ start:
   const ends: number[] = [];
   for (const m of out.matchAll(/silence_start:\s*([\d.]+)/g)) starts.push(parseFloat(m[1]));
   for (const m of out.matchAll(/silence_end:\s*([\d.]+)/g)) ends.push(parseFloat(m[1]));
-  let start = 0, end = D;
-  if (starts.length && starts[0] < 0.6 && ends.length) start = ends[0];   // 앞 무음 끝 = 발화 시작
-  if (starts.length > ends.length) end = starts[starts.length - 1];        // 뒤 무음 시작 = 발화 끝
-  if (!(end > start + 1)) { start = 0; end = D; }                          // 안전장치
-  return { start, end };
+  // 무음 구간 목록 (뒤 무음이 안 닫히면 D 로 마감)
+  const silences = starts.map((s, i) => ({ s, e: ends[i] ?? D }));
+  // 발화 = 무음의 여집합 [0,D]
+  const speech: { s: number; e: number }[] = [];
+  let cursor = 0;
+  for (const sil of silences) {
+    if (sil.s > cursor + 0.05) speech.push({ s: cursor, e: sil.s });
+    cursor = Math.max(cursor, sil.e);
+  }
+  if (cursor < D - 0.05) speech.push({ s: cursor, e: D });
+  return speech;
 }
 
 export async function POST(req: NextRequest) {
@@ -178,6 +187,7 @@ export async function POST(req: NextRequest) {
   const catchphrase = typeof body.catchphrase === 'string' ? body.catchphrase.trim() : '';
   const cta = (typeof body.cta === 'string' && body.cta.trim()) ? body.cta.trim() : '지금 구매하기';
   const theme = (typeof body.theme === 'string' && body.theme.trim()) ? body.theme.trim() : 'navy';
+  const speed = Math.min(2.0, Math.max(0.5, Number(body.speed) || 1.0)); // 1.0=원속도, atempo 단일단계 범위
 
   const charPath = path.join(process.cwd(), 'data', 'char_cache', charFile);
   if (!charFile || !fs.existsSync(charPath)) {
@@ -212,54 +222,52 @@ export async function POST(req: NextRequest) {
     if (!dl) return NextResponse.json({ error: 'product image download failed' }, { status: 422 });
     fs.writeFileSync(productPath, dl.buf);
 
-    // 2) 자막 세그먼트 확보:
-    //    (a) body.narration 있으면 → 전체 길이에 글자수 비례 배분
-    //    (b) 없으면 Google STT(단어 타임오프셋). 실패하면 자막 없이 진행
-    const D0 = await probeDuration(charPath);
+    // 1.5) 속도 조절(옵션): 캐릭터 영상(음성 포함)을 speed 배로. 이후 모든 계산은
+    //      가속된 영상 기준이라 자막·발화구간·합성이 일관되게 빨라진다.
+    let effectiveCharPath = charPath;
+    if (Math.abs(speed - 1.0) > 0.01) {
+      const ffmpeg = require('ffmpeg-static') as string;
+      const spedPath = path.join(tmpDir, `${outId}_char_${speed}x.mp4`);
+      await execAsync(`"${ffmpeg}" -y -loglevel error -i "${charPath}" -filter:v "setpts=PTS/${speed}" -filter:a "atempo=${speed}" -c:v libx264 -preset ultrafast -threads 1 -pix_fmt yuv420p -c:a aac -ar 44100 "${spedPath}"`);
+      effectiveCharPath = spedPath;
+      subPaths.push(spedPath); // 마지막에 정리
+    }
+
+    // 2) 자막 세그먼트: Kling 오디오의 실제 발화 구간(쉼 위치)에 정렬 (강제정렬 근사)
+    const D0 = await probeDuration(effectiveCharPath);
     const narrationIn = typeof body.narration === 'string' ? body.narration.trim() : '';
     let segments: Seg[] = [];
     let subMode = 'none';
     if (narrationIn) {
-      // 홍보영상과 동일한 정확 싱크: 문장별 실제 발화길이를 TTS로 측정
-      // (Chirp3-HD는 문장별 생성해 실측). 측정 오디오는 버리고 Kling 오디오 유지.
-      const voice = (typeof body.voice === 'string' && body.voice.trim()) ? body.voice.trim() : 'ko-KR-Chirp3-HD-Aoede';
-      const sentences = narrationIn.split(/(?<=[.!?。！？])\s*/).map((x: string) => x.trim()).filter(Boolean);
-      const measurePath = path.join(tmpDir, `${outId}_measure.mp3`);
-      let durations: number[] = [];
-      try { durations = await generateAudioWithTimepoints(sentences, measurePath, voice, 1.0); }
-      catch (e) { console.error(`[recompose ${outId}] 발화측정 실패:`, e instanceof Error ? e.message : e); }
-      try { fs.unlinkSync(measurePath); } catch { /* noop */ }
-
-      const buildFromDurations = durations.length === sentences.length && durations.some((d) => d > 0);
-      if (buildFromDurations) {
-        // 측정한 문장별 상대비율을 실제 발화구간[win.start,win.end]에 맞춰 스케일
-        // (Kling 앞뒤 무음 보정 → 자막이 음성과 정렬). 문장 내 청크는 글자수 비례.
-        const win = await detectSpeechWindow(charPath, D0);
-        const totalMeasured = durations.reduce((a, b) => a + b, 0) || 1;
-        const scale = (win.end - win.start) / totalMeasured;
-        let acc = win.start;
-        segments = [];
-        for (let i = 0; i < sentences.length; i++) {
-          const parts = chunkForSubtitles(sentences[i]);
-          const dur = durations[i] * scale;
-          if (!parts.length) { acc += dur; continue; }
-          const totalC = parts.reduce((a, c) => a + c.length, 0) || 1;
-          let inner = acc;
-          for (const p of parts) {
-            const d = dur * (p.length / totalC);
-            segments.push({ start: inner, end: Math.min(inner + d, D0), text: p });
-            inner += d;
+      const chunks = chunkForSubtitles(narrationIn);
+      const speech = await detectSpeechSegments(effectiveCharPath, D0);
+      const totalActive = speech.reduce((a, g) => a + (g.e - g.s), 0);
+      if (chunks.length && speech.length >= 2 && totalActive > 1) {
+        // 누적 발화시간(active) → 실제시간 변환 (쉼은 건너뜀 → 말할 때만 자막 진행)
+        const activeToReal = (aT: number): number => {
+          let acc = 0;
+          for (const g of speech) {
+            const len = g.e - g.s;
+            if (aT <= acc + len) return g.s + (aT - acc);
+            acc += len;
           }
-          acc += dur;
-        }
-        console.log(`[recompose ${outId}] 발화구간 ${win.start.toFixed(2)}~${win.end.toFixed(2)}s, 측정합 ${totalMeasured.toFixed(2)}s, scale ${scale.toFixed(3)}`);
-        subMode = 'measured';
+          return speech[speech.length - 1].e;
+        };
+        const totalChars = chunks.reduce((a, c) => a + c.length, 0) || 1;
+        let charAcc = 0;
+        segments = chunks.map((p) => {
+          const aStart = (charAcc / totalChars) * totalActive;
+          charAcc += p.length;
+          const aEnd = (charAcc / totalChars) * totalActive;
+          return { start: activeToReal(aStart), end: Math.min(activeToReal(aEnd), D0), text: p };
+        });
+        console.log(`[recompose ${outId}] 발화구간 ${speech.length}개, active ${totalActive.toFixed(2)}s / D ${D0.toFixed(2)}s, speed ${speed}`);
+        subMode = 'speech-align';
       } else {
         // 폴백: 전체 길이에 글자수 비례
-        const parts = chunkForSubtitles(narrationIn);
-        const totalC = parts.reduce((a, c) => a + c.length, 0) || 1;
+        const totalC = chunks.reduce((a, c) => a + c.length, 0) || 1;
         let acc = 0;
-        segments = parts.map((p) => {
+        segments = chunks.map((p) => {
           const dur = D0 * (p.length / totalC);
           const s = acc; acc += dur;
           return { start: s, end: acc, text: p };
@@ -267,7 +275,7 @@ export async function POST(req: NextRequest) {
         subMode = 'narration';
       }
     } else {
-      try { segments = await transcribeGoogle(charPath, tmpDir, outId); subMode = 'stt'; }
+      try { segments = await transcribeGoogle(effectiveCharPath, tmpDir, outId); subMode = 'stt'; }
       catch (e) { console.error(`[recompose ${outId}] STT 실패, 자막 없이 진행:`, e instanceof Error ? e.message : e); }
     }
 
@@ -300,7 +308,7 @@ export async function POST(req: NextRequest) {
     const D = D0;
     const t1 = +(D * 0.28).toFixed(2), t2 = +(D * 0.72).toFixed(2);
     await composePromoCharacter({
-      productImagePath: productPath, characterVideoPath: charPath,
+      productImagePath: productPath, characterVideoPath: effectiveCharPath,
       headerPath, ctaPath, pipMaskPath: maskPath, ringPath,
       durationSec: +D.toFixed(2), t1, t2, outPath, subtitles,
     });
