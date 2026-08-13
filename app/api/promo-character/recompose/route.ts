@@ -77,28 +77,68 @@ function chunkForSubtitles(text: string, maxChars = 32): string[] {
   return chunks.filter(Boolean);
 }
 
-interface WhisperSeg { start: number; end: number; text: string }
+interface Seg { start: number; end: number; text: string }
 
-/** ffmpeg 로 오디오 추출 → OpenAI Whisper(verbose_json) 로 세그먼트 타임스탬프 획득 */
-async function transcribe(charPath: string, tmpDir: string, tag: string): Promise<WhisperSeg[]> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OPENAI_API_KEY not set');
+/** "1.200s" | "1s" | {seconds,nanos} → 초(float) */
+function parseGoogleTime(v: unknown): number {
+  if (typeof v === 'string') return parseFloat(v.replace(/s$/, '')) || 0;
+  if (v && typeof v === 'object') {
+    const o = v as { seconds?: string | number; nanos?: number };
+    return (Number(o.seconds || 0)) + (Number(o.nanos || 0) / 1e9);
+  }
+  return 0;
+}
+
+/**
+ * ffmpeg 로 raw PCM 추출 → Google Cloud Speech-to-Text(v1 sync, 단어 타임오프셋)
+ * 단어들을 ≤maxChars 줄로 묶어 세그먼트로 반환. 실패하면 throw.
+ */
+async function transcribeGoogle(charPath: string, tmpDir: string, tag: string, maxChars = 32): Promise<Seg[]> {
+  const apiKey = process.env.GOOGLE_TTS_API_KEY;
+  if (!apiKey) throw new Error('GOOGLE_TTS_API_KEY not set');
   const ffmpeg = require('ffmpeg-static') as string;
-  const wav = path.join(tmpDir, `${tag}_stt.wav`);
-  await execAsync(`"${ffmpeg}" -y -loglevel error -i "${charPath}" -vn -ac 1 -ar 16000 -acodec pcm_s16le "${wav}"`);
-  const buf = fs.readFileSync(wav);
-  const form = new FormData();
-  form.append('file', new Blob([buf], { type: 'audio/wav' }), 'audio.wav');
-  form.append('model', 'whisper-1');
-  form.append('response_format', 'verbose_json');
-  form.append('language', 'ko');
-  const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-    method: 'POST', headers: { Authorization: `Bearer ${apiKey}` }, body: form,
+  const pcm = path.join(tmpDir, `${tag}_stt.raw`);
+  // LINEAR16 raw (헤더 없이) 16k mono
+  await execAsync(`"${ffmpeg}" -y -loglevel error -i "${charPath}" -vn -ac 1 -ar 16000 -f s16le -acodec pcm_s16le "${pcm}"`);
+  const content = fs.readFileSync(pcm).toString('base64');
+  try { fs.unlinkSync(pcm); } catch { /* noop */ }
+  const res = await fetch(`https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      config: {
+        encoding: 'LINEAR16', sampleRateHertz: 16000, languageCode: 'ko-KR',
+        enableWordTimeOffsets: true, enableAutomaticPunctuation: true,
+      },
+      audio: { content },
+    }),
   });
-  try { fs.unlinkSync(wav); } catch { /* noop */ }
-  if (!res.ok) throw new Error(`Whisper ${res.status}: ${await res.text()}`);
-  const data = await res.json() as { segments?: WhisperSeg[] };
-  return (data.segments || []).filter((s) => s.text && s.text.trim());
+  if (!res.ok) throw new Error(`GoogleSTT ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const data = await res.json() as {
+    results?: { alternatives?: { words?: { word: string; startTime?: unknown; endTime?: unknown }[] }[] }[];
+  };
+  const words: { w: string; s: number; e: number }[] = [];
+  for (const r of data.results || []) {
+    for (const w of r.alternatives?.[0]?.words || []) {
+      words.push({ w: w.word, s: parseGoogleTime(w.startTime), e: parseGoogleTime(w.endTime) });
+    }
+  }
+  if (!words.length) throw new Error('GoogleSTT: no words');
+  // 단어 → ≤maxChars 줄 묶기
+  const segs: Seg[] = [];
+  let cur = ''; let cs = 0; let ce = 0;
+  for (const wd of words) {
+    const cand = cur ? `${cur} ${wd.w}` : wd.w;
+    if (cand.length > maxChars && cur) {
+      segs.push({ start: cs, end: ce, text: cur });
+      cur = wd.w; cs = wd.s; ce = wd.e;
+    } else {
+      if (!cur) cs = wd.s;
+      cur = cand; ce = wd.e;
+    }
+  }
+  if (cur) segs.push({ start: cs, end: ce, text: cur });
+  return segs;
 }
 
 export async function POST(req: NextRequest) {
@@ -149,8 +189,28 @@ export async function POST(req: NextRequest) {
     if (!dl) return NextResponse.json({ error: 'product image download failed' }, { status: 422 });
     fs.writeFileSync(productPath, dl.buf);
 
-    // 2) STT → 자막 큐 (세그먼트 타임스탬프 기반, 청크 글자수 비례 분배)
-    const segments = await transcribe(charPath, tmpDir, outId);
+    // 2) 자막 세그먼트 확보:
+    //    (a) body.narration 있으면 → 전체 길이에 글자수 비례 배분
+    //    (b) 없으면 Google STT(단어 타임오프셋). 실패하면 자막 없이 진행
+    const D0 = await probeDuration(charPath);
+    const narrationIn = typeof body.narration === 'string' ? body.narration.trim() : '';
+    let segments: Seg[] = [];
+    let subMode = 'none';
+    if (narrationIn) {
+      const parts = chunkForSubtitles(narrationIn);
+      const totalC = parts.reduce((a, c) => a + c.length, 0) || 1;
+      let acc = 0;
+      segments = parts.map((p) => {
+        const dur = D0 * (p.length / totalC);
+        const s = acc; acc += dur;
+        return { start: s, end: acc, text: p };
+      });
+      subMode = 'narration';
+    } else {
+      try { segments = await transcribeGoogle(charPath, tmpDir, outId); subMode = 'stt'; }
+      catch (e) { console.error(`[recompose ${outId}] STT 실패, 자막 없이 진행:`, e instanceof Error ? e.message : e); }
+    }
+
     const subtitles: { path: string; start: number; end: number }[] = [];
     let idx = 0;
     for (const seg of segments) {
@@ -177,7 +237,7 @@ export async function POST(req: NextRequest) {
     ]);
 
     // 4) 2-패스 합성
-    const D = await probeDuration(charPath);
+    const D = D0;
     const t1 = +(D * 0.28).toFixed(2), t2 = +(D * 0.72).toFixed(2);
     await composePromoCharacter({
       productImagePath: productPath, characterVideoPath: charPath,
@@ -191,7 +251,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       ok: true, outId, url: `/api/video/${outId}`,
-      duration: +D.toFixed(2), subtitles: subtitles.length, businessName,
+      duration: +D.toFixed(2), subtitles: subtitles.length, subMode, businessName,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
