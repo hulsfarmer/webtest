@@ -167,11 +167,14 @@ export async function renderCtaOverlay(cta: string, outPath: string): Promise<vo
   fs.writeFileSync(outPath, canvas.toBuffer('image/png'));
 }
 
-/** 나레이션 자막 PNG (1080x1920 투명, 하단에 어두운 박스 + 흰 글자). PiP 위에 배치 */
+export const SUB_STRIP_H = 260;   // 자막 스트립 높이 (풀프레임 대신 → OOM 방지)
+export const SUB_Y = 930;         // 합성에서 스트립을 얹을 y (박스 중앙 ≈ 1060)
+
+/** 나레이션 자막 PNG (작은 스트립: 1080xSUB_STRIP_H 투명, 어두운 박스 + 흰 글자) */
 export async function renderSubtitle(text: string, outPath: string): Promise<void> {
   const { createCanvas } = await import('@napi-rs/canvas');
   const fams = await registerFonts();
-  const canvas = createCanvas(W, H);
+  const canvas = createCanvas(W, SUB_STRIP_H);
   const ctx = canvas.getContext('2d');
   const clean = stripEmoji(text);
   const { lines, size } = fitLines(ctx, clean, fams.body, W - 200, 2, 54, 38);
@@ -179,7 +182,7 @@ export async function renderSubtitle(text: string, outPath: string): Promise<voi
   ctx.font = `${size}px "${fams.body}"`;
   let maxW = 0; lines.forEach((l) => { maxW = Math.max(maxW, ctx.measureText(l).width); });
   const bw = Math.min(W - 80, maxW + 60), bh = lines.length * lineH + 34;
-  const cy = 1060; // PiP(1138~) 위, CTA 아래
+  const cy = SUB_STRIP_H / 2;
   const bx = (W - bw) / 2, by = cy - bh / 2, rr = 22;
   ctx.fillStyle = 'rgba(0,0,0,0.58)';
   ctx.beginPath();
@@ -258,7 +261,7 @@ export async function composePromoCharacter(opts: {
   let prev = 'vcat';
   subs.forEach((s, i) => {
     const out = i === subs.length - 1 ? 'outv' : `sub${i}`;
-    parts.push(`[${prev}][${6 + i}:v]overlay=0:0:enable='between(t,${s.start.toFixed(2)},${s.end.toFixed(2)})'[${out}]`);
+    parts.push(`[${prev}][${6 + i}:v]overlay=0:${SUB_Y}:enable='between(t,${s.start.toFixed(2)},${s.end.toFixed(2)})'[${out}]`);
     prev = out;
   });
   const filter = parts.join(';');

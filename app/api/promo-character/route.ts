@@ -70,8 +70,15 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     // 구간별 텍스트(정제) + 나레이션
     const byType = (t: ScriptSection['type']) => sanitizeScript(sections.filter((s) => s.type === t).map((s) => s.text).join(' '));
     const hookT = byType('hook'), mainT = byType('main'), ctaT = byType('cta');
-    const narration = [hookT, mainT, ctaT].filter(Boolean).join('  ').trim()
+    let narration = [hookT, mainT, ctaT].filter(Boolean).join('  ').trim()
       || sanitizeScript(sections.map((s) => s.text).join(' '));
+    // 길이 상한(한국어 ~5.5자/초): 너무 길면 문장 경계에서 컷 (OOM·과대기 방지)
+    const maxChars = Math.max(90, (input.duration || 20) * 7);
+    if (narration.length > maxChars) {
+      const cut = narration.slice(0, maxChars);
+      const lastEnd = Math.max(cut.lastIndexOf('.'), cut.lastIndexOf('!'), cut.lastIndexOf('?'), cut.lastIndexOf('。'), cut.lastIndexOf('요 '), cut.lastIndexOf('다 '));
+      narration = (lastEnd > maxChars * 0.5 ? cut.slice(0, lastEnd + 1) : cut).trim();
+    }
     // 구간 비율(텍스트 길이 기반)
     const L = hookT.length + mainT.length + ctaT.length;
     let f1 = L > 0 ? hookT.length / L : 0.28;
