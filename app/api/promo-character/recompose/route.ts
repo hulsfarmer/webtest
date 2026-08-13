@@ -259,10 +259,10 @@ export async function POST(req: NextRequest) {
         //    먼저 놓고 각 구간에 그 시간만큼의 단어를 채운다. → 자막 전환이 항상
         //    실제 쉼에서 일어나 전 구간 일관 싱크 (홍보영상의 '문장경계 전환'과 동일 원리).
         const CAPTION_LEAD = 0.3;
-        const totalChars = words.reduce((a, w) => a + w.length, 0) || 1;
+        const totalChars = words.reduce((a: number, w: string) => a + w.length, 0) || 1;
         // 각 단어의 "발화시간상 중심"(active 초)
         let cum = 0;
-        const wordActiveCenter = words.map((w) => {
+        const wordActiveCenter = words.map((w: string) => {
           const center = cum + w.length / 2;
           cum += w.length;
           return (center / totalChars) * totalActive;
@@ -279,7 +279,7 @@ export async function POST(req: NextRequest) {
         };
         // 단어를 세그먼트 버킷에 배정
         const buckets: string[][] = speech.map(() => []);
-        words.forEach((w, idx) => buckets[activeToSegIdx(wordActiveCenter[idx])].push(w));
+        words.forEach((w: string, idx: number) => buckets[activeToSegIdx(wordActiveCenter[idx])].push(w));
         // 단어가 배정된 세그먼트만 자막으로. 각 자막은 다음 자막 시작까지 유지(빈틈 없음)
         const raw = speech
           .map((g, i) => ({ g, text: buckets[i].join(' ') }))
