@@ -171,7 +171,7 @@ export async function renderCtaOverlay(cta: string, outPath: string): Promise<vo
 }
 
 export const SUB_STRIP_H = 260;   // 자막 스트립 높이 (풀프레임 대신 → OOM 방지)
-export const SUB_Y = 1330;        // 스트립 y: 하단(얼굴·제품 안 가림), CTA(1600~) 위
+export const SUB_Y = 1500;        // 스트립 y: 더 하단(얼굴·제품 안 가림)
 
 /** 나레이션 자막 PNG (작은 스트립: 1080xSUB_STRIP_H 투명, 박스 없이 흰 글자 + 검은 외곽선) */
 export async function renderSubtitle(text: string, outPath: string): Promise<void> {

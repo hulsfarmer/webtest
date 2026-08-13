@@ -142,6 +142,28 @@ async function transcribeGoogle(charPath: string, tmpDir: string, tag: string, m
   return segs;
 }
 
+/** Kling 오디오의 실제 발화 구간 [start,end] (앞뒤 무음 제거) — silencedetect */
+async function detectSpeechWindow(charPath: string, D: number): Promise<{ start: number; end: number }> {
+  const ffmpeg = require('ffmpeg-static') as string;
+  let out = '';
+  try {
+    const r = await execAsync(`"${ffmpeg}" -i "${charPath}" -af silencedetect=noise=-35dB:d=0.25 -f null - 2>&1`);
+    out = `${r.stdout || ''}${r.stderr || ''}`;
+  } catch (e) {
+    const ee = e as { stdout?: string; stderr?: string };
+    out = `${ee?.stdout || ''}${ee?.stderr || ''}`;
+  }
+  const starts: number[] = [];
+  const ends: number[] = [];
+  for (const m of out.matchAll(/silence_start:\s*([\d.]+)/g)) starts.push(parseFloat(m[1]));
+  for (const m of out.matchAll(/silence_end:\s*([\d.]+)/g)) ends.push(parseFloat(m[1]));
+  let start = 0, end = D;
+  if (starts.length && starts[0] < 0.6 && ends.length) start = ends[0];   // 앞 무음 끝 = 발화 시작
+  if (starts.length > ends.length) end = starts[starts.length - 1];        // 뒤 무음 시작 = 발화 끝
+  if (!(end > start + 1)) { start = 0; end = D; }                          // 안전장치
+  return { start, end };
+}
+
 export async function POST(req: NextRequest) {
   // 내부(localhost) 호출만 허용 — 공개 트래픽은 nginx 경유(host=shortsai.kr)
   const host = req.headers.get('host') || '';
@@ -210,12 +232,16 @@ export async function POST(req: NextRequest) {
 
       const buildFromDurations = durations.length === sentences.length && durations.some((d) => d > 0);
       if (buildFromDurations) {
-        // 문장별 측정길이 → 문장 내 청크는 글자수 비례로 분배 (문장 단위 정확 싱크)
-        let acc = 0;
+        // 측정한 문장별 상대비율을 실제 발화구간[win.start,win.end]에 맞춰 스케일
+        // (Kling 앞뒤 무음 보정 → 자막이 음성과 정렬). 문장 내 청크는 글자수 비례.
+        const win = await detectSpeechWindow(charPath, D0);
+        const totalMeasured = durations.reduce((a, b) => a + b, 0) || 1;
+        const scale = (win.end - win.start) / totalMeasured;
+        let acc = win.start;
         segments = [];
         for (let i = 0; i < sentences.length; i++) {
           const parts = chunkForSubtitles(sentences[i]);
-          const dur = durations[i];
+          const dur = durations[i] * scale;
           if (!parts.length) { acc += dur; continue; }
           const totalC = parts.reduce((a, c) => a + c.length, 0) || 1;
           let inner = acc;
@@ -226,6 +252,7 @@ export async function POST(req: NextRequest) {
           }
           acc += dur;
         }
+        console.log(`[recompose ${outId}] 발화구간 ${win.start.toFixed(2)}~${win.end.toFixed(2)}s, 측정합 ${totalMeasured.toFixed(2)}s, scale ${scale.toFixed(3)}`);
         subMode = 'measured';
       } else {
         // 폴백: 전체 길이에 글자수 비례
