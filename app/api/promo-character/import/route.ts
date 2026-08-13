@@ -101,6 +101,7 @@ export async function POST(req: NextRequest) {
   if (!description) {
     try {
       const detailImgs = extractDetailImages(html, url, 3);
+      console.log(`[import] 상세이미지 ${detailImgs.length}개 추출`);
       if (detailImgs.length) {
         const pts = await extractSellingPointsFromImages(detailImgs, meta.title || '');
         if (pts) { description = pts; descriptionSource = 'images'; }

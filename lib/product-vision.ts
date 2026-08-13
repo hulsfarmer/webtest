@@ -48,15 +48,18 @@ async function toTiles(buf: Buffer, maxTiles: number): Promise<string[]> {
 }
 
 export async function extractSellingPointsFromImages(imageUrls: string[], productName: string): Promise<string> {
-  if (!process.env.ANTHROPIC_API_KEY || !imageUrls.length) return '';
+  if (!process.env.ANTHROPIC_API_KEY) { console.log('[vision] ANTHROPIC_API_KEY 없음'); return ''; }
+  if (!imageUrls.length) { console.log('[vision] 상세이미지 URL 0개'); return ''; }
   const tiles: string[] = [];
   for (const url of imageUrls) {
     if (tiles.length >= MAX_TILES) break;
     const buf = await fetchImage(url);
-    if (!buf) continue;
-    tiles.push(...await toTiles(buf, MAX_TILES - tiles.length));
+    if (!buf) { console.log('[vision] 이미지 다운로드 실패:', url.slice(0, 70)); continue; }
+    const t = await toTiles(buf, MAX_TILES - tiles.length);
+    console.log(`[vision] 이미지 다운로드 ${buf.length}b → 타일 ${t.length}개`);
+    tiles.push(...t);
   }
-  if (!tiles.length) return '';
+  if (!tiles.length) { console.log('[vision] 타일 0개 (canvas 실패?)'); return ''; }
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   // SDK 버전 간 타입명 차이(ContentBlockParam 등)를 피하려 구조적 타입 사용
@@ -77,10 +80,13 @@ export async function extractSellingPointsFromImages(imageUrls: string[], produc
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       messages: [{ role: 'user', content: content as any }],
     });
-    return (msg.content as Array<{ type: string; text?: string }>)
+    const out = (msg.content as Array<{ type: string; text?: string }>)
       .filter((b) => b.type === 'text')
       .map((b) => b.text || '').join('\n').trim();
-  } catch {
+    console.log(`[vision] Claude 추출 ${out.length}자`);
+    return out;
+  } catch (e) {
+    console.error('[vision] Claude 에러:', e instanceof Error ? e.message : e);
     return '';
   }
 }
