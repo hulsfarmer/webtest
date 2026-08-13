@@ -84,7 +84,7 @@ export default function PromoCharacterPage() {
           if (pollRef.current) clearInterval(pollRef.current);
           setError(d.error || '생성 실패'); setStatusMsg(''); setBusy(false);
         } else {
-          setStatusMsg(`⏳ 처리 중... (${secs}초 · 캐릭터 영상 합성은 보통 1~2분)`);
+          setStatusMsg(`⏳ 처리 중... (${secs}초 경과 · 캐릭터 영상 생성은 길이에 따라 5~15분 걸립니다)`);
         }
       } catch { /* keep polling */ }
     }, 3000);

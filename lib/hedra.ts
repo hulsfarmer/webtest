@@ -52,10 +52,10 @@ export async function submitKlingAvatar(opts: {
 export async function pollHedraVideo(
   jobId: string,
   onStatus?: (status: string, cost?: number) => void,
-  maxTries = 120,
+  maxTries = 360, // 6초 × 360 = 36분 (Kling 은 긴 영상일수록 오래 걸림)
 ): Promise<Buffer> {
   for (let i = 0; i < maxTries; i++) {
-    await new Promise((s) => setTimeout(s, 5000));
+    await new Promise((s) => setTimeout(s, 6000));
     const res = await fetch(`${BASE}/jobs/${jobId}`, { headers: authHeader() });
     const job = await res.json();
     if (job.status === 'COMPLETED') {
