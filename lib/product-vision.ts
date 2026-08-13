@@ -6,15 +6,24 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const MAX_TILES = 6;
 
-async function fetchImage(url: string): Promise<Buffer | null> {
+async function fetchOne(u: string): Promise<Buffer | null> {
   try {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 20000);
-    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: ctrl.signal }).finally(() => clearTimeout(t));
+    const t = setTimeout(() => ctrl.abort(), 45000);
+    const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: ctrl.signal }).finally(() => clearTimeout(t));
     if (!r.ok) return null;
     if (!(r.headers.get('content-type') || '').startsWith('image/')) return null;
     return Buffer.from(await r.arrayBuffer());
   } catch { return null; }
+}
+
+// 쿠팡 등은 서버 직접 다운로드가 막혀 → ScraperAPI 프록시 경유 (직접 실패 시 폴백)
+async function fetchImage(url: string): Promise<Buffer | null> {
+  const direct = await fetchOne(url);
+  if (direct) return direct;
+  const key = process.env.SCRAPER_API_KEY;
+  if (key) return fetchOne(`https://api.scraperapi.com/?api_key=${key}&country_code=kr&url=${encodeURIComponent(url)}`);
+  return null;
 }
 
 /** 긴 이미지를 폭 1024 기준 세로 타일(약 1024x1230)로 분할, base64 반환 */

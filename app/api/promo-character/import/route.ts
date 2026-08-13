@@ -78,8 +78,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '이 페이지에서 제품 정보를 못 찾았어요. 직접 입력해주세요.' }, { status: 422 });
   }
 
-  // 3) 대표 이미지 다운로드 → public/imports 저장
-  let imageUrl: string | undefined;
+  // 3) 대표 이미지 다운로드 → 저장(영상용) + data URI(미리보기용)
+  let imageUrl = '';   // 미리보기 data URI (런타임 정적서빙 의존 제거)
+  let imagePath = '';  // 영상 생성용 경로 (/imports/xxx)
   if (meta.image) {
     const dl = await downloadImage(meta.image);
     if (dl) {
@@ -87,7 +88,9 @@ export async function POST(req: NextRequest) {
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       const name = `${uuidv4()}.${dl.ext}`;
       fs.writeFileSync(path.join(dir, name), dl.buf);
-      imageUrl = `/imports/${name}`;
+      imagePath = `/imports/${name}`;
+      const mime = dl.ext === 'png' ? 'image/png' : dl.ext === 'webp' ? 'image/webp' : dl.ext === 'gif' ? 'image/gif' : 'image/jpeg';
+      imageUrl = `data:${mime};base64,${dl.buf.toString('base64')}`;
     }
   }
 
@@ -107,11 +110,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  console.log(`[import] ${url} → title:${!!meta.title} 업종:${!!meta.category} 이미지:${!!imagePath} 홍보포인트:${descriptionSource || 'none'}`);
   return NextResponse.json({
     title: meta.title || '',
     businessType: meta.category || '',
     description,
     descriptionSource, // '' | 'meta' | 'images'
-    imageUrl: imageUrl || '',
+    imageUrl,          // 미리보기 data URI
+    imagePath,         // 영상 생성용 /imports/xxx
   });
 }

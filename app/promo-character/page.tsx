@@ -59,7 +59,8 @@ export default function PromoCharacterPage() {
       if (d.title) setBusinessName(d.title);
       if (d.businessType) setBusinessType(d.businessType);
       if (d.description) setSellingPoints(d.description);
-      if (d.imageUrl) { setProductPreview(d.imageUrl); setImportedImagePath(d.imageUrl); setProductFile(null); }
+      if (d.imageUrl) setProductPreview(d.imageUrl);            // 미리보기 data URI
+      if (d.imagePath) { setImportedImagePath(d.imagePath); setProductFile(null); } // 영상 생성용 경로
       const got = [d.title && '제품명', d.imageUrl && '이미지', d.description && '홍보포인트'].filter(Boolean).join('·');
       const tail = d.descriptionSource === 'images'
         ? '📄 상세페이지 이미지를 읽어 홍보 포인트를 자동 추출했어요 — 사실과 맞는지 확인·수정하세요.'
