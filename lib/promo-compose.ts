@@ -10,13 +10,22 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
+/** 마크다운/특수문자 제거 — TTS 가 '*' 를 "별표"로 읽는 문제 방지 */
+export function sanitizeScript(text: string): string {
+  return (text || '')
+    .replace(/\[[^\]]*\]\([^)]*\)/g, '')   // [text](url)
+    .replace(/[*#`_~>|]/g, '')             // 마크다운 기호
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 const W = 1080, H = 1920;
-// PiP 레이아웃
-export const PIP = 360;      // 원형 캐릭터 지름
-export const RING = 380;     // 흰 테두리 포함 지름
-export const CROP_Y = 40;    // 캐릭터 상단 크롭(정수리 포함)
-const PIPX = W - RING - 48;  // 우하단
-const PIPY = H - RING - 300;
+// PiP 레이아웃 (동그라미 크게 + 머리 윗부분 안 짤리게 crop 을 맨 위부터)
+export const PIP = 430;      // 원형 캐릭터 지름
+export const RING = 452;     // 흰 테두리 포함 지름
+export const CROP_Y = 0;     // 캐릭터 최상단부터 크롭(정수리 여유 확보)
+const PIPX = W - RING - 44;  // 우하단
+const PIPY = H - RING - 330;
 
 function findFont(bold = false): string {
   const candidates = [
@@ -30,36 +39,44 @@ function findFont(bold = false): string {
   return '';
 }
 
-/** 상단 제목 + 하단 CTA 텍스트 오버레이 PNG (1080x1920 투명 + 그라데이션) */
-export async function renderPromoOverlay(title: string, cta: string, outPath: string): Promise<void> {
-  const { createCanvas, GlobalFonts } = await import('@napi-rs/canvas');
+async function registerFonts() {
+  const { GlobalFonts } = await import('@napi-rs/canvas');
   const titleFont = findFont(true), bodyFont = findFont(false);
   const fams: { title: string; body: string } = { title: 'sans-serif', body: 'sans-serif' };
   try { if (titleFont) { GlobalFonts.registerFromPath(titleFont, 'PromoTitle'); fams.title = 'PromoTitle'; } } catch { /* noop */ }
   try { if (bodyFont) { GlobalFonts.registerFromPath(bodyFont, 'PromoBody'); fams.body = 'PromoBody'; } } catch { /* noop */ }
+  return fams;
+}
 
+/** 상단 제품명 헤더 오버레이 (전 구간에 표시) */
+export async function renderHeaderOverlay(title: string, outPath: string): Promise<void> {
+  const { createCanvas } = await import('@napi-rs/canvas');
+  const fams = await registerFonts();
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext('2d');
-
-  // 상단 그라데이션
-  let g = ctx.createLinearGradient(0, 0, 0, 300);
+  const g = ctx.createLinearGradient(0, 0, 0, 300);
   g.addColorStop(0, 'rgba(0,0,0,0.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, 300);
-  // 하단 그라데이션
-  g = ctx.createLinearGradient(0, H - 320, 0, H);
-  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.63)');
-  ctx.fillStyle = g; ctx.fillRect(0, H - 320, W, 320);
-
   ctx.textAlign = 'center';
-  // 제목
   ctx.font = `88px "${fams.title}"`;
   ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillText(title, W / 2 + 3, 150 + 3);
   ctx.fillStyle = '#ffffff'; ctx.fillText(title, W / 2, 150);
-  // CTA
+  fs.writeFileSync(outPath, canvas.toBuffer('image/png'));
+}
+
+/** 하단 CTA 오버레이 (제품 구간 + 마무리에 표시) */
+export async function renderCtaOverlay(cta: string, outPath: string): Promise<void> {
+  const { createCanvas } = await import('@napi-rs/canvas');
+  const fams = await registerFonts();
+  const canvas = createCanvas(W, H);
+  const ctx = canvas.getContext('2d');
+  const g = ctx.createLinearGradient(0, H - 320, 0, H);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.63)');
+  ctx.fillStyle = g; ctx.fillRect(0, H - 320, W, 320);
+  ctx.textAlign = 'center';
   ctx.font = `52px "${fams.body}"`;
   ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillText(cta, W / 2 + 2, H - 150 + 2);
   ctx.fillStyle = '#ffffff'; ctx.fillText(cta, W / 2, H - 150);
-
   fs.writeFileSync(outPath, canvas.toBuffer('image/png'));
 }
 
@@ -81,7 +98,8 @@ export async function renderPipAssets(maskPath: string, ringPath: string): Promi
 export async function composePromoCharacter(opts: {
   productImagePath: string;
   characterVideoPath: string;
-  overlayPath: string;
+  headerPath: string;   // 제품명 헤더 (전 구간)
+  ctaPath: string;      // CTA (제품 구간 + 마무리)
   pipMaskPath: string;
   ringPath: string;
   durationSec: number;
@@ -90,18 +108,28 @@ export async function composePromoCharacter(opts: {
   outPath: string;
 }): Promise<void> {
   const ffmpeg = require('ffmpeg-static') as string;
-  const { productImagePath, characterVideoPath, overlayPath, pipMaskPath, ringPath, durationSec, t1, t2, outPath } = opts;
+  const { productImagePath, characterVideoPath, headerPath, ctaPath, pipMaskPath, ringPath, durationSec, t1, t2, outPath } = opts;
 
+  // 입력: [0]제품 [1]캐릭터 [2]헤더 [3]CTA [4]마스크 [5]링
   const filter = [
     `[1:v]split=3[v1][v2][v3]`,
-    `[v1]scale=${W}:${H},setsar=1[cf1]`,
-    `[v2]scale=${W}:${H},setsar=1[cf2]`,
+    // 인트로: 캐릭터풀샷 + 헤더
+    `[v1]scale=${W}:${H},setsar=1[cf1a]`,
+    `[cf1a][2:v]overlay=0:0[cf1]`,
+    // 아웃트로: 캐릭터풀샷 + 헤더 + CTA
+    `[v2]scale=${W}:${H},setsar=1[cf2a]`,
+    `[cf2a][2:v]overlay=0:0[cf2b]`,
+    `[cf2b][3:v]overlay=0:0[cf2]`,
+    // 중간 배경: 제품 + 헤더 + CTA
     `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1[bgs]`,
-    `[bgs][2:v]overlay=0:0[bgt]`,
+    `[bgs][2:v]overlay=0:0[bgh]`,
+    `[bgh][3:v]overlay=0:0[bgt]`,
+    // 코너 원형 PiP
     `[v3]crop=720:720:0:${CROP_Y},scale=${PIP}:${PIP}[pipraw]`,
-    `[pipraw][3:v]alphamerge[pipc]`,
-    `[4:v][pipc]overlay=(W-w)/2:(H-h)/2[pipring]`,
+    `[pipraw][4:v]alphamerge[pipc]`,
+    `[5:v][pipc]overlay=(W-w)/2:(H-h)/2[pipring]`,
     `[bgt][pipring]overlay=${PIPX}:${PIPY}[mid]`,
+    // 구간 합치기
     `[cf1]trim=0:${t1},setpts=PTS-STARTPTS[s1]`,
     `[mid]trim=${t1}:${t2},setpts=PTS-STARTPTS[s2]`,
     `[cf2]trim=${t2}:${durationSec},setpts=PTS-STARTPTS[s3]`,
@@ -112,7 +140,8 @@ export async function composePromoCharacter(opts: {
     `"${ffmpeg}" -y -loglevel error`,
     `-loop 1 -i "${productImagePath}"`,
     `-i "${characterVideoPath}"`,
-    `-loop 1 -i "${overlayPath}"`,
+    `-loop 1 -i "${headerPath}"`,
+    `-loop 1 -i "${ctaPath}"`,
     `-loop 1 -i "${pipMaskPath}"`,
     `-loop 1 -i "${ringPath}"`,
     `-filter_complex "${filter}"`,
