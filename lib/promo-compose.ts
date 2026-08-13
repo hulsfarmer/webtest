@@ -167,6 +167,38 @@ export async function renderCtaOverlay(cta: string, outPath: string): Promise<vo
   fs.writeFileSync(outPath, canvas.toBuffer('image/png'));
 }
 
+/** 나레이션 자막 PNG (1080x1920 투명, 하단에 어두운 박스 + 흰 글자). PiP 위에 배치 */
+export async function renderSubtitle(text: string, outPath: string): Promise<void> {
+  const { createCanvas } = await import('@napi-rs/canvas');
+  const fams = await registerFonts();
+  const canvas = createCanvas(W, H);
+  const ctx = canvas.getContext('2d');
+  const clean = stripEmoji(text);
+  const { lines, size } = fitLines(ctx, clean, fams.body, W - 200, 2, 54, 38);
+  const lineH = Math.round(size * 1.3);
+  ctx.font = `${size}px "${fams.body}"`;
+  let maxW = 0; lines.forEach((l) => { maxW = Math.max(maxW, ctx.measureText(l).width); });
+  const bw = Math.min(W - 80, maxW + 60), bh = lines.length * lineH + 34;
+  const cy = 1060; // PiP(1138~) 위, CTA 아래
+  const bx = (W - bw) / 2, by = cy - bh / 2, rr = 22;
+  ctx.fillStyle = 'rgba(0,0,0,0.58)';
+  ctx.beginPath();
+  ctx.moveTo(bx + rr, by);
+  ctx.arcTo(bx + bw, by, bx + bw, by + bh, rr);
+  ctx.arcTo(bx + bw, by + bh, bx, by + bh, rr);
+  ctx.arcTo(bx, by + bh, bx, by, rr);
+  ctx.arcTo(bx, by, bx + bw, by, rr);
+  ctx.closePath(); ctx.fill();
+  ctx.textAlign = 'center';
+  let y = by + 22 + size * 0.8;
+  lines.forEach((l) => {
+    ctx.lineWidth = Math.max(3, size * 0.09); ctx.strokeStyle = 'rgba(0,0,0,0.9)'; ctx.lineJoin = 'round'; ctx.strokeText(l, W / 2, y);
+    ctx.fillStyle = '#ffffff'; ctx.fillText(l, W / 2, y);
+    y += lineH;
+  });
+  fs.writeFileSync(outPath, canvas.toBuffer('image/png'));
+}
+
 /** 원형 알파 마스크(PIP)와 흰 링(RING) PNG 생성 */
 export async function renderPipAssets(maskPath: string, ringPath: string): Promise<void> {
   const { createCanvas } = await import('@napi-rs/canvas');
@@ -196,35 +228,42 @@ export async function composePromoCharacter(opts: {
   t1: number;
   t2: number;
   outPath: string;
+  subtitles?: { path: string; start: number; end: number }[];
 }): Promise<void> {
   const ffmpeg = require('ffmpeg-static') as string;
   const { productImagePath, characterVideoPath, headerPath, ctaPath, pipMaskPath, ringPath, durationSec, t1, t2, outPath } = opts;
+  const subs = opts.subtitles || [];
 
-  // 입력: [0]제품 [1]캐릭터 [2]헤더 [3]CTA [4]마스크 [5]링
-  const filter = [
+  // 입력: [0]제품 [1]캐릭터 [2]헤더 [3]CTA [4]마스크 [5]링, [6..]=자막
+  const parts = [
     `[1:v]split=3[v1][v2][v3]`,
-    // 인트로: 캐릭터풀샷 + 헤더
     `[v1]scale=${W}:${H},setsar=1[cf1a]`,
     `[cf1a][2:v]overlay=0:0[cf1]`,
-    // 아웃트로: 캐릭터풀샷 + 헤더 + CTA
     `[v2]scale=${W}:${H},setsar=1[cf2a]`,
     `[cf2a][2:v]overlay=0:0[cf2b]`,
     `[cf2b][3:v]overlay=0:0[cf2]`,
-    // 중간 배경: 제품(원래 비율 전체표시, 흰 여백) + 헤더 + CTA
     `[0:v]scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=white,setsar=1[bgs]`,
     `[bgs][2:v]overlay=0:0[bgh]`,
     `[bgh][3:v]overlay=0:0[bgt]`,
-    // 코너 원형 PiP (폭 패드로 줌아웃 → 머리~어깨/가슴, 원에 맞춰 정사각)
     `[v3]pad=900:1280:90:0:color=white,crop=900:900:0:${CROP_Y},scale=${PIP}:${PIP}[pipraw]`,
     `[pipraw][4:v]alphamerge[pipc]`,
     `[5:v][pipc]overlay=(W-w)/2:(H-h)/2[pipring]`,
     `[bgt][pipring]overlay=${PIPX}:${PIPY}[mid]`,
-    // 구간 합치기
     `[cf1]trim=0:${t1},setpts=PTS-STARTPTS[s1]`,
     `[mid]trim=${t1}:${t2},setpts=PTS-STARTPTS[s2]`,
     `[cf2]trim=${t2}:${durationSec},setpts=PTS-STARTPTS[s3]`,
-    `[s1][s2][s3]concat=n=3:v=1[outv]`,
-  ].join(';');
+    `[s1][s2][s3]concat=n=3:v=1${subs.length ? '[vcat]' : '[outv]'}`,
+  ];
+  // 자막: 시점별 오버레이 체인 (enable=between). 입력 인덱스 6부터
+  let prev = 'vcat';
+  subs.forEach((s, i) => {
+    const out = i === subs.length - 1 ? 'outv' : `sub${i}`;
+    parts.push(`[${prev}][${6 + i}:v]overlay=0:0:enable='between(t,${s.start.toFixed(2)},${s.end.toFixed(2)})'[${out}]`);
+    prev = out;
+  });
+  const filter = parts.join(';');
+  // 자막 입력은 반드시 -t 로 길이 제한 (무한 loop 이면 ffmpeg hang)
+  const subInputs = subs.map((s) => `-loop 1 -t ${durationSec.toFixed(2)} -i "${s.path}"`).join(' ');
 
   // OOM 방지: ultrafast + 단일 스레드 (libx264 lookahead 버퍼가 2GB 서버 OOM 주범)
   const cmd = [
@@ -235,6 +274,7 @@ export async function composePromoCharacter(opts: {
     `-loop 1 -i "${ctaPath}"`,
     `-loop 1 -i "${pipMaskPath}"`,
     `-loop 1 -i "${ringPath}"`,
+    subInputs,
     `-filter_complex "${filter}"`,
     `-map "[outv]" -map "1:a?" -r 30`,
     `-c:v libx264 -pix_fmt yuv420p -preset ultrafast -threads 1 -g 60`,

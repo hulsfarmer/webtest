@@ -6,9 +6,27 @@ import path from 'path';
 import fs from 'fs';
 import { createJob, updateJob } from '@/lib/jobStore';
 import { generatePromoScript, PromoInput, ScriptSection } from '@/lib/anthropic';
-import { generateAudio } from '@/lib/tts';
+import { generateAudioWithTimepoints } from '@/lib/tts';
 import { uploadToHedra, submitKlingAvatar, pollHedraVideo } from '@/lib/hedra';
-import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, composePromoCharacter, probeDuration, sanitizeScript } from '@/lib/promo-compose';
+import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, probeDuration, sanitizeScript } from '@/lib/promo-compose';
+
+/** 자막용 청크: 문장 → ≤32자 단위 (긴 문장은 어절 단위로 분할) */
+function chunkForSubtitles(text: string, maxChars = 32): string[] {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  const sents = clean.split(/(?<=[.!?。…])\s+/).filter(Boolean);
+  const chunks: string[] = [];
+  for (const s of sents) {
+    if (s.length <= maxChars) { chunks.push(s); continue; }
+    let cur = '';
+    for (const w of s.split(' ')) {
+      const t = cur ? `${cur} ${w}` : w;
+      if (t.length <= maxChars || !cur) cur = t;
+      else { chunks.push(cur); cur = w; }
+    }
+    if (cur) chunks.push(cur);
+  }
+  return chunks.filter(Boolean);
+}
 // import { canGenerate, incrementUsage } from '@/lib/usageStore'; // TODO(credits)
 
 interface CharJobInput extends PromoInput {
@@ -34,7 +52,8 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
   const maskPath = path.join(tmpDir, `${jobId}_mask.png`);
   const ringPath = path.join(tmpDir, `${jobId}_ring.png`);
   const outPath = path.join(videoDir, `${jobId}.mp4`);
-  const cleanup = () => [audioPath, charVideoPath, headerPath, ctaPath, maskPath, ringPath, input.productImagePath]
+  const subPaths: string[] = [];
+  const cleanup = () => [audioPath, charVideoPath, headerPath, ctaPath, maskPath, ringPath, input.productImagePath, ...subPaths]
     .forEach((f) => { try { fs.unlinkSync(f); } catch { /* noop */ } });
 
   try {
@@ -59,9 +78,10 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     let f2 = L > 0 ? (hookT.length + mainT.length) / L : 0.72;
     if (!(f1 > 0.08 && f2 > f1 + 0.1 && f2 < 0.92)) { f1 = 0.28; f2 = 0.72; }
 
-    // 2) 나레이션 음성
+    // 2) 나레이션 음성 (자막용 문장 청크별 타이밍)
     updateJob(jobId, { status: 'generating_audio', progress: 30, steps: { script: 'done', audio: 'running', video: 'pending' } });
-    await generateAudio(narration, audioPath, input.duration || 20, input.voice, 1.0);
+    const subChunks = chunkForSubtitles(narration);
+    const chunkDurs = await generateAudioWithTimepoints(subChunks.length ? subChunks : [narration], audioPath, input.voice, 1.0);
 
     // 3) Kling 캐릭터 영상
     updateJob(jobId, { status: 'generating_video', progress: 45, steps: { script: 'done', audio: 'done', video: 'running' } });
@@ -74,11 +94,27 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     const charBuf = await pollHedraVideo(hedraJob, () => updateJob(jobId, { progress: 70, status: 'generating_video' }));
     fs.writeFileSync(charVideoPath, charBuf);
 
-    // 4) 인터컷 + PiP 합성 (헤더 전 구간)
+    // 4) 인터컷 + PiP 합성 (헤더 전 구간 + 나레이션 자막)
     updateJob(jobId, { progress: 88 });
     let D = await probeDuration(charVideoPath);
     if (!(D > 1)) D = await probeDuration(audioPath);
     const t1 = +(D * f1).toFixed(2), t2 = +(D * f2).toFixed(2);
+
+    // 자막 큐: 청크 duration → 영상 길이에 맞춰 스케일
+    const chunks = subChunks.length ? subChunks : [narration];
+    const totalDur = chunkDurs.reduce((a, b) => a + b, 0) || D;
+    const scale = D / totalDur;
+    const subtitles: { path: string; start: number; end: number }[] = [];
+    let acc = 0;
+    for (let i = 0; i < chunks.length; i++) {
+      const start = acc * scale, end = (acc + (chunkDurs[i] || 0)) * scale;
+      acc += chunkDurs[i] || 0;
+      const sp = path.join(tmpDir, `${jobId}_sub${i}.png`);
+      await renderSubtitle(chunks[i], sp);
+      subtitles.push({ path: sp, start: +start.toFixed(2), end: +end.toFixed(2) });
+    }
+    subPaths.push(...subtitles.map((s) => s.path));
+
     await Promise.all([
       renderHeaderOverlay(input.overlayTitle, input.catchphrase, input.headerTheme, headerPath),
       renderCtaOverlay(input.overlayCta, ctaPath),
@@ -86,7 +122,7 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     ]);
     await composePromoCharacter({
       productImagePath: input.productImagePath, characterVideoPath: charVideoPath,
-      headerPath, ctaPath, pipMaskPath: maskPath, ringPath, durationSec: +D.toFixed(2), t1, t2, outPath,
+      headerPath, ctaPath, pipMaskPath: maskPath, ringPath, durationSec: +D.toFixed(2), t1, t2, outPath, subtitles,
     });
 
     cleanup();
