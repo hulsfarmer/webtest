@@ -9,6 +9,7 @@ import {
   renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle,
   composePromoCharacter, probeDuration,
 } from '@/lib/promo-compose';
+import { generateAudioWithTimepoints } from '@/lib/tts';
 
 const execAsync = promisify(exec);
 
@@ -197,15 +198,47 @@ export async function POST(req: NextRequest) {
     let segments: Seg[] = [];
     let subMode = 'none';
     if (narrationIn) {
-      const parts = chunkForSubtitles(narrationIn);
-      const totalC = parts.reduce((a, c) => a + c.length, 0) || 1;
-      let acc = 0;
-      segments = parts.map((p) => {
-        const dur = D0 * (p.length / totalC);
-        const s = acc; acc += dur;
-        return { start: s, end: acc, text: p };
-      });
-      subMode = 'narration';
+      // 홍보영상과 동일한 정확 싱크: 문장별 실제 발화길이를 TTS로 측정
+      // (Chirp3-HD는 문장별 생성해 실측). 측정 오디오는 버리고 Kling 오디오 유지.
+      const voice = (typeof body.voice === 'string' && body.voice.trim()) ? body.voice.trim() : 'ko-KR-Chirp3-HD-Aoede';
+      const sentences = narrationIn.split(/(?<=[.!?。！？])\s*/).map((x) => x.trim()).filter(Boolean);
+      const measurePath = path.join(tmpDir, `${outId}_measure.mp3`);
+      let durations: number[] = [];
+      try { durations = await generateAudioWithTimepoints(sentences, measurePath, voice, 1.0); }
+      catch (e) { console.error(`[recompose ${outId}] 발화측정 실패:`, e instanceof Error ? e.message : e); }
+      try { fs.unlinkSync(measurePath); } catch { /* noop */ }
+
+      const buildFromDurations = durations.length === sentences.length && durations.some((d) => d > 0);
+      if (buildFromDurations) {
+        // 문장별 측정길이 → 문장 내 청크는 글자수 비례로 분배 (문장 단위 정확 싱크)
+        let acc = 0;
+        segments = [];
+        for (let i = 0; i < sentences.length; i++) {
+          const parts = chunkForSubtitles(sentences[i]);
+          const dur = durations[i];
+          if (!parts.length) { acc += dur; continue; }
+          const totalC = parts.reduce((a, c) => a + c.length, 0) || 1;
+          let inner = acc;
+          for (const p of parts) {
+            const d = dur * (p.length / totalC);
+            segments.push({ start: inner, end: Math.min(inner + d, D0), text: p });
+            inner += d;
+          }
+          acc += dur;
+        }
+        subMode = 'measured';
+      } else {
+        // 폴백: 전체 길이에 글자수 비례
+        const parts = chunkForSubtitles(narrationIn);
+        const totalC = parts.reduce((a, c) => a + c.length, 0) || 1;
+        let acc = 0;
+        segments = parts.map((p) => {
+          const dur = D0 * (p.length / totalC);
+          const s = acc; acc += dur;
+          return { start: s, end: acc, text: p };
+        });
+        subMode = 'narration';
+      }
     } else {
       try { segments = await transcribeGoogle(charPath, tmpDir, outId); subMode = 'stt'; }
       catch (e) { console.error(`[recompose ${outId}] STT 실패, 자막 없이 진행:`, e instanceof Error ? e.message : e); }
