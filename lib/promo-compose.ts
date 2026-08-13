@@ -233,8 +233,13 @@ export async function composePromoCharacter(opts: {
   const { productImagePath, characterVideoPath, headerPath, ctaPath, pipMaskPath, ringPath, durationSec, t1, t2, outPath } = opts;
   const subs = opts.subtitles || [];
 
-  // 입력: [0]제품 [1]캐릭터 [2]헤더 [3]CTA [4]마스크 [5]링, [6..]=자막
-  const parts = [
+  // ── 2-패스 구성 (OOM 방지) ──────────────────────────────────────────
+  // 캐릭터 split→scale→concat(무거움)과 자막 다중 오버레이(무거움)를 한 그래프에
+  // 넣으면 2GB 서버에서 OOM(Killed). 베이스 합성 → 자막 오버레이로 분리한다.
+
+  // Pass A: 캐릭터 인터컷 + 제품 PiP + 헤더 + CTA → 베이스(자막 없음)
+  // 입력: [0]제품 [1]캐릭터 [2]헤더 [3]CTA [4]마스크 [5]링
+  const baseParts = [
     `[1:v]split=3[v1][v2][v3]`,
     // 인트로: 캐릭터를 헤더밴드 아래 영역에 채우고 + 헤더 밴드 위에
     `[v1]scale=${W}:${H - HEADER_BAND_H}:force_original_aspect_ratio=increase,crop=${W}:${H - HEADER_BAND_H},setsar=1,pad=${W}:${H}:0:${HEADER_BAND_H}:color=black[cf1a]`,
@@ -253,21 +258,11 @@ export async function composePromoCharacter(opts: {
     `[cf1]trim=0:${t1},setpts=PTS-STARTPTS[s1]`,
     `[mid]trim=${t1}:${t2},setpts=PTS-STARTPTS[s2]`,
     `[cf2]trim=${t2}:${durationSec},setpts=PTS-STARTPTS[s3]`,
-    `[s1][s2][s3]concat=n=3:v=1${subs.length ? '[vcat]' : '[outv]'}`,
+    `[s1][s2][s3]concat=n=3:v=1[outv]`,
   ];
-  // 자막: 시점별 오버레이 체인 (enable=between). 입력 인덱스 6부터
-  let prev = 'vcat';
-  subs.forEach((s, i) => {
-    const out = i === subs.length - 1 ? 'outv' : `sub${i}`;
-    parts.push(`[${prev}][${6 + i}:v]overlay=0:${SUB_Y}:enable='between(t,${s.start.toFixed(2)},${s.end.toFixed(2)})'[${out}]`);
-    prev = out;
-  });
-  const filter = parts.join(';');
-  // 자막 입력은 반드시 -t 로 길이 제한 (무한 loop 이면 ffmpeg hang)
-  const subInputs = subs.map((s) => `-loop 1 -t ${durationSec.toFixed(2)} -i "${s.path}"`).join(' ');
-
-  // OOM 방지: ultrafast + 단일 스레드 (libx264 lookahead 버퍼가 2GB 서버 OOM 주범)
-  const cmd = [
+  // 자막이 있으면 베이스를 임시파일로, 없으면 바로 최종 출력으로
+  const baseOut = subs.length ? `${outPath}.base.mp4` : outPath;
+  const baseCmd = [
     `"${ffmpeg}" -y -loglevel error`,
     `-loop 1 -i "${productImagePath}"`,
     `-i "${characterVideoPath}"`,
@@ -275,15 +270,40 @@ export async function composePromoCharacter(opts: {
     `-loop 1 -i "${ctaPath}"`,
     `-loop 1 -i "${pipMaskPath}"`,
     `-loop 1 -i "${ringPath}"`,
-    subInputs,
-    `-filter_complex "${filter}"`,
+    `-filter_complex "${baseParts.join(';')}"`,
     `-map "[outv]" -map "1:a?" -r 30`,
+    // OOM 방지: ultrafast + 단일 스레드 (libx264 lookahead 버퍼가 2GB 서버 OOM 주범)
     `-c:v libx264 -pix_fmt yuv420p -preset ultrafast -threads 1 -g 60`,
     `-c:a aac -ar 44100 -movflags +faststart`,
+    `"${baseOut}"`,
+  ].join(' ');
+  await execAsync(baseCmd, { maxBuffer: 1024 * 1024 * 64 });
+
+  if (!subs.length) return;
+
+  // Pass B: 베이스 위에 자막 스트립 오버레이 (시점별 enable=between)
+  // 입력: [0]베이스, [1..]=자막. 오디오는 베이스에서 그대로 복사(재인코딩 X)
+  const subParts: string[] = [];
+  let prev = '0:v';
+  subs.forEach((s, i) => {
+    const out = i === subs.length - 1 ? 'outv' : `sub${i}`;
+    subParts.push(`[${prev}][${1 + i}:v]overlay=0:${SUB_Y}:enable='between(t,${s.start.toFixed(2)},${s.end.toFixed(2)})'[${out}]`);
+    prev = out;
+  });
+  // 자막 입력은 반드시 -t 로 길이 제한 (무한 loop 이면 ffmpeg hang)
+  const subInputs = subs.map((s) => `-loop 1 -t ${durationSec.toFixed(2)} -i "${s.path}"`).join(' ');
+  const subCmd = [
+    `"${ffmpeg}" -y -loglevel error`,
+    `-i "${baseOut}"`,
+    subInputs,
+    `-filter_complex "${subParts.join(';')}"`,
+    `-map "[outv]" -map "0:a?" -r 30`,
+    `-c:v libx264 -pix_fmt yuv420p -preset ultrafast -threads 1 -g 60`,
+    `-c:a copy -movflags +faststart`,
     `"${outPath}"`,
   ].join(' ');
-
-  await execAsync(cmd, { maxBuffer: 1024 * 1024 * 64 });
+  await execAsync(subCmd, { maxBuffer: 1024 * 1024 * 64 });
+  try { fs.unlinkSync(baseOut); } catch { /* noop */ }
 }
 
 /** 파일 길이(초) — ffmpeg-static 엔 ffprobe 가 없어 `ffmpeg -i` stderr 의 Duration 파싱 */
