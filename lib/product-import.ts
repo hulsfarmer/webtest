@@ -63,27 +63,33 @@ export function isSeoJunkDescription(d?: string): boolean {
   return /(별점|리뷰\s*\d|후기\s*\d|더\s*저렴|최저가|지금\s*쿠팡|쿠팡에서|무료배송|로켓배송)/.test(d);
 }
 
-/** 상세페이지 마케팅 이미지 URL 추출 (쿠팡 subType-IMAGE 등 전체폭 상세 이미지) */
+/** 상세페이지 마케팅 이미지 URL 추출 (쿠팡 여러 형식 + 일반몰 fallback) */
 export function extractDetailImages(html: string, baseUrl: string, max = 4): string[] {
   const urls: string[] = [];
-  // 쿠팡: <div class="subType-IMAGE..."><img src="...q89/...">
-  const re = /subType-IMAGE[^>]*>\s*<img[^>]+src=["']([^"']+)["']/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) && urls.length < 40) urls.push(m[1]);
-  // 일반몰 fallback: 상세영역(product-detail/detail/goods-detail) 안의 큰 이미지
+  const push = (re: RegExp, group: number) => {
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) && urls.length < 80) urls.push(m[group]);
+  };
+  // 1) 쿠팡 구형: <div class="subType-IMAGE"><img src="...">
+  push(/subType-IMAGE[^>]*>\s*<img[^>]+src=["']([^"']+)["']/gi, 1);
+  // 2) 쿠팡 신형: image/vendor_inventory 전체 이미지
+  push(/(?:https?:)?\/\/[a-z.]*coupangcdn\.com\/image\/vendor_inventory\/[^"'\s)\\]+\.(?:jpg|jpeg|png)/gi, 0);
+  // 3) 쿠팡: thumbnails/remote/q## (사이즈 제한 없는 전체폭 상세)
+  push(/(?:https?:)?\/\/[a-z.]*coupangcdn\.com\/thumbnails\/remote\/q\d+\/[^"'\s)\\]+\.(?:jpg|jpeg|png)/gi, 0);
+  // 4) 일반몰 fallback: 상세영역 안의 큰 이미지
   if (urls.length === 0) {
     const start = html.search(/(product-detail|goods[-_]?detail|detail[-_]?content|prod[-_]?detail)/i);
     if (start >= 0) {
       const seg = html.slice(start, start + 200000);
-      const re2 = /<img[^>]+src=["']([^"']+\.(?:jpg|jpeg|png))["']/gi;
-      while ((m = re2.exec(seg)) && urls.length < 40) urls.push(m[1]);
+      push(new RegExp(`<img[^>]+src=["']([^"']+\\.(?:jpg|jpeg|png))["']`, 'gi'), 1);
     }
   }
   const abs = urls.map((u) => {
     if (/^https?:\/\//i.test(u)) return u;
+    if (u.startsWith('//')) return `https:${u}`;
     try { return new URL(u, baseUrl).href; } catch { return ''; }
   }).filter(Boolean);
-  // 아이콘/로고/버튼 같은 작은 정적 자산 제외
+  // 아이콘/로고/버튼 등 정적 자산 제외
   const filtered = abs.filter((u) => !/(static\/media|\/badges\/|\/common\/|logo|icon|arrow|btn|button|sprite)/i.test(u));
   return [...new Set(filtered)].slice(0, max);
 }
