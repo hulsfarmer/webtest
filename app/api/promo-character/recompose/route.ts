@@ -211,16 +211,28 @@ export async function POST(req: NextRequest) {
   const subPaths: string[] = [];
 
   try {
-    // 1) 제품 페이지 → og 메타 (제목/이미지)
-    const useProxy = !!process.env.SCRAPER_API_KEY;
-    const pres = await fetchWithTimeout(proxied(productUrl), useProxy ? {} : { headers: BROWSER_HEADERS }, useProxy ? 70000 : 15000);
-    if (!pres.ok) return NextResponse.json({ error: `product fetch ${pres.status}` }, { status: 422 });
-    const meta = extractOgMeta(await pres.text(), productUrl);
-    const businessName = businessNameIn || meta.title || '제품';
-    if (!meta.image) return NextResponse.json({ error: 'no product image' }, { status: 422 });
-    const dl = await downloadImage(meta.image);
-    if (!dl) return NextResponse.json({ error: 'product image download failed' }, { status: 422 });
-    fs.writeFileSync(productPath, dl.buf);
+    // 1) 제품 이미지: 캐시 우선(ScraperAPI 불안정 회피). 캐시 없으면 스크래핑 후 저장.
+    //    productImageUrl 로 직접 지정하면 페이지 스크래핑 생략.
+    const productCachePath = path.join(process.cwd(), 'data', 'char_cache', `${charFile}.product.png`);
+    let businessName = businessNameIn || '제품';
+    if (fs.existsSync(productCachePath)) {
+      fs.copyFileSync(productCachePath, productPath);
+    } else {
+      let imgUrl = (typeof body.productImageUrl === 'string' && body.productImageUrl.trim()) ? body.productImageUrl.trim() : '';
+      if (!imgUrl) {
+        const useProxy = !!process.env.SCRAPER_API_KEY;
+        const pres = await fetchWithTimeout(proxied(productUrl), useProxy ? {} : { headers: BROWSER_HEADERS }, useProxy ? 70000 : 15000);
+        if (!pres.ok) return NextResponse.json({ error: `product fetch ${pres.status}` }, { status: 422 });
+        const meta = extractOgMeta(await pres.text(), productUrl);
+        if (!businessNameIn && meta.title) businessName = meta.title;
+        imgUrl = meta.image || '';
+      }
+      if (!imgUrl) return NextResponse.json({ error: 'no product image' }, { status: 422 });
+      const dl = await downloadImage(imgUrl);
+      if (!dl) return NextResponse.json({ error: 'product image download failed' }, { status: 422 });
+      fs.writeFileSync(productPath, dl.buf);
+      try { fs.copyFileSync(productPath, productCachePath); } catch { /* noop */ }  // 다음부턴 재스크래핑 불필요
+    }
 
     // 1.5) 속도 조절(옵션): 캐릭터 영상(음성 포함)을 speed 배로. 이후 모든 계산은
     //      가속된 영상 기준이라 자막·발화구간·합성이 일관되게 빨라진다.
@@ -253,13 +265,17 @@ export async function POST(req: NextRequest) {
           }
           return speech[speech.length - 1].e;
         };
+        // 홍보영상 기법: 자막을 나레이션보다 살짝 먼저 띄운다(늦게 뜨는 느낌 방지)
+        const CAPTION_LEAD = 0.3;
         const totalChars = chunks.reduce((a, c) => a + c.length, 0) || 1;
         let charAcc = 0;
         segments = chunks.map((p) => {
           const aStart = (charAcc / totalChars) * totalActive;
           charAcc += p.length;
           const aEnd = (charAcc / totalChars) * totalActive;
-          return { start: activeToReal(aStart), end: Math.min(activeToReal(aEnd), D0), text: p };
+          const start = Math.max(0, activeToReal(aStart) - CAPTION_LEAD);
+          const end = Math.min(Math.max(start + 0.2, activeToReal(aEnd) - CAPTION_LEAD), D0);
+          return { start, end, text: p };
         });
         console.log(`[recompose ${outId}] 발화구간 ${speech.length}개, active ${totalActive.toFixed(2)}s / D ${D0.toFixed(2)}s, speed ${speed}`);
         subMode = 'speech-align';
