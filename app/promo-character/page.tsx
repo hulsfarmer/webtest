@@ -9,12 +9,12 @@ const VOICES = [
 ];
 const PRESETS = [{ id: 'preset-jieun', label: '지은', src: '/characters/preset-jieun.png' }];
 const HEADER_THEMES = [
-  { id: 'blur', label: '기본', bg: 'linear-gradient(#333,#111)', name: '#FDE047' },
-  { id: 'black', label: '블랙', bg: '#121212', name: '#FFE600' },
-  { id: 'navy', label: '네이비', bg: '#0A192F', name: '#00E5FF' },
-  { id: 'neon', label: '네온', bg: '#E5FF00', name: '#14213D' },
-  { id: 'violet', label: '바이올렛', bg: '#1A0B2E', name: '#FF2A85' },
-  { id: 'burgundy', label: '버건디', bg: '#4A0E17', name: '#FFC107' },
+  { id: 'blur', label: '글래스', desc: '사진 블러', bg: 'linear-gradient(135deg,#4b4b4b,#7a7a7a)', bn: '#FDE047', title: '#FFFFFF' },
+  { id: 'black', label: '클래식 블랙', desc: '정보·뉴스', bg: '#121212', bn: '#FFE600', title: '#FFFFFF' },
+  { id: 'navy', label: '테크 네이비', desc: 'IT·재테크', bg: '#0A192F', bn: '#00E5FF', title: '#FFFFFF' },
+  { id: 'neon', label: '네온 옐로우', desc: '핫이슈·썰', bg: '#E5FF00', bn: '#14213D', title: '#D32F2F' },
+  { id: 'violet', label: '트렌디 바이올렛', desc: '엔터·뷰티', bg: '#1A0B2E', bn: '#FF2A85', title: '#FFFFFF' },
+  { id: 'burgundy', label: '버건디 골드', desc: '리뷰·경고', bg: '#4A0E17', bn: '#FFC107', title: '#FFFFFF' },
 ];
 type StepState = 'pending' | 'running' | 'done' | 'failed';
 type Section = { type: 'hook' | 'main' | 'cta'; label: string; text: string };
@@ -288,12 +288,16 @@ export default function PromoCharacterPage() {
                 </div>
                 <div>
                   <label className="block text-sm text-neutral-300 mb-1.5">헤더 테마</label>
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="grid grid-cols-3 gap-2">
                     {HEADER_THEMES.map((t) => (
-                      <button key={t.id} onClick={() => setHeaderTheme(t.id)} title={t.label}
-                        className={`px-2.5 py-2 rounded-lg text-xs font-bold border-2 ${headerTheme === t.id ? 'border-emerald-400' : 'border-transparent'}`}
-                        style={{ background: t.bg, color: t.name }}>
-                        {businessName || '제품명'}
+                      <button key={t.id} type="button" onClick={() => setHeaderTheme(t.id)}
+                        className={`relative p-2 rounded-xl border transition-all ${headerTheme === t.id ? 'border-emerald-500/60 ring-1 ring-emerald-500/40' : 'border-white/10 hover:border-white/25'}`}>
+                        <div className="h-10 rounded-lg flex items-center justify-center mb-1.5" style={{ background: t.bg }}>
+                          <span style={{ color: t.bn }} className="text-sm font-extrabold">가</span>
+                          <span style={{ color: t.title }} className="text-sm font-extrabold ml-0.5">나</span>
+                        </div>
+                        <p className={`text-[11px] font-semibold leading-tight ${headerTheme === t.id ? 'text-emerald-200' : 'text-neutral-300'}`}>{t.label}</p>
+                        <p className="text-[9px] text-neutral-500 leading-tight">{t.desc}</p>
                       </button>
                     ))}
                   </div>
