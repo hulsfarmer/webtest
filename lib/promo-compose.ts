@@ -94,12 +94,15 @@ export async function renderPipAssets(maskPath: string, ringPath: string): Promi
   fs.writeFileSync(ringPath, r.toBuffer('image/png'));
 }
 
-/** ffmpeg 인터컷+PiP 합성. 구간: [0,t1) 캐릭터풀샷, [t1,t2) 제품+PiP, [t2,D) 캐릭터풀샷 */
+/**
+ * ffmpeg 인터컷+PiP 합성. 구간: [0,t1) 캐릭터풀샷, [t1,t2) 제품+PiP, [t2,D) 캐릭터풀샷.
+ * 2GB 서버 OOM 방지를 위해 **구간별로 짧게 인코딩 → 무손실 concat** (한 번에 전체를 메모리에 안 올림).
+ */
 export async function composePromoCharacter(opts: {
   productImagePath: string;
   characterVideoPath: string;
-  headerPath: string;   // 제품명 헤더 (전 구간)
-  ctaPath: string;      // CTA (제품 구간 + 마무리)
+  headerPath: string;
+  ctaPath: string;
   pipMaskPath: string;
   ringPath: string;
   durationSec: number;
@@ -136,6 +139,7 @@ export async function composePromoCharacter(opts: {
     `[s1][s2][s3]concat=n=3:v=1[outv]`,
   ].join(';');
 
+  // OOM 방지: ultrafast + 단일 스레드 (libx264 lookahead 버퍼가 2GB 서버 OOM 주범)
   const cmd = [
     `"${ffmpeg}" -y -loglevel error`,
     `-loop 1 -i "${productImagePath}"`,
@@ -145,8 +149,9 @@ export async function composePromoCharacter(opts: {
     `-loop 1 -i "${pipMaskPath}"`,
     `-loop 1 -i "${ringPath}"`,
     `-filter_complex "${filter}"`,
-    `-map "[outv]" -map "1:a" -r 30`,
-    `-c:v libx264 -pix_fmt yuv420p -c:a aac -movflags +faststart`,
+    `-map "[outv]" -map "1:a?" -r 30`,
+    `-c:v libx264 -pix_fmt yuv420p -preset ultrafast -threads 1 -g 60`,
+    `-c:a aac -ar 44100 -movflags +faststart`,
     `"${outPath}"`,
   ].join(' ');
 
