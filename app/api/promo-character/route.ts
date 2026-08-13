@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
   const preset = (fd.get('preset') as string | null) ?? '';
   const characterFile = fd.get('character') as File | null;
   const productFile = fd.get('product') as File | null;
+  const productPath = ((fd.get('productPath') as string | null) ?? '').trim(); // 링크 불러오기 이미지 (/imports/xxx)
 
   // 편집된 대본(선택)
   let sections: ScriptSection[] | undefined;
@@ -126,7 +127,7 @@ export async function POST(req: NextRequest) {
 
   if (!businessName) return NextResponse.json({ error: '제품명을 입력해주세요.' }, { status: 400 });
   if (!sections && !sellingPoints) return NextResponse.json({ error: '홍보 포인트를 입력해주세요.' }, { status: 400 });
-  if (!productFile) return NextResponse.json({ error: '제품 이미지를 업로드해주세요.' }, { status: 400 });
+  if (!productFile && !productPath) return NextResponse.json({ error: '제품 이미지를 업로드하거나 링크에서 불러와주세요.' }, { status: 400 });
 
   let characterBuf: Buffer, characterType = 'image/png';
   if (characterFile && typeof characterFile.arrayBuffer === 'function') {
@@ -145,7 +146,15 @@ export async function POST(req: NextRequest) {
   if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
   const jobId = uuidv4();
   const productImagePath = path.join(tmpDir, `${jobId}_product.png`);
-  fs.writeFileSync(productImagePath, Buffer.from(await productFile.arrayBuffer()));
+  if (productFile && typeof productFile.arrayBuffer === 'function') {
+    fs.writeFileSync(productImagePath, Buffer.from(await productFile.arrayBuffer()));
+  } else {
+    // 링크에서 불러온 이미지: public/imports/<basename> 만 허용 (경로 조작 방지)
+    const base = path.basename(productPath);
+    const src = path.join(process.cwd(), 'public', 'imports', base);
+    if (!fs.existsSync(src)) return NextResponse.json({ error: '불러온 제품 이미지를 찾을 수 없습니다. 다시 시도해주세요.' }, { status: 400 });
+    fs.copyFileSync(src, productImagePath);
+  }
 
   await createJob({ id: jobId, sessionId: userId, topic: `제품홍보:${businessName}`, duration, tone });
   updateJob(jobId, { status: 'queued', progress: 5, steps: { script: 'pending', audio: 'pending', video: 'pending' } });

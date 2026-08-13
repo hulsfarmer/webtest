@@ -24,6 +24,9 @@ export default function PromoCharacterPage() {
   const [charPreview, setCharPreview] = useState('');
   const [productFile, setProductFile] = useState<File | null>(null);
   const [productPreview, setProductPreview] = useState('');
+  const [importUrl, setImportUrl] = useState('');
+  const [importBusy, setImportBusy] = useState(false);
+  const [importedImagePath, setImportedImagePath] = useState(''); // /imports/xxx
 
   const [sections, setSections] = useState<Section[]>([]);
   const [scriptBusy, setScriptBusy] = useState(false);
@@ -37,7 +40,26 @@ export default function PromoCharacterPage() {
   const inputCls = 'w-full bg-neutral-950 border border-neutral-700 rounded-lg p-2.5 text-sm';
 
   function onProduct(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0] ?? null; setProductFile(f); setProductPreview(f ? URL.createObjectURL(f) : '');
+    const f = e.target.files?.[0] ?? null; setProductFile(f); setProductPreview(f ? URL.createObjectURL(f) : ''); if (f) setImportedImagePath('');
+  }
+
+  // 제품 링크에서 제품명·홍보소재·이미지 자동 추출
+  async function onImport() {
+    setError('');
+    if (!/^https?:\/\//i.test(importUrl.trim())) { setError('올바른 상품 URL을 입력하세요.'); return; }
+    setImportBusy(true);
+    try {
+      const r = await fetch('/api/promo-character/import', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: importUrl.trim() }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '불러오기 실패');
+      if (d.title) setBusinessName(d.title);
+      if (d.description) setSellingPoints(d.description);
+      if (d.imageUrl) { setProductPreview(d.imageUrl); setImportedImagePath(d.imageUrl); setProductFile(null); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setImportBusy(false); }
   }
   function onChar(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null; setCharFile(f); setCharPreview(f ? URL.createObjectURL(f) : ''); if (f) setPreset('');
@@ -46,7 +68,7 @@ export default function PromoCharacterPage() {
   function validateForm(): string | null {
     if (!businessName.trim()) return '제품명을 입력하세요.';
     if (!sellingPoints.trim()) return '홍보 포인트를 입력하세요.';
-    if (!productFile) return '제품 이미지를 업로드하세요.';
+    if (!productFile && !importedImagePath) return '제품 이미지를 업로드하거나 링크에서 불러오세요.';
     if (!charFile && !preset) return '캐릭터를 선택하거나 업로드하세요.';
     return null;
   }
@@ -80,7 +102,7 @@ export default function PromoCharacterPage() {
     fd.append('cta', cta);
     fd.append('voice', voice);
     fd.append('duration', duration);
-    fd.append('product', productFile!);
+    if (productFile) fd.append('product', productFile); else fd.append('productPath', importedImagePath);
     if (charFile) fd.append('character', charFile); else fd.append('preset', preset);
     fd.append('sections', JSON.stringify(sections.map((s) => ({ type: s.type, text: s.text }))));
 
@@ -133,6 +155,17 @@ export default function PromoCharacterPage() {
           {/* 좌: 입력 or 대본편집 */}
           {phase === 'form' ? (
             <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 space-y-4">
+              <div className="pb-4 border-b border-neutral-800">
+                <label className="block text-sm text-emerald-300 mb-1.5">🔗 제품 링크로 자동 채우기 (선택)</label>
+                <div className="flex gap-2">
+                  <input className={inputCls} value={importUrl} onChange={(e) => setImportUrl(e.target.value)} placeholder="상품 페이지 URL (네이버 스마트스토어·자사몰 등)" />
+                  <button onClick={onImport} disabled={importBusy}
+                    className="shrink-0 px-4 rounded-lg bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 text-sm font-medium">
+                    {importBusy ? '불러오는 중' : '불러오기'}
+                  </button>
+                </div>
+                <p className="text-xs text-neutral-500 mt-1.5">제품명·홍보소재·대표이미지를 자동으로 채워요. 쿠팡 등 일부 사이트는 차단되니 그럴 땐 아래에 직접 입력하세요.</p>
+              </div>
               <div>
                 <label className="block text-sm text-neutral-300 mb-1.5">제품명 *</label>
                 <input className={inputCls} value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="글로우 세럼" />
