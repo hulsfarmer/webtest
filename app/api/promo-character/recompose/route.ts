@@ -201,7 +201,7 @@ export async function POST(req: NextRequest) {
       // 홍보영상과 동일한 정확 싱크: 문장별 실제 발화길이를 TTS로 측정
       // (Chirp3-HD는 문장별 생성해 실측). 측정 오디오는 버리고 Kling 오디오 유지.
       const voice = (typeof body.voice === 'string' && body.voice.trim()) ? body.voice.trim() : 'ko-KR-Chirp3-HD-Aoede';
-      const sentences = narrationIn.split(/(?<=[.!?。！？])\s*/).map((x) => x.trim()).filter(Boolean);
+      const sentences = narrationIn.split(/(?<=[.!?。！？])\s*/).map((x: string) => x.trim()).filter(Boolean);
       const measurePath = path.join(tmpDir, `${outId}_measure.mp3`);
       let durations: number[] = [];
       try { durations = await generateAudioWithTimepoints(sentences, measurePath, voice, 1.0); }
