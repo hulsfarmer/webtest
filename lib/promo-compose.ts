@@ -248,7 +248,8 @@ export async function composePromoCharacter(opts: {
     // 캐릭터: PiP용 1개만 split (2-way, lockstep 이라 버퍼 최소)
     `[1:v]split=2[cmain][cpip]`,
     // 캐릭터를 헤더밴드 아래 영역에 채움 (전 구간 = 인트로/아웃트로 배경)
-    `[cmain]scale=${W}:${H - HEADER_BAND_H}:force_original_aspect_ratio=increase,crop=${W}:${H - HEADER_BAND_H},setsar=1,pad=${W}:${H}:0:${HEADER_BAND_H}:color=black[cbase]`,
+    // crop 을 위쪽 고정(y=0)으로 → 머리 위가 안 잘리고 아래(어깨/몸통)만 잘림
+    `[cmain]scale=${W}:${H - HEADER_BAND_H}:force_original_aspect_ratio=increase,crop=${W}:${H - HEADER_BAND_H}:0:0,setsar=1,pad=${W}:${H}:0:${HEADER_BAND_H}:color=black[cbase]`,
     // 제품 풀프레임(흰 여백 contain) — 중간 구간에만 덮음
     `[0:v]scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=white,setsar=1[prod]`,
     // 코너 원형 PiP(캐릭터) + 흰 링
