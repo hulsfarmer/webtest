@@ -50,10 +50,12 @@ export async function extractSellingPointsFromImages(imageUrls: string[], produc
   if (!tiles.length) return '';
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const content: Anthropic.ContentBlockParam[] = [
-    ...tiles.map((data): Anthropic.ImageBlockParam => ({
-      type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data },
-    })),
+  // SDK 버전 간 타입명 차이(ContentBlockParam 등)를 피하려 구조적 타입 사용
+  type Block =
+    | { type: 'image'; source: { type: 'base64'; media_type: 'image/jpeg'; data: string } }
+    | { type: 'text'; text: string };
+  const content: Block[] = [
+    ...tiles.map((data): Block => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } })),
     {
       type: 'text',
       text: `위 이미지들은 제품 "${productName}"의 쇼핑몰 상세페이지입니다. 홍보 영상에 쓸 핵심 홍보 포인트(효과·성분·특징·차별점·사용법)를 한국어로 3~5개, 각 한 줄로 간결하게 뽑아주세요. 이미지에 실제로 있는 내용만 쓰고 없으면 지어내지 마세요. 불릿기호나 번호 없이 문장만 줄바꿈으로 구분해 출력하세요.`,
@@ -63,11 +65,12 @@ export async function extractSellingPointsFromImages(imageUrls: string[], produc
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 500,
-      messages: [{ role: 'user', content }],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      messages: [{ role: 'user', content: content as any }],
     });
-    return msg.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map((b) => b.text).join('\n').trim();
+    return (msg.content as Array<{ type: string; text?: string }>)
+      .filter((b) => b.type === 'text')
+      .map((b) => b.text || '').join('\n').trim();
   } catch {
     return '';
   }
