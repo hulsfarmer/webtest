@@ -29,6 +29,27 @@ export interface ProductMeta {
   image?: string;
 }
 
+const SHOP_SITES = /(쿠팡|네이버쇼핑|스마트스토어|11번가|G마켓|Gmarket|옥션|Auction|위메프|티몬|SSG|무신사|롯데온|인터파크|Coupang)/i;
+
+/** og:title 접미사 정리: "제품 - 카테고리 | 쿠팡" → "제품" */
+export function cleanTitle(raw?: string): string {
+  let t = (raw || '').trim();
+  const parts = t.split(/\s*[|｜]\s*/);
+  if (parts.length > 1 && SHOP_SITES.test(parts[parts.length - 1])) {
+    parts.pop();
+    t = parts.join(' | ').trim();
+    // 쿠팡식 "제품 - 카테고리"의 마지막 카테고리 제거 (쉼표 없는 짧은 꼬리)
+    t = t.replace(/\s*[-–—]\s*[^-–—,]{1,15}$/, '').trim();
+  }
+  return t || (raw || '').trim();
+}
+
+/** 쿠팡 등의 SEO성 설명(별점·리뷰·"더 저렴하게")인지 — 홍보포인트로 부적합 */
+export function isSeoJunkDescription(d?: string): boolean {
+  if (!d) return false;
+  return /(별점|리뷰\s*\d|후기\s*\d|더\s*저렴|최저가|지금\s*쿠팡|쿠팡에서|무료배송|로켓배송)/.test(d);
+}
+
 export function extractOgMeta(html: string, baseUrl: string): ProductMeta {
   const title =
     metaContent(html, 'og:title', 'property') ||
@@ -46,7 +67,7 @@ export function extractOgMeta(html: string, baseUrl: string): ProductMeta {
     try { image = new URL(image, baseUrl).href; } catch { image = undefined; }
   }
   return {
-    title: title ? decodeEntities(title) : undefined,
+    title: title ? cleanTitle(decodeEntities(title)) : undefined,
     description: description ? decodeEntities(description) : undefined,
     image,
   };

@@ -27,6 +27,7 @@ export default function PromoCharacterPage() {
   const [importUrl, setImportUrl] = useState('');
   const [importBusy, setImportBusy] = useState(false);
   const [importedImagePath, setImportedImagePath] = useState(''); // /imports/xxx
+  const [importNote, setImportNote] = useState('');
 
   const [sections, setSections] = useState<Section[]>([]);
   const [scriptBusy, setScriptBusy] = useState(false);
@@ -58,7 +59,12 @@ export default function PromoCharacterPage() {
       if (d.title) setBusinessName(d.title);
       if (d.description) setSellingPoints(d.description);
       if (d.imageUrl) { setProductPreview(d.imageUrl); setImportedImagePath(d.imageUrl); setProductFile(null); }
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+      const got = [d.title && '제품명', d.imageUrl && '이미지', d.description && '홍보포인트'].filter(Boolean).join('·');
+      setImportNote(
+        (got ? `✅ ${got} 불러왔어요. ` : '') +
+        (d.descriptionSkipped || !d.description ? '이 쇼핑몰은 실제 홍보 포인트를 제공하지 않아요 — 아래 "홍보 포인트"에 제품의 핵심 특징을 직접 적어주세요 (대본 품질을 좌우해요).' : '내용을 확인·수정한 뒤 진행하세요.')
+      );
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); setImportNote(''); }
     finally { setImportBusy(false); }
   }
   function onChar(e: React.ChangeEvent<HTMLInputElement>) {
@@ -164,7 +170,8 @@ export default function PromoCharacterPage() {
                     {importBusy ? '불러오는 중' : '불러오기'}
                   </button>
                 </div>
-                <p className="text-xs text-neutral-500 mt-1.5">쿠팡·네이버 등 상품 링크를 붙여넣으면 제품명·홍보소재·대표이미지를 자동으로 채워요. (안 되면 아래에 직접 입력)</p>
+                <p className="text-xs text-neutral-500 mt-1.5">쿠팡·네이버 등 상품 링크를 붙여넣으면 제품명·대표이미지를 자동으로 채워요. (안 되면 아래에 직접 입력)</p>
+                {importNote && <p className="text-xs text-amber-300/90 mt-1.5">{importNote}</p>}
               </div>
               <div>
                 <label className="block text-sm text-neutral-300 mb-1.5">제품명 *</label>
