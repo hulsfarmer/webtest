@@ -251,36 +251,50 @@ export async function POST(req: NextRequest) {
     let segments: Seg[] = [];
     let subMode = 'none';
     if (narrationIn) {
-      const chunks = chunkForSubtitles(narrationIn);
       const speech = await detectSpeechSegments(effectiveCharPath, D0);
       const totalActive = speech.reduce((a, g) => a + (g.e - g.s), 0);
-      if (chunks.length && speech.length >= 2 && totalActive > 1) {
-        // 누적 발화시간(active) → 실제시간 변환 (쉼은 건너뜀 → 말할 때만 자막 진행)
-        const activeToReal = (aT: number): number => {
+      const words = narrationIn.split(/\s+/).filter(Boolean);
+      if (speech.length >= 2 && totalActive > 1 && words.length) {
+        // ── 순서를 뒤집는다: 자막을 글자로 먼저 쪼개지 않고, 실제 쉼구간(speech)을
+        //    먼저 놓고 각 구간에 그 시간만큼의 단어를 채운다. → 자막 전환이 항상
+        //    실제 쉼에서 일어나 전 구간 일관 싱크 (홍보영상의 '문장경계 전환'과 동일 원리).
+        const CAPTION_LEAD = 0.3;
+        const totalChars = words.reduce((a, w) => a + w.length, 0) || 1;
+        // 각 단어의 "발화시간상 중심"(active 초)
+        let cum = 0;
+        const wordActiveCenter = words.map((w) => {
+          const center = cum + w.length / 2;
+          cum += w.length;
+          return (center / totalChars) * totalActive;
+        });
+        // active 시간 → 세그먼트 인덱스
+        const activeToSegIdx = (aT: number): number => {
           let acc = 0;
-          for (const g of speech) {
-            const len = g.e - g.s;
-            if (aT <= acc + len) return g.s + (aT - acc);
+          for (let i = 0; i < speech.length; i++) {
+            const len = speech[i].e - speech[i].s;
+            if (aT <= acc + len) return i;
             acc += len;
           }
-          return speech[speech.length - 1].e;
+          return speech.length - 1;
         };
-        // 홍보영상 기법: 자막을 나레이션보다 살짝 먼저 띄운다(늦게 뜨는 느낌 방지)
-        const CAPTION_LEAD = 0.3;
-        const totalChars = chunks.reduce((a, c) => a + c.length, 0) || 1;
-        let charAcc = 0;
-        segments = chunks.map((p) => {
-          const aStart = (charAcc / totalChars) * totalActive;
-          charAcc += p.length;
-          const aEnd = (charAcc / totalChars) * totalActive;
-          const start = Math.max(0, activeToReal(aStart) - CAPTION_LEAD);
-          const end = Math.min(Math.max(start + 0.2, activeToReal(aEnd) - CAPTION_LEAD), D0);
-          return { start, end, text: p };
+        // 단어를 세그먼트 버킷에 배정
+        const buckets: string[][] = speech.map(() => []);
+        words.forEach((w, idx) => buckets[activeToSegIdx(wordActiveCenter[idx])].push(w));
+        // 단어가 배정된 세그먼트만 자막으로. 각 자막은 다음 자막 시작까지 유지(빈틈 없음)
+        const raw = speech
+          .map((g, i) => ({ g, text: buckets[i].join(' ') }))
+          .filter((x) => x.text.length > 0);
+        segments = raw.map((x, i) => {
+          const start = Math.max(0, x.g.s - CAPTION_LEAD);
+          const nextStart = i + 1 < raw.length ? Math.max(0, raw[i + 1].g.s - CAPTION_LEAD) : D0;
+          const end = Math.min(Math.max(start + 0.25, nextStart), D0);
+          return { start, end, text: x.text };
         });
-        console.log(`[recompose ${outId}] 발화구간 ${speech.length}개, active ${totalActive.toFixed(2)}s / D ${D0.toFixed(2)}s, speed ${speed}`);
-        subMode = 'speech-align';
+        console.log(`[recompose ${outId}] 발화구간 ${speech.length}개→자막 ${segments.length}개, active ${totalActive.toFixed(2)}s / D ${D0.toFixed(2)}s, speed ${speed}`);
+        subMode = 'segment-align';
       } else {
         // 폴백: 전체 길이에 글자수 비례
+        const chunks = chunkForSubtitles(narrationIn);
         const totalC = chunks.reduce((a, c) => a + c.length, 0) || 1;
         let acc = 0;
         segments = chunks.map((p) => {
