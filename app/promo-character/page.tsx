@@ -90,11 +90,11 @@ export default function PromoCharacterPage() {
       if (d.imagePath) { setImportedImagePath(d.imagePath); setProductFile(null); } // 영상 생성용 경로
       const got = [d.title && '제품명', d.imageUrl && '이미지', d.description && '홍보포인트'].filter(Boolean).join('·');
       const tail = d.descriptionSource === 'images'
-        ? '📄 상세페이지 이미지를 읽어 홍보 포인트를 자동 추출했어요 — 사실과 맞는지 확인·수정하세요.'
+        ? '상세페이지 이미지를 읽어 홍보 포인트를 자동 추출했어요 — 사실과 맞는지 확인·수정하세요.'
         : !d.description
           ? '홍보 포인트를 못 찾았어요 — 아래에 제품 핵심 특징을 직접 적어주세요 (대본 품질을 좌우해요).'
           : '내용을 확인·수정한 뒤 진행하세요.';
-      setImportNote((got ? `✅ ${got} 불러왔어요. ` : '') + tail);
+      setImportNote((got ? `${got} 불러왔어요. ` : '') + tail);
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); setImportNote(''); }
     finally { setImportBusy(false); }
   }
@@ -146,7 +146,7 @@ export default function PromoCharacterPage() {
     fd.append('headerTheme', headerTheme);
 
     setBusy(true); setSteps({ script: 'done', audio: 'running', video: 'pending' });
-    setStatusMsg('⏳ 나레이션 음성 생성 중...');
+    setStatusMsg('나레이션 음성 생성 중...');
     try {
       const r = await fetch('/api/promo-character', { method: 'POST', body: fd });
       const data = await r.json();
@@ -169,23 +169,23 @@ export default function PromoCharacterPage() {
         setSteps({ script: d.steps?.script ?? 'done', audio: d.steps?.audio ?? 'pending', video: d.steps?.video ?? 'pending' });
         if (d.status === 'done' && d.videoUrl) {
           if (pollRef.current) clearInterval(pollRef.current);
-          setVideoUrl(d.videoUrl); setStatusMsg(`✅ 완료! (${secs}초)`); setBusy(false);
+          setVideoUrl(d.videoUrl); setStatusMsg(`완료! (${secs}초)`); setBusy(false);
         } else if (d.status === 'failed') {
           if (pollRef.current) clearInterval(pollRef.current);
           setError(d.error || '생성 실패'); setStatusMsg(''); setBusy(false);
         } else {
-          setStatusMsg(`⏳ 처리 중... (${secs}초 경과 · 캐릭터 영상 생성은 길이에 따라 5~15분 걸립니다)`);
+          setStatusMsg(`처리 중... (${secs}초 경과 · 캐릭터 영상 생성은 길이에 따라 5~15분 걸립니다)`);
         }
       } catch { /* keep polling */ }
     }, 3000);
   }
 
-  const dot = (s: StepState) => s === 'done' ? '✅' : s === 'running' ? '⏳' : s === 'failed' ? '❌' : '⚪';
+  const dot = (s: StepState) => s === 'done' ? '완료' : s === 'running' ? '진행' : s === 'failed' ? '실패' : '대기';
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 px-4 py-10">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold">🛍️ 제품 홍보 캐릭터 영상</h1>
+        <h1 className="text-2xl font-bold">제품 홍보 캐릭터 영상</h1>
         <p className="text-sm text-neutral-400 mt-1 mb-8">
           제품 정보 → AI 대본(검토·편집) → 캐릭터 홍보 쇼츠 (인트로 → 제품+코너 캐릭터 → 마무리, 상단 제품명 고정)
         </p>
@@ -195,7 +195,7 @@ export default function PromoCharacterPage() {
           {phase === 'form' ? (
             <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 space-y-4">
               <div className="pb-4 border-b border-neutral-800">
-                <label className="block text-sm text-emerald-300 mb-1.5">🔗 제품 링크로 자동 채우기 (선택)</label>
+                <label className="block text-sm text-emerald-300 mb-1.5">제품 링크로 자동 채우기 (선택)</label>
                 <div className="flex gap-2">
                   <input className={inputCls} value={importUrl} onChange={(e) => setImportUrl(e.target.value)} placeholder="상품 페이지 URL (쿠팡·네이버·자사몰 등)" />
                   <button onClick={onImport} disabled={importBusy}
@@ -325,7 +325,7 @@ export default function PromoCharacterPage() {
               <div>{dot(steps.video)} 캐릭터 영상 + 합성 (Kling)</div>
             </div>
             {statusMsg && <div className="text-sm text-neutral-300 mb-3">{statusMsg}</div>}
-            {error && <div className="text-sm text-red-400 mb-3">❌ {error}</div>}
+            {error && <div className="text-sm text-red-400 mb-3">{error}</div>}
             {videoUrl && <video src={videoUrl} controls autoPlay loop className="w-full max-w-[280px] rounded-xl mx-auto" />}
             {!videoUrl && !error && phase === 'form' && <div className="text-xs text-neutral-500">먼저 제품 정보를 넣고 &quot;AI 대본 생성&quot;을 누르세요.</div>}
           </div>

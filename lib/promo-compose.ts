@@ -12,11 +12,11 @@ const execAsync = promisify(exec);
 
 /** 마크다운/특수문자 제거 — TTS 가 '*' 를 "별표"로 읽는 문제 방지 */
 export function sanitizeScript(text: string): string {
-  return (text || '')
+  return stripEmoji((text || '')
     .replace(/\[[^\]]*\]\([^)]*\)/g, '')   // [text](url)
     .replace(/[*#`_~>|]/g, '')             // 마크다운 기호
     .replace(/\s{2,}/g, ' ')
-    .trim();
+    .trim());
 }
 
 const W = 1080, H = 1920;
@@ -42,7 +42,7 @@ function findFont(bold = false): string {
 /** 이모지·기호 제거 (영상 텍스트용) */
 export function stripEmoji(s: string): string {
   return (s || '')
-    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{1F1E6}-\u{1F1FF}]/gu, '')
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{2122}\u{2139}\u{1F1E6}-\u{1F1FF}]/gu, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
