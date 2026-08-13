@@ -57,10 +57,12 @@ export function extractCategory(raw?: string): string {
   return '';
 }
 
-/** 쿠팡 등의 SEO성 설명(별점·리뷰·"더 저렴하게")인지 — 홍보포인트로 부적합 */
+/** 쇼핑몰 SEO성/일반 안내 설명(별점·리뷰·공식몰·할인쿠폰 등)인지 — 홍보포인트로 부적합 */
 export function isSeoJunkDescription(d?: string): boolean {
   if (!d) return false;
-  return /(별점|리뷰\s*\d|후기\s*\d|더\s*저렴|최저가|지금\s*쿠팡|쿠팡에서|무료배송|로켓배송)/.test(d);
+  const t = d.trim();
+  if (t.length < 15) return true; // 너무 짧음(브랜드명/스토어명만)
+  return /(별점|리뷰\s*\d|후기\s*\d|더\s*저렴|최저가|지금\s*쿠팡|쿠팡에서|무료배송|로켓배송|공식몰|공식\s*스토어|공식스토어|스토어입니다|할인\s*쿠폰|\d+\s*%\s*(추가|할인)|즉시\s*할인|믿고\s*구매)/.test(t);
 }
 
 /** 상세페이지 마케팅 이미지 URL 추출 (쿠팡 여러 형식 + 일반몰 fallback) */
