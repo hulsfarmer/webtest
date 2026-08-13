@@ -129,9 +129,11 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     cleanup();
     updateJob(jobId, { status: 'done', progress: 100, steps: { script: 'done', audio: 'done', video: 'done' }, videoUrl: `/api/video/${jobId}` });
   } catch (err) {
-    cleanup();
+    // 실패 시엔 임시파일을 지우지 않는다: 캐릭터 영상(Kling=유료)과 합성 입력이
+    // 남아있어야 Kling 재과금 없이 합성만 다시 돌릴 수 있다.
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[PromoCharacterJob ${jobId}] Failed:`, msg);
+    console.error(`[PromoCharacterJob ${jobId}] 임시파일 유지(재합성용): ${charVideoPath}`);
     updateJob(jobId, { status: 'failed', error: msg });
   }
 }
