@@ -79,29 +79,68 @@ async function registerFonts() {
   return fams;
 }
 
-/** 상단 제품명 헤더 오버레이 (전 구간에 표시). 길면 최대 2줄로 줄바꿈 */
-export async function renderHeaderOverlay(title: string, outPath: string): Promise<void> {
+// shortsai 헤더 테마 재사용 (밴드배경 / 제품명색 / 홍보문구색 / 외곽선)
+export interface HeaderThemeDef { bg: string; nameColor: string; titleColor: string; outline: string; }
+const OUTLINE = 'rgba(0,0,0,0.85)';
+export const HEADER_THEMES: Record<string, HeaderThemeDef> = {
+  blur:     { bg: 'blur',    nameColor: '#FDE047', titleColor: '#FFFFFF', outline: OUTLINE },
+  black:    { bg: '#121212', nameColor: '#FFE600', titleColor: '#FFFFFF', outline: OUTLINE },
+  navy:     { bg: '#0A192F', nameColor: '#00E5FF', titleColor: '#FFFFFF', outline: OUTLINE },
+  neon:     { bg: '#E5FF00', nameColor: '#14213D', titleColor: '#D32F2F', outline: 'rgba(0,0,0,0)' },
+  violet:   { bg: '#1A0B2E', nameColor: '#FF2A85', titleColor: '#FFFFFF', outline: OUTLINE },
+  burgundy: { bg: '#4A0E17', nameColor: '#FFC107', titleColor: '#FFFFFF', outline: OUTLINE },
+};
+
+function hexToRgba(hex: string, a: number): string {
+  const m = hex.replace('#', '');
+  const n = m.length === 3 ? m.split('').map((c) => c + c).join('') : m;
+  const r = parseInt(n.slice(0, 2), 16), g = parseInt(n.slice(2, 4), 16), b = parseInt(n.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+/** 상단 헤더: 제품명(윗줄) + 홍보문구(아랫줄), 테마별 색·배경. 길면 각 2줄 */
+export async function renderHeaderOverlay(businessName: string, catchphrase: string, themeId: string, outPath: string): Promise<void> {
   const { createCanvas } = await import('@napi-rs/canvas');
   const fams = await registerFonts();
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext('2d');
+  const th = HEADER_THEMES[themeId] || HEADER_THEMES.blur;
 
-  const clean = stripEmoji(title);
-  const { lines, size } = fitLines(ctx, clean, fams.title, W - 120, 2, 88, 52);
-  const lineH = Math.round(size * 1.18);
-  const bandBottom = 90 + lines.length * lineH + 30;
+  const name = stripEmoji(businessName);
+  const phrase = stripEmoji(catchphrase || '');
+  const nameFit = fitLines(ctx, name, fams.title, W - 130, 2, 82, 50);
+  const phraseFit = phrase ? fitLines(ctx, phrase, fams.body, W - 150, 2, 60, 40) : { lines: [] as string[], size: 0 };
+  const nameLH = Math.round(nameFit.size * 1.16);
+  const phraseLH = phraseFit.size ? Math.round(phraseFit.size * 1.22) : 0;
+  const topPad = 66, gap = phrase ? 24 : 0, botPad = 44;
+  const bandH = topPad + nameFit.lines.length * nameLH + gap + phraseFit.lines.length * phraseLH + botPad;
 
-  const g = ctx.createLinearGradient(0, 0, 0, bandBottom + 60);
-  g.addColorStop(0, 'rgba(0,0,0,0.6)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, bandBottom + 60);
+  // 배경 밴드
+  if (th.bg === 'blur') {
+    const g = ctx.createLinearGradient(0, 0, 0, bandH + 70);
+    g.addColorStop(0, 'rgba(0,0,0,0.72)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, bandH + 70);
+  } else {
+    ctx.fillStyle = th.bg; ctx.fillRect(0, 0, W, bandH);
+    const g = ctx.createLinearGradient(0, bandH, 0, bandH + 46);
+    g.addColorStop(0, hexToRgba(th.bg, 1)); g.addColorStop(1, hexToRgba(th.bg, 0));
+    ctx.fillStyle = g; ctx.fillRect(0, bandH, W, 46);
+  }
 
   ctx.textAlign = 'center';
-  ctx.font = `${size}px "${fams.title}"`;
-  lines.forEach((ln, i) => {
-    const y = 90 + i * lineH + size * 0.8;
-    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillText(ln, W / 2 + 3, y + 3);
-    ctx.fillStyle = '#ffffff'; ctx.fillText(ln, W / 2, y);
-  });
+  const drawRow = (text: string, y: number, size: number, fontFam: string, color: string) => {
+    ctx.font = `${size}px "${fontFam}"`;
+    if (th.outline !== 'rgba(0,0,0,0)') { ctx.lineWidth = Math.max(3, size * 0.09); ctx.strokeStyle = th.outline; ctx.lineJoin = 'round'; ctx.strokeText(text, W / 2, y); }
+    ctx.fillStyle = color; ctx.fillText(text, W / 2, y);
+  };
+  // 제품명 블록
+  let baseline = topPad + nameFit.size * 0.82;
+  nameFit.lines.forEach((ln) => { drawRow(ln, baseline, nameFit.size, fams.title, th.nameColor); baseline += nameLH; });
+  // 홍보문구 블록
+  if (phrase) {
+    baseline = baseline - nameLH + gap + phraseFit.size;
+    phraseFit.lines.forEach((ln) => { drawRow(ln, baseline, phraseFit.size, fams.body, th.titleColor); baseline += phraseLH; });
+  }
   fs.writeFileSync(outPath, canvas.toBuffer('image/png'));
 }
 

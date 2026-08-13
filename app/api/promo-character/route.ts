@@ -18,6 +18,8 @@ interface CharJobInput extends PromoInput {
   productImagePath: string;
   overlayTitle: string;
   overlayCta: string;
+  catchphrase: string;
+  headerTheme: string;
   sections?: ScriptSection[]; // 사용자가 편집한 대본(있으면 AI 생성 생략)
 }
 
@@ -78,7 +80,7 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     if (!(D > 1)) D = await probeDuration(audioPath);
     const t1 = +(D * f1).toFixed(2), t2 = +(D * f2).toFixed(2);
     await Promise.all([
-      renderHeaderOverlay(input.overlayTitle, headerPath),
+      renderHeaderOverlay(input.overlayTitle, input.catchphrase, input.headerTheme, headerPath),
       renderCtaOverlay(input.overlayCta, ctaPath),
       renderPipAssets(maskPath, ringPath),
     ]);
@@ -107,6 +109,8 @@ export async function POST(req: NextRequest) {
   const businessType = ((fd.get('businessType') as string | null) ?? '').trim();
   const sellingPoints = ((fd.get('sellingPoints') as string | null) ?? '').trim();
   const cta = ((fd.get('cta') as string | null) ?? '').trim();
+  const catchphrase = ((fd.get('catchphrase') as string | null) ?? '').trim();
+  const headerTheme = (fd.get('headerTheme') as string | null) ?? 'blur';
   const voice = (fd.get('voice') as string | null) ?? 'ko-KR-Chirp3-HD-Aoede';
   const duration = parseInt((fd.get('duration') as string | null) ?? '20', 10);
   const tone = (fd.get('tone') as string | null) ?? '친근한';
@@ -162,7 +166,8 @@ export async function POST(req: NextRequest) {
   processPromoCharacterJob(jobId, {
     businessName, businessType, sellingPoints, cta, duration, tone,
     voice, characterBuf, characterType, productImagePath,
-    overlayTitle: businessName, overlayCta: cta || '지금 구매하기', sections,
+    overlayTitle: businessName, overlayCta: cta || '지금 구매하기',
+    catchphrase, headerTheme, sections,
   }).catch(console.error);
 
   return NextResponse.json({ jobId });

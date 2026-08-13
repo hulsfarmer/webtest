@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 const VOICES = [
   { id: 'ko-KR-Chirp3-HD-Aoede', label: '지은 (여·자연스러운)' },
@@ -8,6 +8,14 @@ const VOICES = [
   { id: 'ko-KR-Chirp3-HD-Charon', label: '민준 (남·자연스러운)' },
 ];
 const PRESETS = [{ id: 'preset-jieun', label: '지은', src: '/characters/preset-jieun.png' }];
+const HEADER_THEMES = [
+  { id: 'blur', label: '기본', bg: 'linear-gradient(#333,#111)', name: '#FDE047' },
+  { id: 'black', label: '블랙', bg: '#121212', name: '#FFE600' },
+  { id: 'navy', label: '네이비', bg: '#0A192F', name: '#00E5FF' },
+  { id: 'neon', label: '네온', bg: '#E5FF00', name: '#14213D' },
+  { id: 'violet', label: '바이올렛', bg: '#1A0B2E', name: '#FF2A85' },
+  { id: 'burgundy', label: '버건디', bg: '#4A0E17', name: '#FFC107' },
+];
 type StepState = 'pending' | 'running' | 'done' | 'failed';
 type Section = { type: 'hook' | 'main' | 'cta'; label: string; text: string };
 
@@ -17,6 +25,9 @@ export default function PromoCharacterPage() {
   const [businessType, setBusinessType] = useState('');
   const [sellingPoints, setSellingPoints] = useState('');
   const [cta, setCta] = useState('');
+  const [catchphrase, setCatchphrase] = useState('');
+  const [headerTheme, setHeaderTheme] = useState('blur');
+  const [headerPreview, setHeaderPreview] = useState('');
   const [voice, setVoice] = useState(VOICES[0].id);
   const [duration, setDuration] = useState('20');
   const [preset, setPreset] = useState('preset-jieun');
@@ -39,6 +50,22 @@ export default function PromoCharacterPage() {
   const [error, setError] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputCls = 'w-full bg-neutral-950 border border-neutral-700 rounded-lg p-2.5 text-sm';
+
+  // 헤더 실시간 미리보기 (테마·문구 바뀔 때 디바운스 후 렌더)
+  useEffect(() => {
+    if (phase !== 'script' || !businessName.trim()) { setHeaderPreview(''); return; }
+    const id = setTimeout(async () => {
+      try {
+        const r = await fetch('/api/promo-character/header-preview', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ businessName, catchphrase, headerTheme }),
+        });
+        const d = await r.json();
+        if (r.ok && d.image) setHeaderPreview(d.image);
+      } catch { /* noop */ }
+    }, 400);
+    return () => clearTimeout(id);
+  }, [phase, businessName, catchphrase, headerTheme]);
 
   function onProduct(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null; setProductFile(f); setProductPreview(f ? URL.createObjectURL(f) : ''); if (f) setImportedImagePath('');
@@ -96,7 +123,7 @@ export default function PromoCharacterPage() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || '대본 생성 실패');
       setSections(d.sections);
-      if (d.title && !cta.trim()) { /* 유지 */ }
+      if (d.title && !catchphrase.trim()) setCatchphrase(d.title); // 홍보문구 기본값 = AI 캐치 타이틀
       setPhase('script');
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setScriptBusy(false); }
@@ -115,6 +142,8 @@ export default function PromoCharacterPage() {
     if (productFile) fd.append('product', productFile); else fd.append('productPath', importedImagePath);
     if (charFile) fd.append('character', charFile); else fd.append('preset', preset);
     fd.append('sections', JSON.stringify(sections.map((s) => ({ type: s.type, text: s.text }))));
+    fd.append('catchphrase', catchphrase);
+    fd.append('headerTheme', headerTheme);
 
     setBusy(true); setSteps({ script: 'done', audio: 'running', video: 'pending' });
     setStatusMsg('⏳ 나레이션 음성 생성 중...');
@@ -240,7 +269,7 @@ export default function PromoCharacterPage() {
                 <div className="text-sm font-semibold">대본 검토·편집</div>
                 <button onClick={() => setPhase('form')} className="text-xs text-neutral-400 hover:text-neutral-200">← 정보 수정</button>
               </div>
-              <p className="text-xs text-neutral-500">각 장면에 들어갈 나레이션이에요. 자유롭게 수정하세요. (상단에는 제품명 &quot;{businessName}&quot; 이 고정 표시됩니다)</p>
+              <p className="text-xs text-neutral-500">각 장면에 들어갈 나레이션이에요. 자유롭게 수정하세요.</p>
               {sections.map((s, i) => (
                 <div key={s.type}>
                   <label className="block text-sm text-emerald-300 mb-1.5">{s.label}</label>
@@ -248,6 +277,38 @@ export default function PromoCharacterPage() {
                     onChange={(e) => setSections((prev) => prev.map((p, j) => j === i ? { ...p, text: e.target.value } : p))} />
                 </div>
               ))}
+
+              {/* 헤더 설정 */}
+              <div className="pt-3 border-t border-neutral-800 space-y-3">
+                <div className="text-sm font-semibold">상단 헤더</div>
+                <div className="text-xs text-neutral-500">윗줄=제품명 &quot;{businessName}&quot;, 아랫줄=홍보문구</div>
+                <div>
+                  <label className="block text-sm text-neutral-300 mb-1.5">홍보 문구 (헤더 아랫줄)</label>
+                  <input className={inputCls} value={catchphrase} onChange={(e) => setCatchphrase(e.target.value)} placeholder="예: 3주 만에 톤업 완성" />
+                </div>
+                <div>
+                  <label className="block text-sm text-neutral-300 mb-1.5">헤더 테마</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {HEADER_THEMES.map((t) => (
+                      <button key={t.id} onClick={() => setHeaderTheme(t.id)} title={t.label}
+                        className={`px-2.5 py-2 rounded-lg text-xs font-bold border-2 ${headerTheme === t.id ? 'border-emerald-400' : 'border-transparent'}`}
+                        style={{ background: t.bg, color: t.name }}>
+                        {businessName || '제품명'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {headerPreview && (
+                  <div>
+                    <div className="text-xs text-neutral-500 mb-1">헤더 미리보기</div>
+                    <div className="w-[150px] rounded-lg overflow-hidden border border-neutral-700" style={{ aspectRatio: '9/16', background: 'linear-gradient(#6b7280,#374151)' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={headerPreview} alt="header preview" className="w-full block" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button onClick={onGenerateVideo} disabled={busy}
                 className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-neutral-950 font-semibold rounded-lg py-3">
                 {busy ? '영상 생성 중...' : '② 이 대본으로 영상 생성'}
