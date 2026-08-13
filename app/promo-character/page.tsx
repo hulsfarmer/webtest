@@ -252,9 +252,10 @@ export default function PromoCharacterPage() {
                 <div>
                   <label className="block text-sm text-neutral-300 mb-1.5">길이(초)</label>
                   <select className={inputCls} value={duration} onChange={(e) => setDuration(e.target.value)}>
-                    <option value="15">15초 (빠름)</option>
                     <option value="20">20초</option>
                     <option value="30">30초</option>
+                    <option value="45">45초</option>
+                    <option value="60">60초</option>
                   </select>
                 </div>
               </div>

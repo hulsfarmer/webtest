@@ -6,7 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { createJob, updateJob } from '@/lib/jobStore';
 import { generatePromoScript, PromoInput, ScriptSection } from '@/lib/anthropic';
-import { generateAudioWithTimepoints } from '@/lib/tts';
+import { generateAudio } from '@/lib/tts';
 import { uploadToHedra, submitKlingAvatar, pollHedraVideo } from '@/lib/hedra';
 import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, probeDuration, sanitizeScript } from '@/lib/promo-compose';
 
@@ -70,25 +70,19 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     // 구간별 텍스트(정제) + 나레이션
     const byType = (t: ScriptSection['type']) => sanitizeScript(sections.filter((s) => s.type === t).map((s) => s.text).join(' '));
     const hookT = byType('hook'), mainT = byType('main'), ctaT = byType('cta');
-    let narration = [hookT, mainT, ctaT].filter(Boolean).join('  ').trim()
+    const narration = [hookT, mainT, ctaT].filter(Boolean).join('  ').trim()
       || sanitizeScript(sections.map((s) => s.text).join(' '));
-    // 길이 상한(한국어 ~5.5자/초): 너무 길면 문장 경계에서 컷 (OOM·과대기 방지)
-    const maxChars = Math.max(90, (input.duration || 20) * 7);
-    if (narration.length > maxChars) {
-      const cut = narration.slice(0, maxChars);
-      const lastEnd = Math.max(cut.lastIndexOf('.'), cut.lastIndexOf('!'), cut.lastIndexOf('?'), cut.lastIndexOf('。'), cut.lastIndexOf('요 '), cut.lastIndexOf('다 '));
-      narration = (lastEnd > maxChars * 0.5 ? cut.slice(0, lastEnd + 1) : cut).trim();
-    }
     // 구간 비율(텍스트 길이 기반)
     const L = hookT.length + mainT.length + ctaT.length;
     let f1 = L > 0 ? hookT.length / L : 0.28;
     let f2 = L > 0 ? (hookT.length + mainT.length) / L : 0.72;
     if (!(f1 > 0.08 && f2 > f1 + 0.1 && f2 < 0.92)) { f1 = 0.28; f2 = 0.72; }
 
-    // 2) 나레이션 음성 (자막용 문장 청크별 타이밍)
+    // 2) 나레이션 음성 (연속 통 오디오 — 청크별 생성은 문장 사이 멈춤 유발)
     updateJob(jobId, { status: 'generating_audio', progress: 30, steps: { script: 'done', audio: 'running', video: 'pending' } });
-    const subChunks = chunkForSubtitles(narration);
-    const chunkDurs = await generateAudioWithTimepoints(subChunks.length ? subChunks : [narration], audioPath, input.voice, 1.0);
+    // 영어 전대문자(브랜드명 등)는 소문자로 — Chirp3-HD가 철자로 읽는 것 방지
+    const ttsText = narration.replace(/[A-Z]{2,}/g, (m) => m.toLowerCase());
+    await generateAudio(ttsText, audioPath, input.duration || 30, input.voice, 1.0);
 
     // 3) Kling 캐릭터 영상
     updateJob(jobId, { status: 'generating_video', progress: 45, steps: { script: 'done', audio: 'done', video: 'running' } });
@@ -107,15 +101,15 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     if (!(D > 1)) D = await probeDuration(audioPath);
     const t1 = +(D * f1).toFixed(2), t2 = +(D * f2).toFixed(2);
 
-    // 자막 큐: 청크 duration → 영상 길이에 맞춰 스케일
-    const chunks = subChunks.length ? subChunks : [narration];
-    const totalDur = chunkDurs.reduce((a, b) => a + b, 0) || D;
-    const scale = D / totalDur;
+    // 자막 큐: 청크 글자수 비례로 D 를 배분 (연속 오디오라 멈춤 없음, 대략 싱크)
+    const chunks = chunkForSubtitles(narration);
+    const totalChars = chunks.reduce((a, c) => a + c.length, 0) || 1;
     const subtitles: { path: string; start: number; end: number }[] = [];
     let acc = 0;
     for (let i = 0; i < chunks.length; i++) {
-      const start = acc * scale, end = (acc + (chunkDurs[i] || 0)) * scale;
-      acc += chunkDurs[i] || 0;
+      const dur = D * (chunks[i].length / totalChars);
+      const start = acc, end = acc + dur;
+      acc += dur;
       const sp = path.join(tmpDir, `${jobId}_sub${i}.png`);
       await renderSubtitle(chunks[i], sp);
       subtitles.push({ path: sp, start: +start.toFixed(2), end: +end.toFixed(2) });

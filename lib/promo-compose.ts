@@ -98,33 +98,37 @@ function hexToRgba(hex: string, a: number): string {
   return `rgba(${r},${g},${b},${a})`;
 }
 
-/** 상단 헤더: 제품명(윗줄) + 홍보문구(아랫줄), 테마별 색·배경. 길면 각 2줄 */
+export const HEADER_BAND_H = 340; // 고정 헤더 밴드 높이 (캐릭터는 이 아래에 배치)
+
+/** 상단 헤더 밴드(고정 높이): 제품명(윗줄) + 홍보문구(아랫줄), 테마별 색·배경 */
 export async function renderHeaderOverlay(businessName: string, catchphrase: string, themeId: string, outPath: string): Promise<void> {
   const { createCanvas } = await import('@napi-rs/canvas');
   const fams = await registerFonts();
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext('2d');
   const th = HEADER_THEMES[themeId] || HEADER_THEMES.blur;
+  const BH = HEADER_BAND_H;
 
   const name = stripEmoji(businessName);
   const phrase = stripEmoji(catchphrase || '');
-  const nameFit = fitLines(ctx, name, fams.title, W - 130, 2, 82, 50);
-  const phraseFit = phrase ? fitLines(ctx, phrase, fams.body, W - 150, 2, 60, 40) : { lines: [] as string[], size: 0 };
-  const nameLH = Math.round(nameFit.size * 1.16);
-  const phraseLH = phraseFit.size ? Math.round(phraseFit.size * 1.22) : 0;
-  const topPad = 66, gap = phrase ? 24 : 0, botPad = 44;
-  const bandH = topPad + nameFit.lines.length * nameLH + gap + phraseFit.lines.length * phraseLH + botPad;
+  const nameFit = fitLines(ctx, name, fams.title, W - 130, 2, 80, 48);
+  const phraseFit = phrase ? fitLines(ctx, phrase, fams.body, W - 150, 2, 58, 38) : { lines: [] as string[], size: 0 };
+  const nameLH = Math.round(nameFit.size * 1.14);
+  const phraseLH = phraseFit.size ? Math.round(phraseFit.size * 1.2) : 0;
+  const gap = phrase ? 22 : 0;
+  const blockH = nameFit.lines.length * nameLH + gap + phraseFit.lines.length * phraseLH;
 
-  // 배경 밴드
+  // 배경 밴드 (고정 높이, 아래 가장자리 살짝 페이드)
   if (th.bg === 'blur') {
-    const g = ctx.createLinearGradient(0, 0, 0, bandH + 70);
-    g.addColorStop(0, 'rgba(0,0,0,0.72)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, bandH + 70);
+    ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(0, 0, W, BH);
+    const g = ctx.createLinearGradient(0, BH - 40, 0, BH);
+    g.addColorStop(0, 'rgba(0,0,0,0.8)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, BH - 40, W, 40);
   } else {
-    ctx.fillStyle = th.bg; ctx.fillRect(0, 0, W, bandH);
-    const g = ctx.createLinearGradient(0, bandH, 0, bandH + 46);
+    ctx.fillStyle = th.bg; ctx.fillRect(0, 0, W, BH);
+    const g = ctx.createLinearGradient(0, BH - 8, 0, BH + 34);
     g.addColorStop(0, hexToRgba(th.bg, 1)); g.addColorStop(1, hexToRgba(th.bg, 0));
-    ctx.fillStyle = g; ctx.fillRect(0, bandH, W, 46);
+    ctx.fillStyle = g; ctx.fillRect(0, BH - 8, W, 42);
   }
 
   ctx.textAlign = 'center';
@@ -133,10 +137,9 @@ export async function renderHeaderOverlay(businessName: string, catchphrase: str
     if (th.outline !== 'rgba(0,0,0,0)') { ctx.lineWidth = Math.max(3, size * 0.09); ctx.strokeStyle = th.outline; ctx.lineJoin = 'round'; ctx.strokeText(text, W / 2, y); }
     ctx.fillStyle = color; ctx.fillText(text, W / 2, y);
   };
-  // 제품명 블록
-  let baseline = topPad + nameFit.size * 0.82;
+  // 밴드 안에서 세로 중앙 정렬
+  let baseline = (BH - blockH) / 2 + nameFit.size * 0.82;
   nameFit.lines.forEach((ln) => { drawRow(ln, baseline, nameFit.size, fams.title, th.nameColor); baseline += nameLH; });
-  // 홍보문구 블록
   if (phrase) {
     baseline = baseline - nameLH + gap + phraseFit.size;
     phraseFit.lines.forEach((ln) => { drawRow(ln, baseline, phraseFit.size, fams.body, th.titleColor); baseline += phraseLH; });
@@ -170,7 +173,7 @@ export async function renderCtaOverlay(cta: string, outPath: string): Promise<vo
 export const SUB_STRIP_H = 260;   // 자막 스트립 높이 (풀프레임 대신 → OOM 방지)
 export const SUB_Y = 930;         // 합성에서 스트립을 얹을 y (박스 중앙 ≈ 1060)
 
-/** 나레이션 자막 PNG (작은 스트립: 1080xSUB_STRIP_H 투명, 어두운 박스 + 흰 글자) */
+/** 나레이션 자막 PNG (작은 스트립: 1080xSUB_STRIP_H 투명, 박스 없이 흰 글자 + 검은 외곽선) */
 export async function renderSubtitle(text: string, outPath: string): Promise<void> {
   const { createCanvas } = await import('@napi-rs/canvas');
   const fams = await registerFonts();
@@ -181,21 +184,14 @@ export async function renderSubtitle(text: string, outPath: string): Promise<voi
   const lineH = Math.round(size * 1.3);
   ctx.font = `${size}px "${fams.body}"`;
   let maxW = 0; lines.forEach((l) => { maxW = Math.max(maxW, ctx.measureText(l).width); });
-  const bw = Math.min(W - 80, maxW + 60), bh = lines.length * lineH + 34;
+  const bh = lines.length * lineH;
   const cy = SUB_STRIP_H / 2;
-  const bx = (W - bw) / 2, by = cy - bh / 2, rr = 22;
-  ctx.fillStyle = 'rgba(0,0,0,0.58)';
-  ctx.beginPath();
-  ctx.moveTo(bx + rr, by);
-  ctx.arcTo(bx + bw, by, bx + bw, by + bh, rr);
-  ctx.arcTo(bx + bw, by + bh, bx, by + bh, rr);
-  ctx.arcTo(bx, by + bh, bx, by, rr);
-  ctx.arcTo(bx, by, bx + bw, by, rr);
-  ctx.closePath(); ctx.fill();
+  // 박스 없이: 흰 글자 + 강한 검은 외곽선 (홍보영상 자막식)
   ctx.textAlign = 'center';
-  let y = by + 22 + size * 0.8;
+  let y = cy - bh / 2 + size * 0.8;
   lines.forEach((l) => {
-    ctx.lineWidth = Math.max(3, size * 0.09); ctx.strokeStyle = 'rgba(0,0,0,0.9)'; ctx.lineJoin = 'round'; ctx.strokeText(l, W / 2, y);
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(6, size * 0.22); ctx.strokeStyle = 'rgba(0,0,0,0.92)'; ctx.strokeText(l, W / 2, y);
     ctx.fillStyle = '#ffffff'; ctx.fillText(l, W / 2, y);
     y += lineH;
   });
@@ -240,9 +236,11 @@ export async function composePromoCharacter(opts: {
   // 입력: [0]제품 [1]캐릭터 [2]헤더 [3]CTA [4]마스크 [5]링, [6..]=자막
   const parts = [
     `[1:v]split=3[v1][v2][v3]`,
-    `[v1]scale=${W}:${H},setsar=1[cf1a]`,
+    // 인트로: 캐릭터를 헤더밴드 아래 영역에 채우고 + 헤더 밴드 위에
+    `[v1]scale=${W}:${H - HEADER_BAND_H}:force_original_aspect_ratio=increase,crop=${W}:${H - HEADER_BAND_H},setsar=1,pad=${W}:${H}:0:${HEADER_BAND_H}:color=black[cf1a]`,
     `[cf1a][2:v]overlay=0:0[cf1]`,
-    `[v2]scale=${W}:${H},setsar=1[cf2a]`,
+    // 아웃트로: 캐릭터(헤더밴드 아래) + 헤더 + CTA
+    `[v2]scale=${W}:${H - HEADER_BAND_H}:force_original_aspect_ratio=increase,crop=${W}:${H - HEADER_BAND_H},setsar=1,pad=${W}:${H}:0:${HEADER_BAND_H}:color=black[cf2a]`,
     `[cf2a][2:v]overlay=0:0[cf2b]`,
     `[cf2b][3:v]overlay=0:0[cf2]`,
     `[0:v]scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=white,setsar=1[bgs]`,
