@@ -239,26 +239,27 @@ export async function composePromoCharacter(opts: {
 
   // Pass A: 캐릭터 인터컷 + 제품 PiP + 헤더 + CTA → 베이스(자막 없음)
   // 입력: [0]제품 [1]캐릭터 [2]헤더 [3]CTA [4]마스크 [5]링
+  //
+  // ⚠ split=3 + concat(trim) 방식은 긴 영상에서 OOM: concat 이 첫 세그먼트를
+  //   끝까지 읽는 동안 split 이 t1 구간(≈16s×30fps)의 캐릭터 프레임을 통째로
+  //   버퍼링(≈1.3GB) → Killed. 대신 캐릭터를 단일 타임라인으로 두고 중간 구간만
+  //   enable=between 오버레이로 덮는다(모든 분기가 같은 속도로 진행 → 버퍼 없음).
   const baseParts = [
-    `[1:v]split=3[v1][v2][v3]`,
-    // 인트로: 캐릭터를 헤더밴드 아래 영역에 채우고 + 헤더 밴드 위에
-    `[v1]scale=${W}:${H - HEADER_BAND_H}:force_original_aspect_ratio=increase,crop=${W}:${H - HEADER_BAND_H},setsar=1,pad=${W}:${H}:0:${HEADER_BAND_H}:color=black[cf1a]`,
-    `[cf1a][2:v]overlay=0:0[cf1]`,
-    // 아웃트로: 캐릭터(헤더밴드 아래) + 헤더 + CTA
-    `[v2]scale=${W}:${H - HEADER_BAND_H}:force_original_aspect_ratio=increase,crop=${W}:${H - HEADER_BAND_H},setsar=1,pad=${W}:${H}:0:${HEADER_BAND_H}:color=black[cf2a]`,
-    `[cf2a][2:v]overlay=0:0[cf2b]`,
-    `[cf2b][3:v]overlay=0:0[cf2]`,
-    `[0:v]scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=white,setsar=1[bgs]`,
-    `[bgs][2:v]overlay=0:0[bgh]`,
-    `[bgh][3:v]overlay=0:0[bgt]`,
-    `[v3]pad=900:1280:90:0:color=white,crop=900:900:0:${CROP_Y},scale=${PIP}:${PIP}[pipraw]`,
+    // 캐릭터: PiP용 1개만 split (2-way, lockstep 이라 버퍼 최소)
+    `[1:v]split=2[cmain][cpip]`,
+    // 캐릭터를 헤더밴드 아래 영역에 채움 (전 구간 = 인트로/아웃트로 배경)
+    `[cmain]scale=${W}:${H - HEADER_BAND_H}:force_original_aspect_ratio=increase,crop=${W}:${H - HEADER_BAND_H},setsar=1,pad=${W}:${H}:0:${HEADER_BAND_H}:color=black[cbase]`,
+    // 제품 풀프레임(흰 여백 contain) — 중간 구간에만 덮음
+    `[0:v]scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=white,setsar=1[prod]`,
+    // 코너 원형 PiP(캐릭터) + 흰 링
+    `[cpip]pad=900:1280:90:0:color=white,crop=900:900:0:${CROP_Y},scale=${PIP}:${PIP}[pipraw]`,
     `[pipraw][4:v]alphamerge[pipc]`,
     `[5:v][pipc]overlay=(W-w)/2:(H-h)/2[pipring]`,
-    `[bgt][pipring]overlay=${PIPX}:${PIPY}[mid]`,
-    `[cf1]trim=0:${t1},setpts=PTS-STARTPTS[s1]`,
-    `[mid]trim=${t1}:${t2},setpts=PTS-STARTPTS[s2]`,
-    `[cf2]trim=${t2}:${durationSec},setpts=PTS-STARTPTS[s3]`,
-    `[s1][s2][s3]concat=n=3:v=1[outv]`,
+    // 타임라인 합성: 중간[t1,t2]엔 제품+PiP, 헤더는 항상 위, CTA는 아웃트로[t2,D]
+    `[cbase][prod]overlay=0:0:enable='between(t,${t1},${t2})'[m1]`,
+    `[m1][pipring]overlay=${PIPX}:${PIPY}:enable='between(t,${t1},${t2})'[m2]`,
+    `[m2][2:v]overlay=0:0[m3]`,
+    `[m3][3:v]overlay=0:0:enable='between(t,${t2},${durationSec})'[outv]`,
   ];
   // 자막이 있으면 베이스를 임시파일로, 없으면 바로 최종 출력으로
   const baseOut = subs.length ? `${outPath}.base.mp4` : outPath;
@@ -271,7 +272,7 @@ export async function composePromoCharacter(opts: {
     `-loop 1 -i "${pipMaskPath}"`,
     `-loop 1 -i "${ringPath}"`,
     `-filter_complex "${baseParts.join(';')}"`,
-    `-map "[outv]" -map "1:a?" -r 30`,
+    `-map "[outv]" -map "1:a?" -r 30 -t ${durationSec}`,
     // OOM 방지: ultrafast + 단일 스레드 (libx264 lookahead 버퍼가 2GB 서버 OOM 주범)
     `-c:v libx264 -pix_fmt yuv420p -preset ultrafast -threads 1 -g 60`,
     `-c:a aac -ar 44100 -movflags +faststart`,
