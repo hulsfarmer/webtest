@@ -89,13 +89,16 @@ function parseGoogleTime(v: unknown): number {
   return 0;
 }
 
+interface SttWord { w: string; s: number; e: number }
+
 /**
  * ffmpeg 로 raw PCM 추출 → Google Cloud Speech-to-Text(v1 sync, 단어 타임오프셋)
- * 단어들을 ≤maxChars 줄로 묶어 세그먼트로 반환. 실패하면 throw.
+ * 실제 음성의 단어별 타임스탬프 [{w,s,e}] 반환. 실패하면 throw.
+ * STT 전용 키(GOOGLE_STT_API_KEY) 우선, 없으면 TTS 키.
  */
-async function transcribeGoogle(charPath: string, tmpDir: string, tag: string, maxChars = 32): Promise<Seg[]> {
-  const apiKey = process.env.GOOGLE_TTS_API_KEY;
-  if (!apiKey) throw new Error('GOOGLE_TTS_API_KEY not set');
+async function sttWords(charPath: string, tmpDir: string, tag: string): Promise<SttWord[]> {
+  const apiKey = process.env.GOOGLE_STT_API_KEY || process.env.GOOGLE_TTS_API_KEY;
+  if (!apiKey) throw new Error('STT API key not set');
   const ffmpeg = require('ffmpeg-static') as string;
   const pcm = path.join(tmpDir, `${tag}_stt.raw`);
   // LINEAR16 raw (헤더 없이) 16k mono
@@ -108,7 +111,7 @@ async function transcribeGoogle(charPath: string, tmpDir: string, tag: string, m
     body: JSON.stringify({
       config: {
         encoding: 'LINEAR16', sampleRateHertz: 16000, languageCode: 'ko-KR',
-        enableWordTimeOffsets: true, enableAutomaticPunctuation: true,
+        enableWordTimeOffsets: true, enableAutomaticPunctuation: false,
       },
       audio: { content },
     }),
@@ -117,14 +120,19 @@ async function transcribeGoogle(charPath: string, tmpDir: string, tag: string, m
   const data = await res.json() as {
     results?: { alternatives?: { words?: { word: string; startTime?: unknown; endTime?: unknown }[] }[] }[];
   };
-  const words: { w: string; s: number; e: number }[] = [];
+  const words: SttWord[] = [];
   for (const r of data.results || []) {
     for (const w of r.alternatives?.[0]?.words || []) {
       words.push({ w: w.word, s: parseGoogleTime(w.startTime), e: parseGoogleTime(w.endTime) });
     }
   }
   if (!words.length) throw new Error('GoogleSTT: no words');
-  // 단어 → ≤maxChars 줄 묶기
+  return words;
+}
+
+/** STT 단어들을 ≤maxChars 줄로 묶어 세그먼트로 (narration 없을 때 폴백) */
+async function transcribeGoogle(charPath: string, tmpDir: string, tag: string, maxChars = 32): Promise<Seg[]> {
+  const words = await sttWords(charPath, tmpDir, tag);
   const segs: Seg[] = [];
   let cur = ''; let cs = 0; let ce = 0;
   for (const wd of words) {
@@ -251,58 +259,77 @@ export async function POST(req: NextRequest) {
     let segments: Seg[] = [];
     let subMode = 'none';
     if (narrationIn) {
-      const speech = await detectSpeechSegments(effectiveCharPath, D0);
-      const totalActive = speech.reduce((a, g) => a + (g.e - g.s), 0);
-      const words = narrationIn.split(/\s+/).filter(Boolean);
-      if (speech.length >= 2 && totalActive > 1 && words.length) {
-        // ── 순서를 뒤집는다: 자막을 글자로 먼저 쪼개지 않고, 실제 쉼구간(speech)을
-        //    먼저 놓고 각 구간에 그 시간만큼의 단어를 채운다. → 자막 전환이 항상
-        //    실제 쉼에서 일어나 전 구간 일관 싱크 (홍보영상의 '문장경계 전환'과 동일 원리).
-        const CAPTION_LEAD = 0.3;
-        const totalChars = words.reduce((a: number, w: string) => a + w.length, 0) || 1;
-        // 각 단어의 "발화시간상 중심"(active 초)
-        let cum = 0;
-        const wordActiveCenter = words.map((w: string) => {
-          const center = cum + w.length / 2;
-          cum += w.length;
-          return (center / totalChars) * totalActive;
+      const chunks = chunkForSubtitles(narrationIn);
+      // 1순위: STT 단어 타임스탬프에 나레이션을 정렬 (실제 발화 시각 = 정확 싱크)
+      let sw: SttWord[] = [];
+      try { sw = await sttWords(effectiveCharPath, tmpDir, outId); }
+      catch (e) { console.error(`[recompose ${outId}] STT 실패, 쉼정렬로 폴백:`, e instanceof Error ? e.message : e); }
+
+      if (sw.length >= 3 && chunks.length) {
+        // 나레이션 단어 index → STT 단어 index (같은 발화 순서, 개수차는 비례 매핑)
+        const nWords = narrationIn.split(/\s+/).filter(Boolean);
+        const NW = nWords.length, SW = sw.length;
+        const mapIdx = (ni: number): number =>
+          SW <= 1 ? 0 : Math.min(SW - 1, Math.max(0, Math.round((ni * (SW - 1)) / Math.max(1, NW - 1))));
+        const LEAD = 0.15;
+        let wIdx = 0;
+        const raw = chunks.map((chunk) => {
+          const cwCount = chunk.split(/\s+/).filter(Boolean).length || 1;
+          const startWord = wIdx;
+          wIdx += cwCount;
+          return { sStart: sw[mapIdx(startWord)].s, text: chunk };
         });
-        // active 시간 → 세그먼트 인덱스
-        const activeToSegIdx = (aT: number): number => {
-          let acc = 0;
-          for (let i = 0; i < speech.length; i++) {
-            const len = speech[i].e - speech[i].s;
-            if (aT <= acc + len) return i;
-            acc += len;
-          }
-          return speech.length - 1;
-        };
-        // 단어를 세그먼트 버킷에 배정
-        const buckets: string[][] = speech.map(() => []);
-        words.forEach((w: string, idx: number) => buckets[activeToSegIdx(wordActiveCenter[idx])].push(w));
-        // 단어가 배정된 세그먼트만 자막으로. 각 자막은 다음 자막 시작까지 유지(빈틈 없음)
-        const raw = speech
-          .map((g, i) => ({ g, text: buckets[i].join(' ') }))
-          .filter((x) => x.text.length > 0);
         segments = raw.map((x, i) => {
-          const start = Math.max(0, x.g.s - CAPTION_LEAD);
-          const nextStart = i + 1 < raw.length ? Math.max(0, raw[i + 1].g.s - CAPTION_LEAD) : D0;
-          const end = Math.min(Math.max(start + 0.25, nextStart), D0);
+          const start = Math.max(0, x.sStart - LEAD);
+          const nextStart = i + 1 < raw.length ? Math.max(0, raw[i + 1].sStart - LEAD) : D0;
+          const end = Math.min(Math.max(start + 0.3, nextStart), D0);
           return { start, end, text: x.text };
         });
-        console.log(`[recompose ${outId}] 발화구간 ${speech.length}개→자막 ${segments.length}개, active ${totalActive.toFixed(2)}s / D ${D0.toFixed(2)}s, speed ${speed}`);
-        subMode = 'segment-align';
+        console.log(`[recompose ${outId}] STT단어 ${SW}개 / 나레이션단어 ${NW}개 → 자막 ${segments.length}개 (stt-align), speed ${speed}`);
+        subMode = 'stt-align';
       } else {
-        // 폴백: 전체 길이에 글자수 비례
-        const chunks = chunkForSubtitles(narrationIn);
-        const totalC = chunks.reduce((a, c) => a + c.length, 0) || 1;
-        let acc = 0;
-        segments = chunks.map((p) => {
-          const dur = D0 * (p.length / totalC);
-          const s = acc; acc += dur;
-          return { start: s, end: acc, text: p };
-        });
-        subMode = 'narration';
+        // 2순위 폴백: 실제 쉼구간(silence)에 단어를 시간비례 배정
+        const speech = await detectSpeechSegments(effectiveCharPath, D0);
+        const totalActive = speech.reduce((a, g) => a + (g.e - g.s), 0);
+        const words = narrationIn.split(/\s+/).filter(Boolean);
+        if (speech.length >= 2 && totalActive > 1 && words.length) {
+          const CAPTION_LEAD = 0.3;
+          const totalChars = words.reduce((a: number, w: string) => a + w.length, 0) || 1;
+          let cum = 0;
+          const wordActiveCenter = words.map((w: string) => {
+            const center = cum + w.length / 2; cum += w.length;
+            return (center / totalChars) * totalActive;
+          });
+          const activeToSegIdx = (aT: number): number => {
+            let acc = 0;
+            for (let i = 0; i < speech.length; i++) {
+              const len = speech[i].e - speech[i].s;
+              if (aT <= acc + len) return i;
+              acc += len;
+            }
+            return speech.length - 1;
+          };
+          const buckets: string[][] = speech.map(() => []);
+          words.forEach((w: string, idx: number) => buckets[activeToSegIdx(wordActiveCenter[idx])].push(w));
+          const raw = speech.map((g, i) => ({ g, text: buckets[i].join(' ') })).filter((x) => x.text.length > 0);
+          segments = raw.map((x, i) => {
+            const start = Math.max(0, x.g.s - CAPTION_LEAD);
+            const nextStart = i + 1 < raw.length ? Math.max(0, raw[i + 1].g.s - CAPTION_LEAD) : D0;
+            const end = Math.min(Math.max(start + 0.25, nextStart), D0);
+            return { start, end, text: x.text };
+          });
+          console.log(`[recompose ${outId}] 폴백 segment-align: 발화구간 ${speech.length}개→자막 ${segments.length}개, speed ${speed}`);
+          subMode = 'segment-align';
+        } else {
+          const totalC = chunks.reduce((a, c) => a + c.length, 0) || 1;
+          let acc = 0;
+          segments = chunks.map((p) => {
+            const dur = D0 * (p.length / totalC);
+            const s = acc; acc += dur;
+            return { start: s, end: acc, text: p };
+          });
+          subMode = 'narration';
+        }
       }
     } else {
       try { segments = await transcribeGoogle(effectiveCharPath, tmpDir, outId); subMode = 'stt'; }
