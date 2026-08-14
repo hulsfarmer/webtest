@@ -9,24 +9,7 @@ import { generatePromoScript, PromoInput, ScriptSection } from '@/lib/anthropic'
 import { generateAudio } from '@/lib/tts';
 import { uploadToHedra, submitKlingAvatar, pollHedraVideo } from '@/lib/hedra';
 import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, probeDuration, sanitizeScript } from '@/lib/promo-compose';
-
-/** 자막용 청크: 문장 → ≤32자 단위 (긴 문장은 어절 단위로 분할) */
-function chunkForSubtitles(text: string, maxChars = 32): string[] {
-  const clean = text.replace(/\s+/g, ' ').trim();
-  const sents = clean.split(/(?<=[.!?。…])\s+/).filter(Boolean);
-  const chunks: string[] = [];
-  for (const s of sents) {
-    if (s.length <= maxChars) { chunks.push(s); continue; }
-    let cur = '';
-    for (const w of s.split(' ')) {
-      const t = cur ? `${cur} ${w}` : w;
-      if (t.length <= maxChars || !cur) cur = t;
-      else { chunks.push(cur); cur = w; }
-    }
-    if (cur) chunks.push(cur);
-  }
-  return chunks.filter(Boolean);
-}
+import { buildAlignedSubtitles, applySpeed } from '@/lib/promo-subtitles';
 // import { canGenerate, incrementUsage } from '@/lib/usageStore'; // TODO(credits)
 
 interface CharJobInput extends PromoInput {
@@ -38,6 +21,7 @@ interface CharJobInput extends PromoInput {
   overlayCta: string;
   catchphrase: string;
   headerTheme: string;
+  speed?: number; // 영상 배속 (기본 1.1)
   sections?: ScriptSection[]; // 사용자가 편집한 대본(있으면 AI 생성 생략)
 }
 
@@ -95,26 +79,33 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     const charBuf = await pollHedraVideo(hedraJob, () => updateJob(jobId, { progress: 70, status: 'generating_video' }));
     fs.writeFileSync(charVideoPath, charBuf);
 
+    // 3.5) 배속 (기본 1.1): 캐릭터 영상+음성을 speed 배로. 이후 계산은 배속본 기준.
+    updateJob(jobId, { progress: 82 });
+    const speed = Math.min(2.0, Math.max(0.5, input.speed || 1.1));
+    let effCharPath = charVideoPath;
+    if (Math.abs(speed - 1.0) > 0.01) {
+      const spedPath = path.join(tmpDir, `${jobId}_char_sped.mp4`);
+      await applySpeed(charVideoPath, speed, spedPath);
+      effCharPath = spedPath;
+      subPaths.push(spedPath);
+    }
+
     // 4) 인터컷 + PiP 합성 (헤더 전 구간 + 나레이션 자막)
     updateJob(jobId, { progress: 88 });
-    let D = await probeDuration(charVideoPath);
+    let D = await probeDuration(effCharPath);
     if (!(D > 1)) D = await probeDuration(audioPath);
     const t1 = +(D * f1).toFixed(2), t2 = +(D * f2).toFixed(2);
 
-    // 자막 큐: 청크 글자수 비례로 D 를 배분 (연속 오디오라 멈춤 없음, 대략 싱크)
-    const chunks = chunkForSubtitles(narration);
-    const totalChars = chunks.reduce((a, c) => a + c.length, 0) || 1;
+    // 자막: 실제 음성 STT 단어 타임스탬프에 원고를 정밀 정렬 (실패 시 쉼정렬→비례 폴백)
+    const { cues, mode } = await buildAlignedSubtitles(effCharPath, narration, D, tmpDir, jobId);
     const subtitles: { path: string; start: number; end: number }[] = [];
-    let acc = 0;
-    for (let i = 0; i < chunks.length; i++) {
-      const dur = D * (chunks[i].length / totalChars);
-      const start = acc, end = acc + dur;
-      acc += dur;
+    for (let i = 0; i < cues.length; i++) {
       const sp = path.join(tmpDir, `${jobId}_sub${i}.png`);
-      await renderSubtitle(chunks[i], sp);
-      subtitles.push({ path: sp, start: +start.toFixed(2), end: +end.toFixed(2) });
+      await renderSubtitle(cues[i].text, sp);
+      subtitles.push({ path: sp, start: +cues[i].start.toFixed(2), end: +cues[i].end.toFixed(2) });
     }
     subPaths.push(...subtitles.map((s) => s.path));
+    console.log(`[PromoCharacterJob ${jobId}] 자막 ${subtitles.length}개 (${mode}), speed ${speed}`);
 
     await Promise.all([
       renderHeaderOverlay(input.overlayTitle, input.catchphrase, input.headerTheme, headerPath),
@@ -122,7 +113,7 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
       renderPipAssets(maskPath, ringPath),
     ]);
     await composePromoCharacter({
-      productImagePath: input.productImagePath, characterVideoPath: charVideoPath,
+      productImagePath: input.productImagePath, characterVideoPath: effCharPath,
       headerPath, ctaPath, pipMaskPath: maskPath, ringPath, durationSec: +D.toFixed(2), t1, t2, outPath, subtitles,
     });
 
@@ -152,6 +143,7 @@ export async function POST(req: NextRequest) {
   const headerTheme = (fd.get('headerTheme') as string | null) ?? 'blur';
   const voice = (fd.get('voice') as string | null) ?? 'ko-KR-Chirp3-HD-Aoede';
   const duration = parseInt((fd.get('duration') as string | null) ?? '20', 10);
+  const speed = Math.min(2.0, Math.max(0.5, parseFloat((fd.get('speed') as string | null) ?? '1.1') || 1.1));
   const tone = (fd.get('tone') as string | null) ?? '친근한';
   const preset = (fd.get('preset') as string | null) ?? '';
   const characterFile = fd.get('character') as File | null;
@@ -206,7 +198,7 @@ export async function POST(req: NextRequest) {
     businessName, businessType, sellingPoints, cta, duration, tone,
     voice, characterBuf, characterType, productImagePath,
     overlayTitle: businessName, overlayCta: cta || '지금 구매하기',
-    catchphrase, headerTheme, sections,
+    catchphrase, headerTheme, speed, sections,
   }).catch(console.error);
 
   return NextResponse.json({ jobId });

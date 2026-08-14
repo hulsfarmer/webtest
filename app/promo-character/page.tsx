@@ -30,6 +30,7 @@ export default function PromoCharacterPage() {
   const [headerPreview, setHeaderPreview] = useState('');
   const [voice, setVoice] = useState(VOICES[0].id);
   const [duration, setDuration] = useState('20');
+  const [speed, setSpeed] = useState('1.1');
   const [preset, setPreset] = useState('preset-jieun');
   const [charFile, setCharFile] = useState<File | null>(null);
   const [charPreview, setCharPreview] = useState('');
@@ -139,6 +140,7 @@ export default function PromoCharacterPage() {
     fd.append('cta', cta);
     fd.append('voice', voice);
     fd.append('duration', duration);
+    fd.append('speed', speed);
     if (productFile) fd.append('product', productFile); else fd.append('productPath', importedImagePath);
     if (charFile) fd.append('character', charFile); else fd.append('preset', preset);
     fd.append('sections', JSON.stringify(sections.map((s) => ({ type: s.type, text: s.text }))));
@@ -258,6 +260,14 @@ export default function PromoCharacterPage() {
                     <option value="60">60초</option>
                   </select>
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm text-neutral-300 mb-1.5">영상 속도</label>
+                <select className={inputCls} value={speed} onChange={(e) => setSpeed(e.target.value)}>
+                  <option value="1.0">1.0배 (원속도)</option>
+                  <option value="1.1">1.1배 (권장)</option>
+                  <option value="1.2">1.2배</option>
+                </select>
               </div>
               <button onClick={onGenerateScript} disabled={scriptBusy}
                 className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-neutral-950 font-semibold rounded-lg py-3">
