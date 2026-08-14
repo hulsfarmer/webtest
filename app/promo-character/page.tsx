@@ -105,9 +105,11 @@ export default function PromoCharacterPage() {
     const link = (buyLink || importUrl).trim();
     const lines: string[] = [];
     if (narration) lines.push(narration);
-    if (link) lines.push('', `🛒 구매하기 👉 ${link}`);
+    if (link) {
+      lines.push('', `🛒 구매하기 👉 ${link}`);
+      lines.push('', '이 게시물은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.');
+    }
     lines.push('', '🎬 제작: 이지온', '📩 AI영상제작문의: huls_family@naver.com (이지온)');
-    if (link) lines.push('', '이 게시물은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.');
     return lines.join('\n');
   }
 
