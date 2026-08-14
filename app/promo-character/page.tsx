@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
+import { buildPromoDescription } from '@/lib/promo-description';
 
 // 목소리 = google 보이스 + 피치(반음). Azure 엔진이면 engine/azure* 로 네이티브 톤.
 type VoiceCfg = { id: string; label: string; google: string; pitch: number; engine?: string; azureVoice?: string; azurePitch?: string; azureRate?: string };
@@ -100,17 +102,8 @@ export default function PromoCharacterPage() {
 
   // 유튜브 설명란: 나레이션 원문 + 구매 링크 + 제작 크레딧
   function buildDescription(): string {
-    const narration = sections.map((s) => s.text).join('  ')
-      .replace(/[*#`_~]/g, '').replace(/[ \t]+/g, ' ').trim();
-    const link = (buyLink || importUrl).trim();
-    const lines: string[] = [];
-    if (narration) lines.push(narration);
-    if (link) {
-      lines.push('', `🛒 구매하기 👉 ${link}`);
-      lines.push('', '이 게시물은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.');
-    }
-    lines.push('', '🎬 제작: 이지온', '📩 AI영상제작문의: huls_family@naver.com (이지온)');
-    return lines.join('\n');
+    const narration = sections.map((s) => s.text).join('  ');
+    return buildPromoDescription(narration, buyLink || importUrl);
   }
 
   async function publishYouTube() {
@@ -218,6 +211,7 @@ export default function PromoCharacterPage() {
     fd.append('sections', JSON.stringify(sections.map((s) => ({ type: s.type, text: s.text }))));
     fd.append('catchphrase', catchphrase);
     fd.append('headerTheme', headerTheme);
+    fd.append('buyLink', buyLink);
 
     setBusy(true); setSteps({ script: 'done', audio: 'running', video: 'pending' });
     setStatusMsg('나레이션 음성 생성 중...');
@@ -260,7 +254,10 @@ export default function PromoCharacterPage() {
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 px-4 py-10">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold">제품 홍보 캐릭터 영상</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">제품 홍보 캐릭터 영상</h1>
+          <Link href="/promo-character/library" className="text-sm text-sky-400 hover:text-sky-300 border border-sky-800/60 rounded-lg px-3 py-1.5">📁 내 영상</Link>
+        </div>
         <p className="text-sm text-neutral-400 mt-1 mb-8">
           제품 정보 → AI 대본(검토·편집) → 캐릭터 홍보 쇼츠 (인트로 → 제품+코너 캐릭터 → 마무리, 상단 제품명 고정)
         </p>

@@ -1,0 +1,156 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+
+interface LibItem {
+  id: string;
+  title: string;
+  catchphrase: string;
+  status: string;
+  progress: number;
+  videoUrl: string | null;
+  buyLink: string;
+  description: string;
+  error: string | null;
+  createdAt: string;
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  done: '완료', failed: '실패', queued: '대기중',
+  generating_script: '대본 생성중', generating_audio: '음성 생성중', generating_video: '영상 생성중',
+};
+
+export default function LibraryPage() {
+  const [items, setItems] = useState<LibItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [ytConnected, setYtConnected] = useState(false);
+  const [busyId, setBusyId] = useState('');
+  const [msg, setMsg] = useState<Record<string, string>>({});
+
+  const load = async () => {
+    try {
+      const r = await fetch('/api/promo-character/library');
+      const d = await r.json();
+      if (r.ok) setItems(d.items || []);
+    } catch { /* noop */ } finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    load();
+    fetch('/api/social/youtube/status').then((r) => r.json()).then((d) => setYtConnected(!!d.connected)).catch(() => {});
+  }, []);
+
+  const setItemMsg = (id: string, m: string) => setMsg((p) => ({ ...p, [id]: m }));
+
+  const publish = async (it: LibItem) => {
+    setBusyId(it.id); setItemMsg(it.id, '');
+    try {
+      const title = `${it.title} ${it.catchphrase}`.trim().slice(0, 90) || it.title;
+      const r = await fetch('/api/social/youtube/upload', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: it.id, title, description: it.description, privacyStatus: 'private' }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '업로드 실패');
+      setItemMsg(it.id, `업로드 완료(비공개) → ${d.url}`);
+    } catch (e) { setItemMsg(it.id, e instanceof Error ? e.message : String(e)); }
+    finally { setBusyId(''); }
+  };
+
+  const copyDesc = async (it: LibItem) => {
+    try { await navigator.clipboard.writeText(it.description); setItemMsg(it.id, '설명 복사됨'); }
+    catch { setItemMsg(it.id, '복사 실패 — 길게 눌러 직접 복사하세요'); }
+  };
+
+  const remove = async (it: LibItem) => {
+    if (!confirm(`"${it.title}" 영상을 삭제할까요? 복구할 수 없습니다.`)) return;
+    setBusyId(it.id);
+    try {
+      const r = await fetch(`/api/promo-character/library?id=${it.id}`, { method: 'DELETE' });
+      if (r.ok) setItems((prev) => prev.filter((x) => x.id !== it.id));
+      else setItemMsg(it.id, '삭제 실패');
+    } finally { setBusyId(''); }
+  };
+
+  const fmtDate = (s: string) => {
+    const d = new Date(s), diff = Date.now() - d.getTime();
+    const min = Math.floor(diff / 60000), hr = Math.floor(diff / 3600000), day = Math.floor(diff / 86400000);
+    if (min < 1) return '방금 전'; if (min < 60) return `${min}분 전`;
+    if (hr < 24) return `${hr}시간 전`; if (day < 7) return `${day}일 전`;
+    return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+  };
+
+  return (
+    <div className="min-h-screen bg-neutral-950 text-neutral-100 px-4 py-10">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <Link href="/promo-character" className="text-sm text-neutral-400 hover:text-white">← 영상 만들기</Link>
+            <h1 className="text-2xl font-bold mt-2">내 홍보 영상</h1>
+          </div>
+          <span className={`text-[11px] rounded-full px-2 py-0.5 ${ytConnected ? 'bg-green-900/60 text-green-300' : 'bg-neutral-800 text-neutral-400'}`}>
+            YouTube {ytConnected ? '연결됨' : '미연결'}
+          </span>
+        </div>
+
+        {loading && <div className="text-sm text-neutral-500">불러오는 중...</div>}
+        {!loading && items.length === 0 && (
+          <div className="text-center py-20 text-neutral-500">
+            아직 만든 영상이 없어요.
+            <div className="mt-4"><Link href="/promo-character" className="text-sky-400 underline">영상 만들러 가기</Link></div>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {items.map((it) => (
+            <div key={it.id} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 flex flex-col sm:flex-row gap-4">
+              <div className="w-full sm:w-40 flex-shrink-0">
+                {it.videoUrl ? (
+                  <video src={it.videoUrl} controls playsInline preload="metadata" className="w-full rounded-xl bg-black aspect-[9/16] object-cover" />
+                ) : (
+                  <div className="w-full rounded-xl bg-neutral-800 aspect-[9/16] flex items-center justify-center text-xs text-neutral-500">
+                    {STATUS_LABEL[it.status] || it.status} {it.progress ? `${it.progress}%` : ''}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 min-w-0 flex flex-col">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold truncate">{it.title}</h3>
+                    {it.catchphrase && <p className="text-xs text-neutral-400 truncate">{it.catchphrase}</p>}
+                  </div>
+                  <span className="text-[11px] text-neutral-500 shrink-0">{fmtDate(it.createdAt)}</span>
+                </div>
+                {it.error && <p className="text-xs text-red-400 mt-1">{it.error}</p>}
+
+                <div className="mt-auto pt-3 flex flex-wrap gap-2">
+                  {it.videoUrl && (
+                    <a href={it.videoUrl} download={`${it.title}_홍보영상.mp4`}
+                      className="text-xs bg-neutral-800 hover:bg-neutral-700 rounded-lg px-3 py-2">⬇ 다운로드</a>
+                  )}
+                  {it.videoUrl && ytConnected && (
+                    <button onClick={() => publish(it)} disabled={busyId === it.id}
+                      className="text-xs bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-lg px-3 py-2">
+                      {busyId === it.id ? '업로드 중...' : '▶ YouTube 발행(비공개)'}
+                    </button>
+                  )}
+                  {it.videoUrl && !ytConnected && (
+                    <a href="/api/social/youtube/connect" className="text-xs bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2">▶ YouTube 연결</a>
+                  )}
+                  {it.description && (
+                    <button onClick={() => copyDesc(it)} className="text-xs bg-neutral-800 hover:bg-neutral-700 rounded-lg px-3 py-2">📋 설명 복사</button>
+                  )}
+                  <button onClick={() => remove(it)} disabled={busyId === it.id}
+                    className="text-xs text-neutral-400 hover:text-red-400 rounded-lg px-3 py-2 ml-auto">삭제</button>
+                </div>
+                {msg[it.id] && <div className="text-[11px] text-neutral-300 mt-2 break-all">{msg[it.id]}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

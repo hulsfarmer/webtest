@@ -66,19 +66,21 @@ function rowToJob(row: JobRow): Job {
 
 export async function createJob(
   data: Pick<Job, 'id' | 'sessionId' | 'topic' | 'duration' | 'tone'>
+    & { businessName?: string; script?: Record<string, unknown> }
 ): Promise<void> {
-  const { error } = await supabase
-    .from('jobs')
-    .insert({
-      id: data.id,
-      user_id: data.sessionId,
-      topic: data.topic,
-      duration: data.duration,
-      tone: data.tone,
-      status: 'queued',
-      progress: 0,
-      steps: { script: 'pending', audio: 'pending', video: 'pending' },
-    });
+  const row: Record<string, unknown> = {
+    id: data.id,
+    user_id: data.sessionId,
+    topic: data.topic,
+    duration: data.duration,
+    tone: data.tone,
+    status: 'queued',
+    progress: 0,
+    steps: { script: 'pending', audio: 'pending', video: 'pending' },
+  };
+  if (data.businessName) row.business_name = data.businessName;
+  if (data.script) row.script = data.script;
+  const { error } = await supabase.from('jobs').insert(row);
   if (error) console.error('[JobStore] createJob error:', error.message);
 }
 

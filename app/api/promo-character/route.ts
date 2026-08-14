@@ -29,6 +29,7 @@ interface CharJobInput extends PromoInput {
   azurePitch?: string; // Azure 네이티브 피치 (예 '+45%')
   azureRate?: string; // Azure 속도 (예 '+8%')
   sections?: ScriptSection[]; // 사용자가 편집한 대본(있으면 AI 생성 생략)
+  buyLink?: string; // 쿠팡 구매 링크 (라이브러리 유튜브 설명)
 }
 
 async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
@@ -62,6 +63,8 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     const hookT = byType('hook'), mainT = byType('main'), ctaT = byType('cta');
     const narration = [hookT, mainT, ctaT].filter(Boolean).join('  ').trim()
       || sanitizeScript(sections.map((s) => s.text).join(' '));
+    // 라이브러리·유튜브 설명용 메타 저장 (나레이션 + 구매 링크)
+    updateJob(jobId, { script: JSON.stringify({ narration, buyLink: input.buyLink || '', businessName: input.businessName, catchphrase: input.catchphrase }) });
     // 구간 비율(텍스트 길이 기반)
     const L = hookT.length + mainT.length + ctaT.length;
     let f1 = L > 0 ? hookT.length / L : 0.28;
@@ -183,6 +186,7 @@ export async function POST(req: NextRequest) {
   const characterFile = fd.get('character') as File | null;
   const productFile = fd.get('product') as File | null;
   const productPath = ((fd.get('productPath') as string | null) ?? '').trim(); // 링크 불러오기 이미지 (/imports/xxx)
+  const buyLink = ((fd.get('buyLink') as string | null) ?? '').trim(); // 쿠팡 구매 링크 (라이브러리·유튜브 설명)
 
   // 편집된 대본(선택)
   let sections: ScriptSection[] | undefined;
@@ -225,7 +229,10 @@ export async function POST(req: NextRequest) {
     fs.copyFileSync(src, productImagePath);
   }
 
-  await createJob({ id: jobId, sessionId: userId, topic: `제품홍보:${businessName}`, duration, tone });
+  await createJob({
+    id: jobId, sessionId: userId, topic: `제품홍보:${businessName}`, duration, tone,
+    businessName, script: { buyLink, catchphrase, characterName }, // 나레이션은 생성 후 채움
+  });
   updateJob(jobId, { status: 'queued', progress: 5, steps: { script: 'pending', audio: 'pending', video: 'pending' } });
 
   processPromoCharacterJob(jobId, {
@@ -233,7 +240,7 @@ export async function POST(req: NextRequest) {
     voice, characterBuf, characterType, productImagePath,
     overlayTitle: businessName, overlayCta: cta, // 빈 값이면 CTA 표시 안 함
     catchphrase, headerTheme, speed, pitch, characterName,
-    ttsEngine, azureVoice, azurePitch, azureRate, sections,
+    ttsEngine, azureVoice, azurePitch, azureRate, sections, buyLink,
   }).catch(console.error);
 
   return NextResponse.json({ jobId });
