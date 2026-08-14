@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
   const sellingPoints = ((fd.get('sellingPoints') as string | null) ?? '').trim();
   const cta = ((fd.get('cta') as string | null) ?? '').trim();
   const catchphrase = ((fd.get('catchphrase') as string | null) ?? '').trim();
-  const headerTheme = (fd.get('headerTheme') as string | null) ?? 'blur';
+  const headerTheme = (fd.get('headerTheme') as string | null) ?? 'navy';
   const voice = (fd.get('voice') as string | null) ?? 'ko-KR-Chirp3-HD-Aoede';
   const duration = parseInt((fd.get('duration') as string | null) ?? '20', 10);
   const speed = Math.min(2.0, Math.max(0.5, parseFloat((fd.get('speed') as string | null) ?? "1.1") || 1.1));

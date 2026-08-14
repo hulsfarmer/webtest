@@ -98,7 +98,6 @@ async function registerFonts() {
 export interface HeaderThemeDef { bg: string; nameColor: string; titleColor: string; outline: string; }
 const OUTLINE = 'rgba(0,0,0,0.85)';
 export const HEADER_THEMES: Record<string, HeaderThemeDef> = {
-  blur:     { bg: 'blur',    nameColor: '#FDE047', titleColor: '#FFFFFF', outline: OUTLINE },
   black:    { bg: '#121212', nameColor: '#FFE600', titleColor: '#FFFFFF', outline: OUTLINE },
   navy:     { bg: '#0A192F', nameColor: '#00E5FF', titleColor: '#FFFFFF', outline: OUTLINE },
   neon:     { bg: '#E5FF00', nameColor: '#14213D', titleColor: '#D32F2F', outline: 'rgba(0,0,0,0)' },
@@ -121,7 +120,7 @@ export async function renderHeaderOverlay(businessName: string, catchphrase: str
   const fams = await registerFonts();
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext('2d');
-  const th = HEADER_THEMES[themeId] || HEADER_THEMES.blur;
+  const th = HEADER_THEMES[themeId] || HEADER_THEMES.navy;
   const BH = HEADER_BAND_H;
 
   // 이모지 + 마크다운 강조기호(*#`_~) 제거 (AI 캐치타이틀의 *강조* 별표가 헤더에 노출되던 문제)
@@ -137,17 +136,10 @@ export async function renderHeaderOverlay(businessName: string, catchphrase: str
   const blockH = nameFit.lines.length * nameLH + gap + phraseFit.lines.length * phraseLH;
 
   // 배경 밴드 (고정 높이, 아래 가장자리 살짝 페이드)
-  if (th.bg === 'blur') {
-    ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(0, 0, W, BH);
-    const g = ctx.createLinearGradient(0, BH - 40, 0, BH);
-    g.addColorStop(0, 'rgba(0,0,0,0.8)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, BH - 40, W, 40);
-  } else {
-    ctx.fillStyle = th.bg; ctx.fillRect(0, 0, W, BH);
-    const g = ctx.createLinearGradient(0, BH - 8, 0, BH + 34);
-    g.addColorStop(0, hexToRgba(th.bg, 1)); g.addColorStop(1, hexToRgba(th.bg, 0));
-    ctx.fillStyle = g; ctx.fillRect(0, BH - 8, W, 42);
-  }
+  ctx.fillStyle = th.bg; ctx.fillRect(0, 0, W, BH);
+  const g = ctx.createLinearGradient(0, BH - 8, 0, BH + 34);
+  g.addColorStop(0, hexToRgba(th.bg, 1)); g.addColorStop(1, hexToRgba(th.bg, 0));
+  ctx.fillStyle = g; ctx.fillRect(0, BH - 8, W, 42);
 
   ctx.textAlign = 'center';
   const drawRow = (text: string, y: number, size: number, fontFam: string, color: string) => {

@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     await renderHeaderOverlay(
       String(b.businessName || '제품명'),
       String(b.catchphrase || ''),
-      String(b.headerTheme || 'blur'),
+      String(b.headerTheme || 'navy'),
       p,
     );
     const buf = fs.readFileSync(p);
