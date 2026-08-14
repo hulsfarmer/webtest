@@ -390,7 +390,13 @@ export default function PromoCharacterPage() {
 
           {/* 우: 결과 */}
           <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5">
-            <div className="text-sm font-semibold mb-3">결과</div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-semibold">결과</div>
+              <span className={`text-[11px] rounded-full px-2 py-0.5 ${ytConnected ? 'bg-green-900/60 text-green-300' : 'bg-neutral-800 text-neutral-400'}`}>
+                YouTube {ytConnected ? '연결됨' : '미연결'}
+              </span>
+            </div>
+            {ytMsg && !videoUrl && <div className="text-xs text-neutral-300 mb-3">{ytMsg}</div>}
             <div className="text-sm text-neutral-400 space-y-1 mb-3">
               <div>{dot(steps.script)} 대본</div>
               <div>{dot(steps.audio)} 나레이션 음성 (Chirp3-HD)</div>
