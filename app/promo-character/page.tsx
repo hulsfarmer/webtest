@@ -12,7 +12,9 @@ const VOICES: VoiceCfg[] = [
   // 민준 = Azure 네이티브 남성(밝고 활기). 실패 시 Google Charon 폴백.
   { id: 'minjun', label: '민준 (남·자연)',    google: 'ko-KR-Chirp3-HD-Charon', pitch: 0,
     engine: 'azure', azureVoice: 'ko-KR-GookMinNeural', azurePitch: '0%', azureRate: '0%' },
-  { id: 'teen',   label: '민서 (청소년·남)',  google: 'ko-KR-Chirp3-HD-Charon', pitch: 2 },
+  // 민서 = Azure 국민 음성 + 피치업(젊은 청소년 톤). 실패 시 Google Charon+2 폴백.
+  { id: 'teen',   label: '민서 (청소년·남)',  google: 'ko-KR-Chirp3-HD-Charon', pitch: 2,
+    engine: 'azure', azureVoice: 'ko-KR-GookMinNeural', azurePitch: '+18%', azureRate: '+3%' },
   { id: 'child',  label: '하늘 (아이 톤)',    google: 'ko-KR-Chirp3-HD-Aoede',  pitch: 3 },
   { id: 'dog',    label: '코코 (강아지 톤)',  google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 4 },
   // 뭉치 = Azure 네이티브(귀여운 아이 톤). 실패 시 Google Zephyr+5 폴백.
