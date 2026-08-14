@@ -70,7 +70,8 @@ export async function sttWords(charPath: string, tmpDir: string, tag: string): P
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      config: { encoding: 'LINEAR16', sampleRateHertz: 16000, languageCode: 'ko-KR', enableWordTimeOffsets: true, enableAutomaticPunctuation: false },
+      // latest_long: 합성 목소리 인식률 대폭↑ (default 14단어 → latest_long 47단어 실측)
+      config: { encoding: 'LINEAR16', sampleRateHertz: 16000, languageCode: 'ko-KR', enableWordTimeOffsets: true, enableAutomaticPunctuation: false, model: 'latest_long' },
       audio: { content },
     }),
   });
@@ -78,14 +79,32 @@ export async function sttWords(charPath: string, tmpDir: string, tag: string): P
   const data = await res.json() as {
     results?: { alternatives?: { words?: { word: string; startTime?: unknown; endTime?: unknown }[] }[] }[];
   };
-  const words: SttWord[] = [];
+  const raw: SttWord[] = [];
   for (const r of data.results || []) {
     for (const w of r.alternatives?.[0]?.words || []) {
-      words.push({ w: w.word, s: parseGoogleTime(w.startTime), e: parseGoogleTime(w.endTime) });
+      raw.push({ w: w.word || '', s: parseGoogleTime(w.startTime), e: parseGoogleTime(w.endTime) });
     }
   }
-  if (!words.length) throw new Error('GoogleSTT: no words');
-  return words;
+  if (!raw.length) throw new Error('GoogleSTT: no words');
+  // latest_long 은 서브워드+▁경계로 분할 반환 → 완전 단어로 병합
+  if (!raw.some((t) => t.w.includes('▁'))) return raw; // default 등 서브워드 아님 → 그대로
+  const words: SttWord[] = [];
+  let cw = '', cs = 0, ce = 0, open = false;
+  for (const t of raw) {
+    const clean = t.w.replace(/▁/g, '');
+    if (t.w.startsWith('▁')) {
+      if (open && cw) words.push({ w: cw, s: cs, e: ce });
+      cw = clean; cs = t.s; ce = t.e; open = true;
+    } else if (open) {
+      cw += clean; ce = t.e;
+    } else {
+      cw = clean; cs = t.s; ce = t.e; open = true;
+    }
+  }
+  if (open && cw) words.push({ w: cw, s: cs, e: ce });
+  const out = words.filter((w) => w.w);
+  if (!out.length) throw new Error('GoogleSTT: no words after merge');
+  return out;
 }
 
 /** Kling 오디오의 실제 발화 구간(무음 사이) — silencedetect */
@@ -123,7 +142,7 @@ export async function detectSpeechSegments(charPath: string, D: number): Promise
  * 시작시각 목록 → 자막 큐. 각 자막 end = 다음 자막 시작(겹침 없음).
  * 너무 짧은(<minDur) 자막은 이전 자막에 흡수(깜빡임·겹침 방지).
  */
-function finalizeCues(starts: { s: number; text: string }[], D0: number, lead: number, minDur = 0.5): SubCue[] {
+function finalizeCues(starts: { s: number; text: string }[], D0: number, lead: number, minDur = 0.35): SubCue[] {
   const pts = starts.map((x) => ({ start: Math.max(0, x.s - lead), text: x.text })).filter((p) => p.text);
   if (!pts.length) return [];
   const out: SubCue[] = [];
@@ -174,8 +193,10 @@ export async function buildAlignedSubtitles(
         if (wordMatch(nWords[j], sw[k].w)) { anchors.push({ ni: j, t: sw[k].s }); ni = j + 1; break; }
       }
     }
-    const wordTime = new Array<number>(NW);
-    if (anchors.length >= 2) {
+    // 앵커가 충분할 때만 STT정렬 사용. 부족하면(합성음성 인식 실패) 쉼정렬로 폴백.
+    const minAnchors = Math.max(4, Math.floor(NW * 0.3));
+    if (anchors.length >= minAnchors) {
+      const wordTime = new Array<number>(NW);
       for (let a = 0; a < anchors.length; a++) {
         const cur = anchors[a];
         wordTime[cur.ni] = cur.t;
@@ -188,20 +209,19 @@ export async function buildAlignedSubtitles(
       const first = anchors[0], last = anchors[anchors.length - 1];
       for (let j = 0; j < first.ni; j++) wordTime[j] = Math.max(0, first.t - (first.ni - j) * 0.28);
       for (let j = last.ni + 1; j < NW; j++) wordTime[j] = Math.min(D0, last.t + (j - last.ni) * 0.28);
-    } else {
-      for (let j = 0; j < NW; j++) wordTime[j] = (j / Math.max(1, NW - 1)) * D0;
+      const LEAD = 0.15;
+      let wIdx = 0;
+      const raw = chunks.map((chunk) => {
+        const cwCount = chunk.split(/\s+/).filter(Boolean).length || 1;
+        const startWord = Math.min(NW - 1, wIdx);
+        wIdx += cwCount;
+        return { sStart: wordTime[startWord] ?? 0, text: chunk };
+      });
+      const cues = finalizeCues(raw.map((x) => ({ s: x.sStart, text: x.text })), D0, LEAD);
+      console.log(`[subtitles ${tag}] STT단어 ${SW} / 원고단어 ${NW} / 앵커 ${anchors.length} → 자막 ${cues.length}개 (stt-align)`);
+      return { cues, mode: 'stt-align' };
     }
-    const LEAD = 0.15;
-    let wIdx = 0;
-    const raw = chunks.map((chunk) => {
-      const cwCount = chunk.split(/\s+/).filter(Boolean).length || 1;
-      const startWord = Math.min(NW - 1, wIdx);
-      wIdx += cwCount;
-      return { sStart: wordTime[startWord] ?? 0, text: chunk };
-    });
-    const cues = finalizeCues(raw.map((x) => ({ s: x.sStart, text: x.text })), D0, LEAD);
-    console.log(`[subtitles ${tag}] STT단어 ${SW} / 원고단어 ${NW} / 앵커 ${anchors.length} → 자막 ${cues.length}개 (stt-align)`);
-    return { cues, mode: 'stt-align' };
+    console.log(`[subtitles ${tag}] STT 앵커 부족(${anchors.length}/${NW}, min ${minAnchors}) → 쉼정렬 폴백`);
   }
 
   // ── 2순위: 실제 쉼구간에 단어 시간비례 배정 ──
