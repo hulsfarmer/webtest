@@ -10,6 +10,7 @@ const VOICES = [
   { id: 'teen',   label: '민서 (청소년·남)',  google: 'ko-KR-Chirp3-HD-Charon', pitch: 2 },
   { id: 'child',  label: '하늘 (아이 톤)',    google: 'ko-KR-Chirp3-HD-Aoede',  pitch: 3 },
   { id: 'dog',    label: '코코 (강아지 톤)',  google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 4 },
+  { id: 'puppy',  label: '뭉치 (카툰강아지 톤)', google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 5 },
 ];
 const PRESETS = [
   { id: 'preset-jieun', label: '민지·여성',   name: '민지', src: '/characters/preset-jieun.png', voiceKey: 'minji' },
@@ -17,6 +18,7 @@ const PRESETS = [
   { id: 'preset-teen',  label: '민서·청소년', name: '민서', src: '/characters/preset-teen.png',  voiceKey: 'teen' },
   { id: 'preset-child', label: '하늘·아이',   name: '하늘', src: '/characters/preset-child.png', voiceKey: 'child' },
   { id: 'preset-dog',   label: '코코·강아지', name: '코코', src: '/characters/preset-dog.png',   voiceKey: 'dog' },
+  { id: 'preset-puppy', label: '뭉치·카툰강아지', name: '뭉치', src: '/characters/preset-puppy.png', voiceKey: 'puppy' },
 ];
 const HEADER_THEMES = [
   { id: 'navy', label: '테크 네이비', desc: 'IT·재테크', bg: '#0A192F', bn: '#00E5FF', title: '#FFFFFF' },
