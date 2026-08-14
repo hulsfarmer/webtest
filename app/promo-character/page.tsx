@@ -51,6 +51,7 @@ export default function PromoCharacterPage() {
   const [productFile, setProductFile] = useState<File | null>(null);
   const [productPreview, setProductPreview] = useState('');
   const [importUrl, setImportUrl] = useState('');
+  const [buyLink, setBuyLink] = useState(''); // 쿠팡 구매 링크 (유튜브 설명란)
   const [importBusy, setImportBusy] = useState(false);
   const [importedImagePath, setImportedImagePath] = useState(''); // /imports/xxx
   const [importNote, setImportNote] = useState('');
@@ -97,12 +98,25 @@ export default function PromoCharacterPage() {
     if (q) window.history.replaceState({}, '', '/promo-character');
   }, []);
 
+  // 유튜브 설명란: 나레이션 원문 + 구매 링크 + 제작 크레딧
+  function buildDescription(): string {
+    const narration = sections.map((s) => s.text).join('  ')
+      .replace(/[*#`_~]/g, '').replace(/[ \t]+/g, ' ').trim();
+    const link = (buyLink || importUrl).trim();
+    const lines: string[] = [];
+    if (narration) lines.push(narration);
+    if (link) lines.push('', `🛒 구매하기 👉 ${link}`);
+    lines.push('', '🎬 제작: 이지온', '📩 AI영상제작문의: huls_family@naver.com (이지온)');
+    if (link) lines.push('', '※ 이 영상에는 쿠팡 파트너스 활동의 일환으로 일정액의 수수료를 제공받는 링크가 포함될 수 있습니다.');
+    return lines.join('\n');
+  }
+
   async function publishYouTube() {
     if (!jobId) return;
     setYtBusy(true); setYtMsg(''); setYtUrl('');
     try {
       const title = `${businessName} ${catchphrase}`.trim().slice(0, 90) || '제품 홍보';
-      const desc = `${sellingPoints}\n\n${cta}`.trim();
+      const desc = buildDescription();
       const r = await fetch('/api/social/youtube/upload', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobId, title, description: desc, privacyStatus: 'private' }),
@@ -131,6 +145,7 @@ export default function PromoCharacterPage() {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || '불러오기 실패');
+      if (!buyLink.trim()) setBuyLink(importUrl.trim()); // 구매 링크 자동 채움
       if (d.title) setBusinessName(d.title);
       if (d.businessType) setBusinessType(d.businessType);
       if (d.description) setSellingPoints(d.description);
@@ -279,6 +294,11 @@ export default function PromoCharacterPage() {
               <div>
                 <label className="block text-sm text-neutral-300 mb-1.5">CTA (행동 유도)</label>
                 <input className={inputCls} value={cta} onChange={(e) => setCta(e.target.value)} placeholder="지금 구매하기   @glowbrand" />
+              </div>
+              <div>
+                <label className="block text-sm text-neutral-300 mb-1.5">구매 링크 (쿠팡 등 · 유튜브 설명란에 삽입)</label>
+                <input className={inputCls} value={buyLink} onChange={(e) => setBuyLink(e.target.value)} placeholder="https://link.coupang.com/..." />
+                <p className="text-xs text-neutral-500 mt-1.5">제품 링크를 불러오면 자동으로 채워져요. 쿠팡 파트너스 링크로 바꿔 넣으면 수익이 발생합니다.</p>
               </div>
               <div>
                 <label className="block text-sm text-neutral-300 mb-1.5">제품 이미지 *</label>
