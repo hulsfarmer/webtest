@@ -12,6 +12,7 @@ interface LibItem {
   videoUrl: string | null;
   buyLink: string;
   description: string;
+  tags: string[];
   error: string | null;
   createdAt: string;
 }
@@ -49,7 +50,7 @@ export default function LibraryPage() {
       const title = `${it.title} ${it.catchphrase}`.trim().slice(0, 90) || it.title;
       const r = await fetch('/api/social/youtube/upload', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId: it.id, title, description: it.description, privacyStatus: 'private' }),
+        body: JSON.stringify({ jobId: it.id, title, description: it.description, tags: it.tags || [], privacyStatus: 'private' }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || '업로드 실패');
@@ -145,6 +146,14 @@ export default function LibraryPage() {
                   <button onClick={() => remove(it)} disabled={busyId === it.id}
                     className="text-xs text-neutral-400 hover:text-red-400 rounded-lg px-3 py-2 ml-auto">삭제</button>
                 </div>
+                {it.tags && it.tags.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    <span className="text-[11px] text-neutral-500 mr-1">🏷 태그(발행 시 자동):</span>
+                    {it.tags.map((t) => (
+                      <span key={t} className="text-[11px] text-neutral-300 bg-neutral-800 rounded px-1.5 py-0.5">{t}</span>
+                    ))}
+                  </div>
+                )}
                 {msg[it.id] && <div className="text-[11px] text-neutral-300 mt-2 break-all">{msg[it.id]}</div>}
               </div>
             </div>

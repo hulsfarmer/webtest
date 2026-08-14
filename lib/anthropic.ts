@@ -25,6 +25,48 @@ function getClient(): Anthropic {
   return client;
 }
 
+/**
+ * 유튜브 태그(검색 키워드) AI 생성 — 한국어 명사 키워드 위주 10~13개.
+ * 실패 시 throw (호출측에서 휴리스틱 buildYouTubeTags 로 폴백).
+ */
+export async function generateYouTubeTags(businessName: string, catchphrase: string, narration: string): Promise<string[]> {
+  if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY 없음');
+  const prompt = `아래 홍보 영상 정보로 유튜브 태그(검색 키워드)를 만들어줘.
+업체/제품명: ${businessName}
+홍보문구: ${catchphrase}
+나레이션: ${narration}
+
+규칙:
+- 한국어 명사 키워드 위주 (조사·동사·문장·어미 금지, 예: "네일아트" O / "예약하시면" X)
+- 이 업종/제품을 유튜브·검색에서 찾을 때 실제로 칠 검색어로
+- 업체명, 핵심 품목/서비스, 관련 상위 카테고리를 포함
+- "쇼츠", "홍보영상" 같은 일반 태그 2~3개도 포함
+- 총 10~13개, 각 태그는 2~12자
+- 출력은 JSON 배열만: ["태그1","태그2", ...]`;
+  const message = await getClient().messages.create({
+    model: 'claude-haiku-4-5',
+    max_tokens: 300,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  const c = message.content[0];
+  if (c.type !== 'text') throw new Error('unexpected tag response');
+  const raw = c.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  const arr = JSON.parse(raw) as unknown;
+  if (!Array.isArray(arr)) throw new Error('tag response not array');
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const t of arr) {
+    const v = String(t).replace(/[#*_`~]/g, '').replace(/[.,!?…·]/g, '').trim();
+    if (!v || v.length < 2 || v.length > 30) continue;
+    const k = v.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k); out.push(v);
+    if (out.length >= 15) break;
+  }
+  if (!out.length) throw new Error('no tags parsed');
+  return out;
+}
+
 function fileToImageBlock(imgPath: string): { type: 'image'; source: { type: 'base64'; media_type: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'; data: string } } {
   const buffer = fs.readFileSync(imgPath);
   const base64 = buffer.toString('base64');

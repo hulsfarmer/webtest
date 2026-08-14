@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
-import { buildPromoDescription } from '@/lib/promo-description';
+import { buildPromoDescription, buildYouTubeTags } from '@/lib/promo-description';
 import fs from 'fs';
 import path from 'path';
 
@@ -23,16 +23,19 @@ export async function GET() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items = (data || []).map((r: any) => {
-    const meta = (r.script || {}) as { narration?: string; buyLink?: string; catchphrase?: string };
+    const meta = (r.script || {}) as { narration?: string; buyLink?: string; catchphrase?: string; tags?: string[] };
+    const bizName = r.business_name || String(r.topic || '').replace(/^제품홍보:/, '') || '제목 없음';
     return {
       id: r.id,
-      title: r.business_name || String(r.topic || '').replace(/^제품홍보:/, '') || '제목 없음',
+      title: bizName,
       catchphrase: meta.catchphrase || '',
       status: r.status,
       progress: r.progress || 0,
       videoUrl: r.status === 'done' ? `/api/video/${r.id}` : null,
       buyLink: meta.buyLink || '',
       description: meta.narration ? buildPromoDescription(meta.narration, meta.buyLink || '') : '',
+      tags: (meta.tags && meta.tags.length) ? meta.tags.slice(0, 15)
+        : (meta.narration ? buildYouTubeTags(bizName, meta.catchphrase || '', meta.narration) : []),
       error: r.error || null,
       createdAt: r.created_at,
     };

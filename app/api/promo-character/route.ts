@@ -5,7 +5,8 @@ import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
 import { createJob, updateJob } from '@/lib/jobStore';
-import { generatePromoScript, PromoInput, ScriptSection } from '@/lib/anthropic';
+import { generatePromoScript, generateYouTubeTags, PromoInput, ScriptSection } from '@/lib/anthropic';
+import { buildYouTubeTags } from '@/lib/promo-description';
 import { generateAudio } from '@/lib/tts';
 import { generateAzureTTS } from '@/lib/azure-tts';
 import { uploadToHedra, submitKlingAvatar, pollHedraVideo } from '@/lib/hedra';
@@ -63,8 +64,16 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     const hookT = byType('hook'), mainT = byType('main'), ctaT = byType('cta');
     const narration = [hookT, mainT, ctaT].filter(Boolean).join('  ').trim()
       || sanitizeScript(sections.map((s) => s.text).join(' '));
-    // 라이브러리·유튜브 설명용 메타 저장 (나레이션 + 구매 링크)
-    updateJob(jobId, { script: JSON.stringify({ narration, buyLink: input.buyLink || '', businessName: input.businessName, catchphrase: input.catchphrase }) });
+    // 유튜브 태그 (AI 명사 키워드, 실패 시 휴리스틱 폴백)
+    let ytTags: string[] = [];
+    try {
+      ytTags = await generateYouTubeTags(input.businessName || '', input.catchphrase || '', narration);
+    } catch (e) {
+      console.error(`[PromoCharacterJob ${jobId}] AI 태그 실패 → 휴리스틱:`, e instanceof Error ? e.message : e);
+      ytTags = buildYouTubeTags(input.businessName || '', input.catchphrase || '', narration);
+    }
+    // 라이브러리·유튜브 설명용 메타 저장 (나레이션 + 구매 링크 + 태그)
+    updateJob(jobId, { script: JSON.stringify({ narration, buyLink: input.buyLink || '', businessName: input.businessName, catchphrase: input.catchphrase, tags: ytTags }) });
     // 구간 비율(텍스트 길이 기반)
     const L = hookT.length + mainT.length + ctaT.length;
     let f1 = L > 0 ? hookT.length / L : 0.28;
