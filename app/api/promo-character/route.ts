@@ -7,6 +7,7 @@ import fs from 'fs';
 import { createJob, updateJob } from '@/lib/jobStore';
 import { generatePromoScript, PromoInput, ScriptSection } from '@/lib/anthropic';
 import { generateAudio } from '@/lib/tts';
+import { generateAzureTTS } from '@/lib/azure-tts';
 import { uploadToHedra, submitKlingAvatar, pollHedraVideo } from '@/lib/hedra';
 import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, probeDuration, sanitizeScript } from '@/lib/promo-compose';
 import { buildAlignedSubtitles, applySpeed, applyPitch } from '@/lib/promo-subtitles';
@@ -22,7 +23,11 @@ interface CharJobInput extends PromoInput {
   catchphrase: string;
   headerTheme: string;
   speed?: number; // 영상 배속 (기본 1.1)
-  pitch?: number; // 목소리 피치 반음 (아이·강아지 톤업)
+  pitch?: number; // 목소리 피치 반음 (rubberband, Google 폴백용)
+  ttsEngine?: string; // 'azure' | 'google'(기본)
+  azureVoice?: string; // Azure 음성 (예 ko-KR-YuJinNeural)
+  azurePitch?: string; // Azure 네이티브 피치 (예 '+45%')
+  azureRate?: string; // Azure 속도 (예 '+8%')
   sections?: ScriptSection[]; // 사용자가 편집한 대본(있으면 AI 생성 생략)
 }
 
@@ -67,13 +72,22 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     updateJob(jobId, { status: 'generating_audio', progress: 30, steps: { script: 'done', audio: 'running', video: 'pending' } });
     // 영어 전대문자(브랜드명 등)는 소문자로 — Chirp3-HD가 철자로 읽는 것 방지
     const ttsText = narration.replace(/[A-Z]{2,}/g, (m) => m.toLowerCase());
-    await generateAudio(ttsText, audioPath, input.duration || 30, input.voice, 1.0);
+    // TTS 엔진: Azure(네이티브 캐릭터 톤) 우선, 실패/미지정 시 Google
+    let azureDone = false;
+    if (input.ttsEngine === 'azure' && input.azureVoice) {
+      try {
+        await generateAzureTTS(ttsText, audioPath, input.azureVoice, input.azurePitch || '0%', input.azureRate || '0%');
+        azureDone = true;
+        console.log(`[PromoCharacterJob ${jobId}] Azure TTS (${input.azureVoice} ${input.azurePitch}/${input.azureRate})`);
+      } catch (e) { console.error(`[PromoCharacterJob ${jobId}] Azure TTS 실패 → Google 폴백:`, e instanceof Error ? e.message : e); }
+    }
+    if (!azureDone) await generateAudio(ttsText, audioPath, input.duration || 30, input.voice, 1.0);
     // STT용 깨끗한 원본 오디오(피치·배속 전) 보관 — 피치 오디오는 STT 인식률이 급락
     const cleanAudioPath = path.join(tmpDir, `${jobId}_clean.mp3`);
     fs.copyFileSync(audioPath, cleanAudioPath);
     subPaths.push(cleanAudioPath);
-    // 캐릭터별 목소리 피치(아이·강아지 톤업) — Kling 전에 적용해 입모양도 톤에 맞춤
-    const pitch = Math.max(-6, Math.min(6, input.pitch || 0));
+    // 목소리 피치(rubberband): Azure는 네이티브 피치라 스킵. Google 경로만 적용.
+    const pitch = azureDone ? 0 : Math.max(-6, Math.min(6, input.pitch || 0));
     if (Math.abs(pitch) > 0.01) {
       const pitchedPath = path.join(tmpDir, `${jobId}_pitched.mp3`);
       await applyPitch(audioPath, pitch, pitchedPath);
@@ -160,6 +174,10 @@ export async function POST(req: NextRequest) {
   const speed = Math.min(2.0, Math.max(0.5, parseFloat((fd.get('speed') as string | null) ?? "1.1") || 1.1));
   const pitch = Math.max(-6, Math.min(6, parseFloat((fd.get('pitch') as string | null) ?? '0') || 0));
   const characterName = ((fd.get('characterName') as string | null) ?? '').trim();
+  const ttsEngine = ((fd.get('ttsEngine') as string | null) ?? 'google').trim();
+  const azureVoice = ((fd.get('azureVoice') as string | null) ?? '').trim();
+  const azurePitch = ((fd.get('azurePitch') as string | null) ?? '0%').trim();
+  const azureRate = ((fd.get('azureRate') as string | null) ?? '0%').trim();
   const tone = (fd.get('tone') as string | null) ?? '친근한';
   const preset = (fd.get('preset') as string | null) ?? '';
   const characterFile = fd.get('character') as File | null;
@@ -214,7 +232,8 @@ export async function POST(req: NextRequest) {
     businessName, businessType, sellingPoints, cta, duration, tone,
     voice, characterBuf, characterType, productImagePath,
     overlayTitle: businessName, overlayCta: cta, // 빈 값이면 CTA 표시 안 함
-    catchphrase, headerTheme, speed, pitch, characterName, sections,
+    catchphrase, headerTheme, speed, pitch, characterName,
+    ttsEngine, azureVoice, azurePitch, azureRate, sections,
   }).catch(console.error);
 
   return NextResponse.json({ jobId });
