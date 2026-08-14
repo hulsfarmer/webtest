@@ -62,7 +62,13 @@ export default function PromoCharacterPage() {
   const [statusMsg, setStatusMsg] = useState('');
   const [steps, setSteps] = useState<{ script: StepState; audio: StepState; video: StepState }>({ script: 'pending', audio: 'pending', video: 'pending' });
   const [videoUrl, setVideoUrl] = useState('');
+  const [jobId, setJobId] = useState('');
   const [error, setError] = useState('');
+  // 자동 발행 (YouTube)
+  const [ytConnected, setYtConnected] = useState(false);
+  const [ytBusy, setYtBusy] = useState(false);
+  const [ytMsg, setYtMsg] = useState('');
+  const [ytUrl, setYtUrl] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputCls = 'w-full bg-neutral-950 border border-neutral-700 rounded-lg p-2.5 text-sm';
 
@@ -81,6 +87,33 @@ export default function PromoCharacterPage() {
     }, 400);
     return () => clearTimeout(id);
   }, [phase, businessName, catchphrase, headerTheme]);
+
+  // YouTube 연결 상태 확인 + 콜백(?yt=) 처리
+  useEffect(() => {
+    fetch('/api/social/youtube/status').then((r) => r.json()).then((d) => setYtConnected(!!d.connected)).catch(() => {});
+    const q = new URLSearchParams(window.location.search).get('yt');
+    if (q === 'connected') { setYtMsg('YouTube 연결 완료'); setYtConnected(true); }
+    else if (q === 'error') setYtMsg('YouTube 연결 실패 — 다시 시도하세요.');
+    if (q) window.history.replaceState({}, '', '/promo-character');
+  }, []);
+
+  async function publishYouTube() {
+    if (!jobId) return;
+    setYtBusy(true); setYtMsg(''); setYtUrl('');
+    try {
+      const title = `${businessName} ${catchphrase}`.trim().slice(0, 90) || '제품 홍보';
+      const desc = `${sellingPoints}\n\n${cta}`.trim();
+      const r = await fetch('/api/social/youtube/upload', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId, title, description: desc, privacyStatus: 'private' }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '업로드 실패');
+      setYtUrl(d.url); setYtMsg('YouTube 업로드 완료 (비공개) — 검토 후 공개로 바꾸세요.');
+    } catch (e) {
+      setYtMsg(e instanceof Error ? e.message : String(e));
+    } finally { setYtBusy(false); }
+  }
 
   function onProduct(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null; setProductFile(f); setProductPreview(f ? URL.createObjectURL(f) : ''); if (f) setImportedImagePath('');
@@ -175,6 +208,7 @@ export default function PromoCharacterPage() {
       const r = await fetch('/api/promo-character', { method: 'POST', body: fd });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || '생성 실패');
+      setJobId(data.jobId); setYtMsg(''); setYtUrl('');
       poll(data.jobId);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e)); setBusy(false);
@@ -366,6 +400,26 @@ export default function PromoCharacterPage() {
             {error && <div className="text-sm text-red-400 mb-3">{error}</div>}
             {videoUrl && <video src={videoUrl} controls autoPlay loop className="w-full max-w-[280px] rounded-xl mx-auto" />}
             {!videoUrl && !error && phase === 'form' && <div className="text-xs text-neutral-500">먼저 제품 정보를 넣고 &quot;AI 대본 생성&quot;을 누르세요.</div>}
+
+            {/* 완성 후 자동 발행 */}
+            {videoUrl && (
+              <div className="mt-4 pt-4 border-t border-neutral-800">
+                <div className="text-sm font-semibold mb-2">자동 발행 (내 채널)</div>
+                {!ytConnected ? (
+                  <a href="/api/social/youtube/connect" className="inline-block text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2">
+                    ▶ YouTube 연결하기
+                  </a>
+                ) : (
+                  <button onClick={publishYouTube} disabled={ytBusy}
+                    className="text-sm bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-lg px-3 py-2">
+                    {ytBusy ? '업로드 중...' : '▶ YouTube에 올리기 (비공개)'}
+                  </button>
+                )}
+                {ytMsg && <div className="text-xs text-neutral-300 mt-2">{ytMsg}</div>}
+                {ytUrl && <a href={ytUrl} target="_blank" rel="noreferrer" className="text-xs text-sky-400 underline mt-1 block">{ytUrl}</a>}
+                <div className="text-[11px] text-neutral-500 mt-2">업로드는 비공개로 올라갑니다. 검토 후 YouTube 스튜디오에서 공개로 바꾸세요.</div>
+              </div>
+            )}
           </div>
         </div>
       </div>
