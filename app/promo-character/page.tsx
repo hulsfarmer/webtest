@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 
 // 목소리 = google 보이스 + 피치(반음). 라벨에 실제 캐릭터 톤을 명확히 표기.
 const VOICES = [
-  { id: 'jieun',  label: '지은 (여·자연)',    google: 'ko-KR-Chirp3-HD-Aoede',  pitch: 0 },
+  { id: 'minji',  label: '민지 (여·자연)',    google: 'ko-KR-Chirp3-HD-Aoede',  pitch: 0 },
   { id: 'sua',    label: '수아 (여·활기)',    google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 0 },
   { id: 'minjun', label: '민준 (남·자연)',    google: 'ko-KR-Chirp3-HD-Charon', pitch: 0 },
   { id: 'teen',   label: '민서 (청소년·남)',  google: 'ko-KR-Chirp3-HD-Charon', pitch: 2 },
@@ -12,11 +12,11 @@ const VOICES = [
   { id: 'dog',    label: '코코 (강아지 톤)',  google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 4 },
 ];
 const PRESETS = [
-  { id: 'preset-jieun', label: '지은·여성',   src: '/characters/preset-jieun.png', voiceKey: 'jieun' },
-  { id: 'preset-male',  label: '준호·남성',   src: '/characters/preset-male.png',  voiceKey: 'minjun' },
-  { id: 'preset-teen',  label: '민서·청소년', src: '/characters/preset-teen.png',  voiceKey: 'teen' },
-  { id: 'preset-child', label: '하늘·아이',   src: '/characters/preset-child.png', voiceKey: 'child' },
-  { id: 'preset-dog',   label: '코코·강아지', src: '/characters/preset-dog.png',   voiceKey: 'dog' },
+  { id: 'preset-jieun', label: '민지·여성',   name: '민지', src: '/characters/preset-jieun.png', voiceKey: 'minji' },
+  { id: 'preset-male',  label: '준호·남성',   name: '준호', src: '/characters/preset-male.png',  voiceKey: 'minjun' },
+  { id: 'preset-teen',  label: '민서·청소년', name: '민서', src: '/characters/preset-teen.png',  voiceKey: 'teen' },
+  { id: 'preset-child', label: '하늘·아이',   name: '하늘', src: '/characters/preset-child.png', voiceKey: 'child' },
+  { id: 'preset-dog',   label: '코코·강아지', name: '코코', src: '/characters/preset-dog.png',   voiceKey: 'dog' },
 ];
 const HEADER_THEMES = [
   { id: 'blur', label: '글래스', desc: '사진 블러', bg: 'linear-gradient(135deg,#4b4b4b,#7a7a7a)', bn: '#FDE047', title: '#FFFFFF' },
@@ -38,7 +38,7 @@ export default function PromoCharacterPage() {
   const [catchphrase, setCatchphrase] = useState('');
   const [headerTheme, setHeaderTheme] = useState('blur');
   const [headerPreview, setHeaderPreview] = useState('');
-  const [voiceKey, setVoiceKey] = useState('jieun');
+  const [voiceKey, setVoiceKey] = useState('minji');
   const [duration, setDuration] = useState('20');
   const [speed, setSpeed] = useState('1.1');
   const [preset, setPreset] = useState('preset-jieun');
@@ -127,9 +127,10 @@ export default function PromoCharacterPage() {
     const v = validateForm(); if (v) { setError(v); return; }
     setScriptBusy(true);
     try {
+      const characterName = charFile ? '' : (PRESETS.find((p) => p.id === preset)?.name ?? '');
       const r = await fetch('/api/promo-character/script', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessName, businessType, sellingPoints, cta, duration, tone: '친근한' }),
+        body: JSON.stringify({ businessName, businessType, sellingPoints, cta, duration, tone: '친근한', characterName }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || '대본 생성 실패');
@@ -155,6 +156,7 @@ export default function PromoCharacterPage() {
     fd.append('pitch', charFile ? '0' : String(v.pitch)); // 업로드 캐릭터는 피치 0
     if (productFile) fd.append('product', productFile); else fd.append('productPath', importedImagePath);
     if (charFile) fd.append('character', charFile); else fd.append('preset', preset);
+    fd.append('characterName', charFile ? '' : (PRESETS.find((p) => p.id === preset)?.name ?? ''));
     fd.append('sections', JSON.stringify(sections.map((s) => ({ type: s.type, text: s.text }))));
     fd.append('catchphrase', catchphrase);
     fd.append('headerTheme', headerTheme);

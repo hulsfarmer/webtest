@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
       cta: String(body.cta || '').trim(),
       duration: parseInt(String(body.duration || '20'), 10),
       tone: String(body.tone || '친근한'),
+      characterName: String(body.characterName || '').trim(),
     });
     // hook/main/cta 3구간으로 정리 (정제)
     const pick = (t: 'hook' | 'main' | 'cta') =>

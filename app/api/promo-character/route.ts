@@ -159,6 +159,7 @@ export async function POST(req: NextRequest) {
   const duration = parseInt((fd.get('duration') as string | null) ?? '20', 10);
   const speed = Math.min(2.0, Math.max(0.5, parseFloat((fd.get('speed') as string | null) ?? '1.1') || 1.1));
   const pitch = Math.max(-6, Math.min(6, parseFloat((fd.get('pitch') as string | null) ?? '0') || 0));
+  const characterName = ((fd.get('characterName') as string | null) ?? '').trim();
   const tone = (fd.get('tone') as string | null) ?? '친근한';
   const preset = (fd.get('preset') as string | null) ?? '';
   const characterFile = fd.get('character') as File | null;
@@ -213,7 +214,7 @@ export async function POST(req: NextRequest) {
     businessName, businessType, sellingPoints, cta, duration, tone,
     voice, characterBuf, characterType, productImagePath,
     overlayTitle: businessName, overlayCta: cta || '지금 구매하기',
-    catchphrase, headerTheme, speed, pitch, sections,
+    catchphrase, headerTheme, speed, pitch, characterName, sections,
   }).catch(console.error);
 
   return NextResponse.json({ jobId });
