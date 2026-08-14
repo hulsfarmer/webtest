@@ -68,6 +68,10 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     // 영어 전대문자(브랜드명 등)는 소문자로 — Chirp3-HD가 철자로 읽는 것 방지
     const ttsText = narration.replace(/[A-Z]{2,}/g, (m) => m.toLowerCase());
     await generateAudio(ttsText, audioPath, input.duration || 30, input.voice, 1.0);
+    // STT용 깨끗한 원본 오디오(피치·배속 전) 보관 — 피치 오디오는 STT 인식률이 급락
+    const cleanAudioPath = path.join(tmpDir, `${jobId}_clean.mp3`);
+    fs.copyFileSync(audioPath, cleanAudioPath);
+    subPaths.push(cleanAudioPath);
     // 캐릭터별 목소리 피치(아이·강아지 톤업) — Kling 전에 적용해 입모양도 톤에 맞춤
     const pitch = Math.max(-6, Math.min(6, input.pitch || 0));
     if (Math.abs(pitch) > 0.01) {
@@ -106,7 +110,8 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     const t1 = +(D * f1).toFixed(2), t2 = +(D * f2).toFixed(2);
 
     // 자막: 실제 음성 STT 단어 타임스탬프에 원고를 정밀 정렬 (실패 시 쉼정렬→비례 폴백)
-    const { cues, mode } = await buildAlignedSubtitles(effCharPath, narration, D, tmpDir, jobId);
+    // STT는 깨끗한 원본 오디오로(정확), 결과 시각은 배속에 맞춰 스케일(1/speed)
+    const { cues, mode } = await buildAlignedSubtitles(effCharPath, narration, D, tmpDir, jobId, { sttSource: cleanAudioPath, timeScale: 1 / speed });
     const subtitles: { path: string; start: number; end: number }[] = [];
     for (let i = 0; i < cues.length; i++) {
       const sp = path.join(tmpDir, `${jobId}_sub${i}.png`);

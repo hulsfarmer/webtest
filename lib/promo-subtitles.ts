@@ -121,14 +121,21 @@ export async function detectSpeechSegments(charPath: string, D: number): Promise
  */
 export async function buildAlignedSubtitles(
   charPath: string, narration: string, D0: number, tmpDir: string, tag: string,
+  opts?: { sttSource?: string; timeScale?: number },
 ): Promise<{ cues: SubCue[]; mode: string }> {
   const chunks = chunkForSubtitles(narration);
   if (!chunks.length) return { cues: [], mode: 'none' };
 
   // ── 1순위: STT 단어 타임스탬프 앵커 정밀정렬 ──
+  // STT는 깨끗한 원본 오디오(피치·배속 전)로 돌리는 게 정확 → sttSource 지정 가능.
+  // 그 오디오가 최종 영상과 시간축이 다르면 timeScale(=1/speed)로 시각 보정.
+  const sttSrc = opts?.sttSource || charPath;
+  const timeScale = opts?.timeScale ?? 1;
   let sw: SttWord[] = [];
-  try { sw = await sttWords(charPath, tmpDir, tag); }
-  catch (e) { console.error(`[subtitles ${tag}] STT 실패, 쉼정렬 폴백:`, e instanceof Error ? e.message : e); }
+  try {
+    sw = await sttWords(sttSrc, tmpDir, tag);
+    if (timeScale !== 1) sw = sw.map((w) => ({ w: w.w, s: w.s * timeScale, e: w.e * timeScale }));
+  } catch (e) { console.error(`[subtitles ${tag}] STT 실패, 쉼정렬 폴백:`, e instanceof Error ? e.message : e); }
 
   if (sw.length >= 3) {
     const nWords = narration.split(/\s+/).filter(Boolean);
