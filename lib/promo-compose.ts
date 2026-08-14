@@ -127,7 +127,8 @@ export async function renderHeaderOverlay(businessName: string, catchphrase: str
   const name = stripEmoji(businessName);
   const phrase = stripEmoji(catchphrase || '');
   const nameFit = fitLines(ctx, name, fams.title, W - 130, 2, 80, 48);
-  const phraseFit = phrase ? fitLines(ctx, phrase, fams.body, W - 150, 2, 58, 38) : { lines: [] as string[], size: 0 };
+  // 홍보문구도 제품명과 같은 폰트·크기 (제품명이 길어 축소되면 함께 축소 → 밴드 넘침 방지)
+  const phraseFit = phrase ? fitLines(ctx, phrase, fams.title, W - 130, 2, nameFit.size, nameFit.size) : { lines: [] as string[], size: 0 };
   const nameLH = Math.round(nameFit.size * 1.14);
   const phraseLH = phraseFit.size ? Math.round(phraseFit.size * 1.2) : 0;
   const gap = phrase ? 22 : 0;
@@ -157,7 +158,7 @@ export async function renderHeaderOverlay(businessName: string, catchphrase: str
   nameFit.lines.forEach((ln) => { drawRow(ln, baseline, nameFit.size, fams.title, th.nameColor); baseline += nameLH; });
   if (phrase) {
     baseline = baseline - nameLH + gap + phraseFit.size;
-    phraseFit.lines.forEach((ln) => { drawRow(ln, baseline, phraseFit.size, fams.body, th.titleColor); baseline += phraseLH; });
+    phraseFit.lines.forEach((ln) => { drawRow(ln, baseline, phraseFit.size, fams.title, th.titleColor); baseline += phraseLH; });
   }
   fs.writeFileSync(outPath, canvas.toBuffer('image/png'));
 }
