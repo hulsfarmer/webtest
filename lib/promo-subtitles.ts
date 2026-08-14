@@ -123,21 +123,20 @@ export async function detectSpeechSegments(charPath: string, D: number): Promise
  * 시작시각 목록 → 자막 큐. 각 자막 end = 다음 자막 시작(겹침 없음).
  * 너무 짧은(<minDur) 자막은 이전 자막에 흡수(깜빡임·겹침 방지).
  */
-function finalizeCues(starts: { s: number; text: string }[], D0: number, lead: number, minDur = 0.4): SubCue[] {
-  const pts = starts.map((x) => ({ start: Math.max(0, x.s - lead), text: x.text }));
+function finalizeCues(starts: { s: number; text: string }[], D0: number, lead: number, minDur = 0.5): SubCue[] {
+  const pts = starts.map((x) => ({ start: Math.max(0, x.s - lead), text: x.text })).filter((p) => p.text);
+  if (!pts.length) return [];
   const out: SubCue[] = [];
-  for (let i = 0; i < pts.length; i++) {
-    const start = pts[i].start;
-    const nextStart = i + 1 < pts.length ? pts[i + 1].start : D0;
-    const end = Math.min(D0, Math.max(start, nextStart)); // 절대 다음 시작을 넘지 않음
-    if (out.length && end - start < minDur) {
-      const prev = out[out.length - 1];
-      prev.text = `${prev.text} ${pts[i].text}`.trim();
-      prev.end = end;
+  let cur = { start: pts[0].start, text: pts[0].text };
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i].start - cur.start < minDur) {
+      cur.text = `${cur.text} ${pts[i].text}`.trim(); // 다음 자막이 너무 이르면 현재에 합침(겹침 방지)
     } else {
-      out.push({ start, end, text: pts[i].text });
+      out.push({ start: cur.start, end: Math.min(D0, pts[i].start), text: cur.text });
+      cur = { start: pts[i].start, text: pts[i].text };
     }
   }
+  out.push({ start: cur.start, end: D0, text: cur.text });
   return out;
 }
 

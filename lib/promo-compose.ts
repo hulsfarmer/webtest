@@ -124,8 +124,10 @@ export async function renderHeaderOverlay(businessName: string, catchphrase: str
   const th = HEADER_THEMES[themeId] || HEADER_THEMES.blur;
   const BH = HEADER_BAND_H;
 
-  const name = stripEmoji(businessName);
-  const phrase = stripEmoji(catchphrase || '');
+  // 이모지 + 마크다운 강조기호(*#`_~) 제거 (AI 캐치타이틀의 *강조* 별표가 헤더에 노출되던 문제)
+  const stripMd = (s: string) => stripEmoji(s).replace(/[*#`_~]/g, '').replace(/\s{2,}/g, ' ').trim();
+  const name = stripMd(businessName);
+  const phrase = stripMd(catchphrase || '');
   const nameFit = fitLines(ctx, name, fams.title, W - 130, 2, 80, 48);
   // 홍보문구도 제품명과 같은 폰트·크기 (제품명이 길어 축소되면 함께 축소 → 밴드 넘침 방지)
   const phraseFit = phrase ? fitLines(ctx, phrase, fams.title, W - 130, 2, nameFit.size, nameFit.size) : { lines: [] as string[], size: 0 };

@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       { type: 'main' as const, label: '제품 소개 (제품+캐릭터)', text: pick('main') },
       { type: 'cta' as const, label: '마무리 (캐릭터)', text: pick('cta') },
     ].filter((s) => s.text);
-    return NextResponse.json({ title: script.title, sections });
+    return NextResponse.json({ title: sanitizeScript(script.title || ''), sections });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: msg }, { status: 500 });
