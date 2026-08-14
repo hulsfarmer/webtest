@@ -127,11 +127,33 @@ export async function renderHeaderOverlay(businessName: string, catchphrase: str
   const stripMd = (s: string) => stripEmoji(s).replace(/[*#`_~]/g, '').replace(/\s{2,}/g, ' ').trim();
   const name = stripMd(businessName);
   const phrase = stripMd(catchphrase || '');
-  const nameFit = fitLines(ctx, name, fams.title, W - 130, 2, 80, 48);
-  // 홍보문구도 제품명과 같은 폰트·크기 (제품명이 길어 축소되면 함께 축소 → 밴드 넘침 방지)
-  const phraseFit = phrase ? fitLines(ctx, phrase, fams.title, W - 130, 2, nameFit.size, nameFit.size) : { lines: [] as string[], size: 0 };
-  const nameLH = Math.round(nameFit.size * 1.14);
-  const phraseLH = phraseFit.size ? Math.round(phraseFit.size * 1.2) : 0;
+  // 제품명·홍보문구를 같은 크기로. 각 ≤2줄 + 전체 높이가 밴드 이내가 되는 최대 폰트 탐색
+  // (제품명 2줄+홍보문구 2줄=4줄이어도 밴드 안에 들어오게 자동 축소 → 위 잘림 방지)
+  const MAXW = W - 130, BAND_PAD = 30;
+  const wrapAt = (text: string, size: number): string[] => {
+    ctx.font = `${size}px "${fams.title}"`;
+    const words = text.split(/\s+/).filter(Boolean);
+    const lines: string[] = [];
+    let cur = '';
+    for (const w of words) {
+      const t = cur ? `${cur} ${w}` : w;
+      if (ctx.measureText(t).width <= MAXW || !cur) cur = t;
+      else { lines.push(cur); cur = w; }
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  };
+  let hSize = 42, nameLines = wrapAt(name, 42), phraseLines = phrase ? wrapAt(phrase, 42) : [];
+  for (let s = 80; s >= 42; s -= 2) {
+    const nl = wrapAt(name, s), pl = phrase ? wrapAt(phrase, s) : [];
+    const lineH = s * 1.16;
+    const bh = nl.length * lineH + (phrase ? 22 : 0) + pl.length * lineH;
+    if (nl.length <= 2 && pl.length <= 2 && bh <= BH - BAND_PAD) { hSize = s; nameLines = nl; phraseLines = pl; break; }
+  }
+  const nameFit = { lines: nameLines, size: hSize };
+  const phraseFit = { lines: phraseLines, size: phrase ? hSize : 0 };
+  const nameLH = Math.round(hSize * 1.14);
+  const phraseLH = phrase ? Math.round(hSize * 1.2) : 0;
   const gap = phrase ? 22 : 0;
   const blockH = nameFit.lines.length * nameLH + gap + phraseFit.lines.length * phraseLH;
 
