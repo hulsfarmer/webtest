@@ -266,18 +266,53 @@ export async function POST(req: NextRequest) {
       catch (e) { console.error(`[recompose ${outId}] STT 실패, 쉼정렬로 폴백:`, e instanceof Error ? e.message : e); }
 
       if (sw.length >= 3 && chunks.length) {
-        // 나레이션 단어 index → STT 단어 index (같은 발화 순서, 개수차는 비례 매핑)
+        // 원고 전체 텍스트 유지 + STT 단어 시각을 앵커로 "정밀 정렬"
+        //  1) 원고 단어 ↔ STT 단어를 순방향 매칭(앵커) → 실제 발화시각 확보
+        //  2) 앵커 사이 원고 단어는 시각 보간 → STT가 놓친 단어도 자연스러운 시각
         const nWords = narrationIn.split(/\s+/).filter(Boolean);
         const NW = nWords.length, SW = sw.length;
-        const mapIdx = (ni: number): number =>
-          SW <= 1 ? 0 : Math.min(SW - 1, Math.max(0, Math.round((ni * (SW - 1)) / Math.max(1, NW - 1))));
+        const norm = (s: string) => s.replace(/[^가-힣a-zA-Z0-9]/g, '');
+        const wordMatch = (a: string, b: string): boolean => {
+          const x = norm(a), y = norm(b);
+          if (!x || !y) return false;
+          return x === y || x.startsWith(y) || y.startsWith(x) || (x.length >= 2 && y.length >= 2 && x.slice(0, 2) === y.slice(0, 2));
+        };
+        // 앵커: (원고 index → STT 시각)
+        const anchors: { ni: number; t: number }[] = [];
+        let ni = 0;
+        for (let k = 0; k < SW; k++) {
+          for (let j = ni; j < Math.min(ni + 7, NW); j++) {
+            if (wordMatch(nWords[j], sw[k].w)) { anchors.push({ ni: j, t: sw[k].s }); ni = j + 1; break; }
+          }
+        }
+        // 원고 각 단어의 시각(초)을 앵커로 보간/외삽
+        const wordTime = new Array<number>(NW);
+        if (anchors.length >= 2) {
+          for (let a = 0; a < anchors.length; a++) {
+            const cur = anchors[a];
+            wordTime[cur.ni] = cur.t;
+            const next = anchors[a + 1];
+            if (next) {
+              const span = next.ni - cur.ni;
+              for (let m = 1; m < span; m++) wordTime[cur.ni + m] = cur.t + (next.t - cur.t) * (m / span);
+            }
+          }
+          // 앞/뒤 외삽
+          const first = anchors[0], last = anchors[anchors.length - 1];
+          for (let j = 0; j < first.ni; j++) wordTime[j] = Math.max(0, first.t - (first.ni - j) * 0.28);
+          const tailRate = 0.28;
+          for (let j = last.ni + 1; j < NW; j++) wordTime[j] = Math.min(D0, last.t + (j - last.ni) * tailRate);
+        } else {
+          // 앵커 부족 → 비례
+          for (let j = 0; j < NW; j++) wordTime[j] = (j / Math.max(1, NW - 1)) * D0;
+        }
         const LEAD = 0.15;
         let wIdx = 0;
         const raw = chunks.map((chunk) => {
           const cwCount = chunk.split(/\s+/).filter(Boolean).length || 1;
-          const startWord = wIdx;
+          const startWord = Math.min(NW - 1, wIdx);
           wIdx += cwCount;
-          return { sStart: sw[mapIdx(startWord)].s, text: chunk };
+          return { sStart: wordTime[startWord] ?? 0, text: chunk };
         });
         segments = raw.map((x, i) => {
           const start = Math.max(0, x.sStart - LEAD);
@@ -285,7 +320,7 @@ export async function POST(req: NextRequest) {
           const end = Math.min(Math.max(start + 0.3, nextStart), D0);
           return { start, end, text: x.text };
         });
-        console.log(`[recompose ${outId}] STT단어 ${SW}개 / 나레이션단어 ${NW}개 → 자막 ${segments.length}개 (stt-align), speed ${speed}`);
+        console.log(`[recompose ${outId}] STT단어 ${SW} / 원고단어 ${NW} / 앵커 ${anchors.length} → 자막 ${segments.length}개 (stt-align), speed ${speed}`);
         subMode = 'stt-align';
       } else {
         // 2순위 폴백: 실제 쉼구간(silence)에 단어를 시간비례 배정

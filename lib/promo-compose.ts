@@ -39,6 +39,19 @@ function findFont(bold = false): string {
   return '';
 }
 
+/** 자막용 굵은 고딕 (홍보영상과 동일: NotoSansCJK-Bold 우선) */
+function findSubFont(): string {
+  const candidates = [
+    '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc',
+    '/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc',
+    path.join(process.cwd(), 'public/fonts/NotoSansKR-Bold.ttf'),
+    '/System/Library/Fonts/AppleSDGothicNeo.ttc',
+    path.join(process.cwd(), 'public/fonts/NotoSansKR-Regular.ttf'),
+  ];
+  for (const f of candidates) if (fs.existsSync(f)) return f;
+  return '';
+}
+
 /** 이모지·기호 제거 (영상 텍스트용) */
 export function stripEmoji(s: string): string {
   return (s || '')
@@ -72,10 +85,12 @@ function fitLines(
 
 async function registerFonts() {
   const { GlobalFonts } = await import('@napi-rs/canvas');
-  const titleFont = findFont(true), bodyFont = findFont(false);
-  const fams: { title: string; body: string } = { title: 'sans-serif', body: 'sans-serif' };
+  const titleFont = findFont(true), bodyFont = findFont(false), subFont = findSubFont();
+  const fams: { title: string; body: string; sub: string } = { title: 'sans-serif', body: 'sans-serif', sub: 'sans-serif' };
   try { if (titleFont) { GlobalFonts.registerFromPath(titleFont, 'PromoTitle'); fams.title = 'PromoTitle'; } } catch { /* noop */ }
   try { if (bodyFont) { GlobalFonts.registerFromPath(bodyFont, 'PromoBody'); fams.body = 'PromoBody'; } } catch { /* noop */ }
+  try { if (subFont) { GlobalFonts.registerFromPath(subFont, 'PromoSub'); fams.sub = 'PromoSub'; } } catch { /* noop */ }
+  if (fams.sub === 'sans-serif') fams.sub = fams.body; // 폴백
   return fams;
 }
 
@@ -173,26 +188,34 @@ export async function renderCtaOverlay(cta: string, outPath: string): Promise<vo
 export const SUB_STRIP_H = 260;   // 자막 스트립 높이 (풀프레임 대신 → OOM 방지)
 export const SUB_Y = 1500;        // 스트립 y: 더 하단(얼굴·제품 안 가림)
 
-/** 나레이션 자막 PNG (작은 스트립: 1080xSUB_STRIP_H 투명, 박스 없이 흰 글자 + 검은 외곽선) */
+/** 나레이션 자막 PNG (홍보영상식: 볼드 크림화이트 + 부드러운 그림자 + 얇은 외곽선) */
 export async function renderSubtitle(text: string, outPath: string): Promise<void> {
   const { createCanvas } = await import('@napi-rs/canvas');
   const fams = await registerFonts();
   const canvas = createCanvas(W, SUB_STRIP_H);
   const ctx = canvas.getContext('2d');
   const clean = stripEmoji(text);
-  const { lines, size } = fitLines(ctx, clean, fams.body, W - 160, 2, 66, 48);
-  const lineH = Math.round(size * 1.3);
-  ctx.font = `${size}px "${fams.body}"`;
-  let maxW = 0; lines.forEach((l) => { maxW = Math.max(maxW, ctx.measureText(l).width); });
+  const { lines, size } = fitLines(ctx, clean, fams.sub, W - 140, 2, 72, 50);
+  const lineH = Math.round(size * 1.32);
+  ctx.font = `${size}px "${fams.sub}"`;
   const bh = lines.length * lineH;
   const cy = SUB_STRIP_H / 2;
-  // 박스 없이: 흰 글자 + 강한 검은 외곽선 (홍보영상 자막식)
   ctx.textAlign = 'center';
+  ctx.lineJoin = 'round';
   let y = cy - bh / 2 + size * 0.8;
   lines.forEach((l) => {
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = Math.max(6, size * 0.22); ctx.strokeStyle = 'rgba(0,0,0,0.92)'; ctx.strokeText(l, W / 2, y);
-    ctx.fillStyle = '#ffffff'; ctx.fillText(l, W / 2, y);
+    // 1) 부드러운 그림자 + 얇은 어두운 외곽선 (밝은 제품 배경 위에서도 가독)
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 14;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 4;
+    ctx.lineWidth = Math.max(4, size * 0.13);
+    ctx.strokeStyle = 'rgba(0,0,0,0.82)';
+    ctx.strokeText(l, W / 2, y);
+    // 2) 크림 화이트 본문 (그림자 없이 크리스프하게)
+    ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.fillStyle = '#FFFBEB';
+    ctx.fillText(l, W / 2, y);
     y += lineH;
   });
   fs.writeFileSync(outPath, canvas.toBuffer('image/png'));
