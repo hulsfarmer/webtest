@@ -2,17 +2,21 @@
 
 import { useState, useRef, useEffect } from 'react';
 
+// 목소리 = google 보이스 + 피치(반음). 라벨에 실제 캐릭터 톤을 명확히 표기.
 const VOICES = [
-  { id: 'ko-KR-Chirp3-HD-Aoede', label: '지은 (여·자연스러운)' },
-  { id: 'ko-KR-Chirp3-HD-Zephyr', label: '수아 (여·활기찬)' },
-  { id: 'ko-KR-Chirp3-HD-Charon', label: '민준 (남·자연스러운)' },
+  { id: 'jieun',  label: '지은 (여·자연)',    google: 'ko-KR-Chirp3-HD-Aoede',  pitch: 0 },
+  { id: 'sua',    label: '수아 (여·활기)',    google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 0 },
+  { id: 'minjun', label: '민준 (남·자연)',    google: 'ko-KR-Chirp3-HD-Charon', pitch: 0 },
+  { id: 'teen',   label: '민서 (청소년·남)',  google: 'ko-KR-Chirp3-HD-Charon', pitch: 2 },
+  { id: 'child',  label: '하늘 (아이 톤)',    google: 'ko-KR-Chirp3-HD-Aoede',  pitch: 3 },
+  { id: 'dog',    label: '코코 (강아지 톤)',  google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 4 },
 ];
 const PRESETS = [
-  { id: 'preset-jieun', label: '지은·여성',   src: '/characters/preset-jieun.png', voice: 'ko-KR-Chirp3-HD-Aoede',  pitch: 0 },
-  { id: 'preset-male',  label: '준호·남성',   src: '/characters/preset-male.png',  voice: 'ko-KR-Chirp3-HD-Charon', pitch: 0 },
-  { id: 'preset-teen',  label: '민서·청소년', src: '/characters/preset-teen.png',  voice: 'ko-KR-Chirp3-HD-Zephyr', pitch: 0 },
-  { id: 'preset-child', label: '하늘·아이',   src: '/characters/preset-child.png', voice: 'ko-KR-Chirp3-HD-Aoede',  pitch: 3 },
-  { id: 'preset-dog',   label: '코코·강아지', src: '/characters/preset-dog.png',   voice: 'ko-KR-Chirp3-HD-Zephyr', pitch: 4 },
+  { id: 'preset-jieun', label: '지은·여성',   src: '/characters/preset-jieun.png', voiceKey: 'jieun' },
+  { id: 'preset-male',  label: '준호·남성',   src: '/characters/preset-male.png',  voiceKey: 'minjun' },
+  { id: 'preset-teen',  label: '민서·청소년', src: '/characters/preset-teen.png',  voiceKey: 'teen' },
+  { id: 'preset-child', label: '하늘·아이',   src: '/characters/preset-child.png', voiceKey: 'child' },
+  { id: 'preset-dog',   label: '코코·강아지', src: '/characters/preset-dog.png',   voiceKey: 'dog' },
 ];
 const HEADER_THEMES = [
   { id: 'blur', label: '글래스', desc: '사진 블러', bg: 'linear-gradient(135deg,#4b4b4b,#7a7a7a)', bn: '#FDE047', title: '#FFFFFF' },
@@ -34,11 +38,10 @@ export default function PromoCharacterPage() {
   const [catchphrase, setCatchphrase] = useState('');
   const [headerTheme, setHeaderTheme] = useState('blur');
   const [headerPreview, setHeaderPreview] = useState('');
-  const [voice, setVoice] = useState(VOICES[0].id);
+  const [voiceKey, setVoiceKey] = useState('jieun');
   const [duration, setDuration] = useState('20');
   const [speed, setSpeed] = useState('1.1');
   const [preset, setPreset] = useState('preset-jieun');
-  const [pitch, setPitch] = useState('0'); // 캐릭터별 목소리 피치(아이·강아지=톤업)
   const [charFile, setCharFile] = useState<File | null>(null);
   const [charPreview, setCharPreview] = useState('');
   const [productFile, setProductFile] = useState<File | null>(null);
@@ -145,10 +148,11 @@ export default function PromoCharacterPage() {
     fd.append('businessType', businessType);
     fd.append('sellingPoints', sellingPoints);
     fd.append('cta', cta);
-    fd.append('voice', voice);
+    const v = VOICES.find((x) => x.id === voiceKey) ?? VOICES[0];
+    fd.append('voice', v.google);
     fd.append('duration', duration);
     fd.append('speed', speed);
-    fd.append('pitch', charFile ? '0' : pitch); // 업로드 캐릭터는 피치 0
+    fd.append('pitch', charFile ? '0' : String(v.pitch)); // 업로드 캐릭터는 피치 0
     if (productFile) fd.append('product', productFile); else fd.append('productPath', importedImagePath);
     if (charFile) fd.append('character', charFile); else fd.append('preset', preset);
     fd.append('sections', JSON.stringify(sections.map((s) => ({ type: s.type, text: s.text }))));
@@ -242,7 +246,7 @@ export default function PromoCharacterPage() {
                 <div className="flex gap-3 flex-wrap">
                   {PRESETS.map((p) => (
                     <button key={p.id} title={p.label}
-                      onClick={() => { setPreset(p.id); setVoice(p.voice); setPitch(String(p.pitch)); setCharFile(null); setCharPreview(''); }}
+                      onClick={() => { setPreset(p.id); setVoiceKey(p.voiceKey); setCharFile(null); setCharPreview(''); }}
                       className={`w-16 h-20 rounded-lg overflow-hidden border-2 ${preset === p.id && !charFile ? 'border-emerald-400' : 'border-neutral-700'}`}>
                       <img src={p.src} alt={p.label} className="w-full h-full object-cover" />
                     </button>
@@ -256,7 +260,7 @@ export default function PromoCharacterPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm text-neutral-300 mb-1.5">목소리</label>
-                  <select className={inputCls} value={voice} onChange={(e) => setVoice(e.target.value)}>
+                  <select className={inputCls} value={voiceKey} onChange={(e) => setVoiceKey(e.target.value)}>
                     {VOICES.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
                   </select>
                 </div>
