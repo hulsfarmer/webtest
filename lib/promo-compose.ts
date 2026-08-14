@@ -157,17 +157,18 @@ export async function renderHeaderOverlay(businessName: string, catchphrase: str
   fs.writeFileSync(outPath, canvas.toBuffer('image/png'));
 }
 
-/** 하단 CTA 오버레이 (제품 구간 + 마무리에 표시) */
+/** 하단 CTA 오버레이 (제품 구간 + 마무리에 표시). CTA 비어있으면 투명(표시 안 함) */
 export async function renderCtaOverlay(cta: string, outPath: string): Promise<void> {
   const { createCanvas } = await import('@napi-rs/canvas');
-  const fams = await registerFonts();
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext('2d');
+  const clean = stripEmoji(cta || '').replace(/[*#`_~]/g, '').trim();
+  if (!clean) { fs.writeFileSync(outPath, canvas.toBuffer('image/png')); return; } // 빈 CTA → 투명
+  const fams = await registerFonts();
   const g = ctx.createLinearGradient(0, H - 320, 0, H);
   g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.63)');
   ctx.fillStyle = g; ctx.fillRect(0, H - 320, W, 320);
   ctx.textAlign = 'center';
-  const clean = stripEmoji(cta);
   const { lines, size } = fitLines(ctx, clean, fams.body, W - 120, 2, 52, 36);
   const lineH = Math.round(size * 1.2);
   const startY = H - 150 - (lines.length - 1) * lineH;

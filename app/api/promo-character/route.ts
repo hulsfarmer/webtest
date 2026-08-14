@@ -213,7 +213,7 @@ export async function POST(req: NextRequest) {
   processPromoCharacterJob(jobId, {
     businessName, businessType, sellingPoints, cta, duration, tone,
     voice, characterBuf, characterType, productImagePath,
-    overlayTitle: businessName, overlayCta: cta || '지금 구매하기',
+    overlayTitle: businessName, overlayCta: cta, // 빈 값이면 CTA 표시 안 함
     catchphrase, headerTheme, speed, pitch, characterName, sections,
   }).catch(console.error);
 
