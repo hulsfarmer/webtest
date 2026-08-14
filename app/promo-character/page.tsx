@@ -343,6 +343,7 @@ export default function PromoCharacterPage() {
                   <option value="1.0">1.0배 (원속도)</option>
                   <option value="1.1">1.1배 (권장)</option>
                   <option value="1.2">1.2배</option>
+                  <option value="1.3">1.3배</option>
                 </select>
               </div>
               <button onClick={onGenerateScript} disabled={scriptBusy}

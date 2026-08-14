@@ -13,22 +13,27 @@ const execAsync = promisify(exec);
 export interface SubCue { start: number; end: number; text: string }
 interface SttWord { w: string; s: number; e: number }
 
-/** 자막용 청크: 문장 → ≤maxChars (긴 문장은 어절 분할) */
-export function chunkForSubtitles(text: string, maxChars = 32): string[] {
+/**
+ * 자막용 청크: 쇼츠 스타일 "숨 쉬는 단위"로 짧게(3~4어절).
+ * 구두점(쉼표·마침표·물음표 등 = 자연스러운 쉼)에서 끊고, 구두점이 없으면
+ * 최대 maxWords 어절 / maxChars 글자에서 끊는다. 표시 텍스트는 구두점 제거.
+ */
+export function chunkForSubtitles(text: string, maxWords = 4, maxChars = 18): string[] {
   const clean = text.replace(/\s+/g, ' ').trim();
-  const sents = clean.split(/(?<=[.!?。…])\s+/).filter(Boolean);
+  if (!clean) return [];
+  const words = clean.split(' ');
   const chunks: string[] = [];
-  for (const s of sents) {
-    if (s.length <= maxChars) { chunks.push(s); continue; }
-    let cur = '';
-    for (const w of s.split(' ')) {
-      const t = cur ? `${cur} ${w}` : w;
-      if (t.length <= maxChars || !cur) cur = t;
-      else { chunks.push(cur); cur = w; }
-    }
-    if (cur) chunks.push(cur);
+  let cur: string[] = [];
+  const strip = (s: string) => s.replace(/[.,!?。…、·]+/g, '').replace(/\s+/g, ' ').trim();
+  const flush = () => { const t = strip(cur.join(' ')); if (t) chunks.push(t); cur = []; };
+  for (const w of words) {
+    cur.push(w);
+    const joined = cur.join(' ');
+    const endsPunct = /[.,!?。…、·]$/.test(w); // 구두점 = 숨(쉼) 지점
+    if (endsPunct || cur.length >= maxWords || joined.length >= maxChars) flush();
   }
-  return chunks.filter(Boolean);
+  flush();
+  return chunks;
 }
 
 /** "1.200s" | {seconds,nanos} → 초 */

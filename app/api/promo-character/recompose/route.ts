@@ -59,22 +59,23 @@ async function downloadImage(imgUrl: string): Promise<{ buf: Buffer; ext: string
   return null;
 }
 
-/** 자막용 청크: 문장 → ≤32자 (긴 문장은 어절 분할) — route.ts 와 동일 */
-function chunkForSubtitles(text: string, maxChars = 32): string[] {
+/** 자막용 청크: 숨 쉬는 단위(3~4어절, 구두점=쉼) — lib/promo-subtitles 와 동일 */
+function chunkForSubtitles(text: string, maxWords = 4, maxChars = 18): string[] {
   const clean = text.replace(/\s+/g, ' ').trim();
-  const sents = clean.split(/(?<=[.!?。…])\s+/).filter(Boolean);
+  if (!clean) return [];
+  const words = clean.split(' ');
   const chunks: string[] = [];
-  for (const s of sents) {
-    if (s.length <= maxChars) { chunks.push(s); continue; }
-    let cur = '';
-    for (const w of s.split(' ')) {
-      const t = cur ? `${cur} ${w}` : w;
-      if (t.length <= maxChars || !cur) cur = t;
-      else { chunks.push(cur); cur = w; }
-    }
-    if (cur) chunks.push(cur);
+  let cur: string[] = [];
+  const strip = (s: string) => s.replace(/[.,!?。…、·]+/g, '').replace(/\s+/g, ' ').trim();
+  const flush = () => { const t = strip(cur.join(' ')); if (t) chunks.push(t); cur = []; };
+  for (const w of words) {
+    cur.push(w);
+    const joined = cur.join(' ');
+    const endsPunct = /[.,!?。…、·]$/.test(w);
+    if (endsPunct || cur.length >= maxWords || joined.length >= maxChars) flush();
   }
-  return chunks.filter(Boolean);
+  flush();
+  return chunks;
 }
 
 interface Seg { start: number; end: number; text: string }
