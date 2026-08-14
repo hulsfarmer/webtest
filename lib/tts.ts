@@ -48,8 +48,9 @@ async function generateGoogleCloudTTS(
 
   const voiceName = resolveGoogleVoice(voice);
 
-  // 콤마는 띄어쓰기 수준으로만 쉬게 (콤마→공백). break 미삽입 → 과도한 쉼 방지
-  const ssmlText = `<speak>${escapeXml(text.replace(/\s*,\s*/g, ' '))}</speak>`;
+  // 콤마→공백(과도한 쉼 방지), 느낌표·물음표 뒤엔 문장 쉼 삽입(Chirp3-HD가 자연 쉼을 잘 안 줌)
+  const withBreaks = escapeXml(text.replace(/\s*,\s*/g, ' ')).replace(/([!?])(\s|$)/g, '$1<break time="350ms"/>$2');
+  const ssmlText = `<speak>${withBreaks}</speak>`;
 
   const response = await axios.post(
     `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
@@ -221,9 +222,9 @@ export async function generateAudioWithTimepoints(
       const dir = path.dirname(outputPath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-      // Build SSML with <mark> between sentences (콤마는 공백으로 → 과도한 쉼 방지)
+      // Build SSML with <mark> between sentences (콤마→공백, 느낌표·물음표 뒤 문장 쉼)
       const ssmlParts = sentences.map((s, i) => {
-        const clean = escapeXml(s.replace(/\s*,\s*/g, ' '));
+        const clean = escapeXml(s.replace(/\s*,\s*/g, ' ')).replace(/([!?])(\s|$)/g, '$1<break time="350ms"/>$2');
         return `<mark name="s${i}"/>${clean}`;
       });
       const ssml = `<speak>${ssmlParts.join(' ')}<mark name="s${sentences.length}"/></speak>`;
@@ -257,8 +258,8 @@ export async function generateAudioWithTimepoints(
         try {
           for (let i = 0; i < sentences.length; i++) {
             const segPath = path.join(tmpDir, `seg_${i}_${Date.now()}.mp3`);
-            // 콤마는 공백으로 → 과도한 쉼 방지 (띄어쓰기 수준)
-            const ssmlText = `<speak>${escapeXml(sentences[i].replace(/\s*,\s*/g, ' '))}</speak>`;
+            // 콤마→공백, 느낌표·물음표 뒤 문장 쉼
+            const ssmlText = `<speak>${escapeXml(sentences[i].replace(/\s*,\s*/g, ' ')).replace(/([!?])(\s|$)/g, '$1<break time="350ms"/>$2')}</speak>`;
             const segResp = await axios.post(
               `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
               {
