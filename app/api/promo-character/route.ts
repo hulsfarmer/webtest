@@ -9,7 +9,7 @@ import { generatePromoScript, PromoInput, ScriptSection } from '@/lib/anthropic'
 import { generateAudio } from '@/lib/tts';
 import { uploadToHedra, submitKlingAvatar, pollHedraVideo } from '@/lib/hedra';
 import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, probeDuration, sanitizeScript } from '@/lib/promo-compose';
-import { buildAlignedSubtitles, applySpeed } from '@/lib/promo-subtitles';
+import { buildAlignedSubtitles, applySpeed, applyPitch } from '@/lib/promo-subtitles';
 // import { canGenerate, incrementUsage } from '@/lib/usageStore'; // TODO(credits)
 
 interface CharJobInput extends PromoInput {
@@ -22,6 +22,7 @@ interface CharJobInput extends PromoInput {
   catchphrase: string;
   headerTheme: string;
   speed?: number; // 영상 배속 (기본 1.1)
+  pitch?: number; // 목소리 피치 반음 (아이·강아지 톤업)
   sections?: ScriptSection[]; // 사용자가 편집한 대본(있으면 AI 생성 생략)
 }
 
@@ -67,6 +68,14 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     // 영어 전대문자(브랜드명 등)는 소문자로 — Chirp3-HD가 철자로 읽는 것 방지
     const ttsText = narration.replace(/[A-Z]{2,}/g, (m) => m.toLowerCase());
     await generateAudio(ttsText, audioPath, input.duration || 30, input.voice, 1.0);
+    // 캐릭터별 목소리 피치(아이·강아지 톤업) — Kling 전에 적용해 입모양도 톤에 맞춤
+    const pitch = Math.max(-6, Math.min(6, input.pitch || 0));
+    if (Math.abs(pitch) > 0.01) {
+      const pitchedPath = path.join(tmpDir, `${jobId}_pitched.mp3`);
+      await applyPitch(audioPath, pitch, pitchedPath);
+      fs.copyFileSync(pitchedPath, audioPath);
+      try { fs.unlinkSync(pitchedPath); } catch { /* noop */ }
+    }
 
     // 3) Kling 캐릭터 영상
     updateJob(jobId, { status: 'generating_video', progress: 45, steps: { script: 'done', audio: 'done', video: 'running' } });
@@ -144,6 +153,7 @@ export async function POST(req: NextRequest) {
   const voice = (fd.get('voice') as string | null) ?? 'ko-KR-Chirp3-HD-Aoede';
   const duration = parseInt((fd.get('duration') as string | null) ?? '20', 10);
   const speed = Math.min(2.0, Math.max(0.5, parseFloat((fd.get('speed') as string | null) ?? '1.1') || 1.1));
+  const pitch = Math.max(-6, Math.min(6, parseFloat((fd.get('pitch') as string | null) ?? '0') || 0));
   const tone = (fd.get('tone') as string | null) ?? '친근한';
   const preset = (fd.get('preset') as string | null) ?? '';
   const characterFile = fd.get('character') as File | null;
@@ -198,7 +208,7 @@ export async function POST(req: NextRequest) {
     businessName, businessType, sellingPoints, cta, duration, tone,
     voice, characterBuf, characterType, productImagePath,
     overlayTitle: businessName, overlayCta: cta || '지금 구매하기',
-    catchphrase, headerTheme, speed, sections,
+    catchphrase, headerTheme, speed, pitch, sections,
   }).catch(console.error);
 
   return NextResponse.json({ jobId });

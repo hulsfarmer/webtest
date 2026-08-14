@@ -50,6 +50,13 @@ export async function applySpeed(charPath: string, speed: number, outPath: strin
   );
 }
 
+/** 오디오 피치 시프트(길이 보존, rubberband). semitones 반음 단위(아이·강아지 톤업용) */
+export async function applyPitch(inPath: string, semitones: number, outPath: string): Promise<void> {
+  const ffmpeg = require('ffmpeg-static') as string;
+  const k = Math.pow(2, semitones / 12);
+  await execAsync(`"${ffmpeg}" -y -loglevel error -i "${inPath}" -filter:a "rubberband=pitch=${k.toFixed(4)}" "${outPath}"`);
+}
+
 /** ffmpeg raw PCM → Google STT(v1 sync, 단어 타임오프셋). 실제 음성 단어 [{w,s,e}] */
 export async function sttWords(charPath: string, tmpDir: string, tag: string): Promise<SttWord[]> {
   const apiKey = process.env.GOOGLE_STT_API_KEY || process.env.GOOGLE_TTS_API_KEY;

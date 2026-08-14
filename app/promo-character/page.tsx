@@ -7,7 +7,13 @@ const VOICES = [
   { id: 'ko-KR-Chirp3-HD-Zephyr', label: '수아 (여·활기찬)' },
   { id: 'ko-KR-Chirp3-HD-Charon', label: '민준 (남·자연스러운)' },
 ];
-const PRESETS = [{ id: 'preset-jieun', label: '지은', src: '/characters/preset-jieun.png' }];
+const PRESETS = [
+  { id: 'preset-jieun', label: '지은·여성',   src: '/characters/preset-jieun.png', voice: 'ko-KR-Chirp3-HD-Aoede',  pitch: 0 },
+  { id: 'preset-male',  label: '준호·남성',   src: '/characters/preset-male.png',  voice: 'ko-KR-Chirp3-HD-Charon', pitch: 0 },
+  { id: 'preset-teen',  label: '민서·청소년', src: '/characters/preset-teen.png',  voice: 'ko-KR-Chirp3-HD-Zephyr', pitch: 0 },
+  { id: 'preset-child', label: '하늘·아이',   src: '/characters/preset-child.png', voice: 'ko-KR-Chirp3-HD-Aoede',  pitch: 3 },
+  { id: 'preset-dog',   label: '코코·강아지', src: '/characters/preset-dog.png',   voice: 'ko-KR-Chirp3-HD-Zephyr', pitch: 4 },
+];
 const HEADER_THEMES = [
   { id: 'blur', label: '글래스', desc: '사진 블러', bg: 'linear-gradient(135deg,#4b4b4b,#7a7a7a)', bn: '#FDE047', title: '#FFFFFF' },
   { id: 'black', label: '클래식 블랙', desc: '정보·뉴스', bg: '#121212', bn: '#FFE600', title: '#FFFFFF' },
@@ -32,6 +38,7 @@ export default function PromoCharacterPage() {
   const [duration, setDuration] = useState('20');
   const [speed, setSpeed] = useState('1.1');
   const [preset, setPreset] = useState('preset-jieun');
+  const [pitch, setPitch] = useState('0'); // 캐릭터별 목소리 피치(아이·강아지=톤업)
   const [charFile, setCharFile] = useState<File | null>(null);
   const [charPreview, setCharPreview] = useState('');
   const [productFile, setProductFile] = useState<File | null>(null);
@@ -141,6 +148,7 @@ export default function PromoCharacterPage() {
     fd.append('voice', voice);
     fd.append('duration', duration);
     fd.append('speed', speed);
+    fd.append('pitch', charFile ? '0' : pitch); // 업로드 캐릭터는 피치 0
     if (productFile) fd.append('product', productFile); else fd.append('productPath', importedImagePath);
     if (charFile) fd.append('character', charFile); else fd.append('preset', preset);
     fd.append('sections', JSON.stringify(sections.map((s) => ({ type: s.type, text: s.text }))));
@@ -233,8 +241,9 @@ export default function PromoCharacterPage() {
                 <label className="block text-sm text-neutral-300 mb-1.5">캐릭터(프레젠터)</label>
                 <div className="flex gap-3 flex-wrap">
                   {PRESETS.map((p) => (
-                    <button key={p.id} onClick={() => { setPreset(p.id); setCharFile(null); setCharPreview(''); }}
-                      className={`w-16 h-20 rounded-lg overflow-hidden border-2 ${preset === p.id ? 'border-emerald-400' : 'border-neutral-700'}`}>
+                    <button key={p.id} title={p.label}
+                      onClick={() => { setPreset(p.id); setVoice(p.voice); setPitch(String(p.pitch)); setCharFile(null); setCharPreview(''); }}
+                      className={`w-16 h-20 rounded-lg overflow-hidden border-2 ${preset === p.id && !charFile ? 'border-emerald-400' : 'border-neutral-700'}`}>
                       <img src={p.src} alt={p.label} className="w-full h-full object-cover" />
                     </button>
                   ))}
