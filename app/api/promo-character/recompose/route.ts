@@ -317,7 +317,7 @@ export async function POST(req: NextRequest) {
         segments = raw.map((x, i) => {
           const start = Math.max(0, x.sStart - LEAD);
           const nextStart = i + 1 < raw.length ? Math.max(0, raw[i + 1].sStart - LEAD) : D0;
-          const end = Math.min(Math.max(start + 0.3, nextStart), D0);
+          const end = Math.min(Math.max(start, nextStart), D0); // 다음 시작 넘지 않음(겹침 방지)
           return { start, end, text: x.text };
         });
         console.log(`[recompose ${outId}] STT단어 ${SW} / 원고단어 ${NW} / 앵커 ${anchors.length} → 자막 ${segments.length}개 (stt-align), speed ${speed}`);
@@ -350,7 +350,7 @@ export async function POST(req: NextRequest) {
           segments = raw.map((x, i) => {
             const start = Math.max(0, x.g.s - CAPTION_LEAD);
             const nextStart = i + 1 < raw.length ? Math.max(0, raw[i + 1].g.s - CAPTION_LEAD) : D0;
-            const end = Math.min(Math.max(start + 0.25, nextStart), D0);
+            const end = Math.min(Math.max(start, nextStart), D0); // 다음 시작 넘지 않음(겹침 방지)
             return { start, end, text: x.text };
           });
           console.log(`[recompose ${outId}] 폴백 segment-align: 발화구간 ${speech.length}개→자막 ${segments.length}개, speed ${speed}`);

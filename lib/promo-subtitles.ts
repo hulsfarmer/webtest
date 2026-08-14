@@ -119,6 +119,28 @@ export async function detectSpeechSegments(charPath: string, D: number): Promise
  * 1순위 STT 단어 앵커 정밀정렬 → 2순위 쉼정렬 → 3순위 글자수 비례.
  * (렌더는 호출측에서 각 큐 text 를 renderSubtitle 로 그림)
  */
+/**
+ * 시작시각 목록 → 자막 큐. 각 자막 end = 다음 자막 시작(겹침 없음).
+ * 너무 짧은(<minDur) 자막은 이전 자막에 흡수(깜빡임·겹침 방지).
+ */
+function finalizeCues(starts: { s: number; text: string }[], D0: number, lead: number, minDur = 0.4): SubCue[] {
+  const pts = starts.map((x) => ({ start: Math.max(0, x.s - lead), text: x.text }));
+  const out: SubCue[] = [];
+  for (let i = 0; i < pts.length; i++) {
+    const start = pts[i].start;
+    const nextStart = i + 1 < pts.length ? pts[i + 1].start : D0;
+    const end = Math.min(D0, Math.max(start, nextStart)); // 절대 다음 시작을 넘지 않음
+    if (out.length && end - start < minDur) {
+      const prev = out[out.length - 1];
+      prev.text = `${prev.text} ${pts[i].text}`.trim();
+      prev.end = end;
+    } else {
+      out.push({ start, end, text: pts[i].text });
+    }
+  }
+  return out;
+}
+
 export async function buildAlignedSubtitles(
   charPath: string, narration: string, D0: number, tmpDir: string, tag: string,
   opts?: { sttSource?: string; timeScale?: number },
@@ -178,12 +200,7 @@ export async function buildAlignedSubtitles(
       wIdx += cwCount;
       return { sStart: wordTime[startWord] ?? 0, text: chunk };
     });
-    const cues = raw.map((x, i) => {
-      const start = Math.max(0, x.sStart - LEAD);
-      const nextStart = i + 1 < raw.length ? Math.max(0, raw[i + 1].sStart - LEAD) : D0;
-      const end = Math.min(Math.max(start + 0.3, nextStart), D0);
-      return { start, end, text: x.text };
-    });
+    const cues = finalizeCues(raw.map((x) => ({ s: x.sStart, text: x.text })), D0, LEAD);
     console.log(`[subtitles ${tag}] STT단어 ${SW} / 원고단어 ${NW} / 앵커 ${anchors.length} → 자막 ${cues.length}개 (stt-align)`);
     return { cues, mode: 'stt-align' };
   }
@@ -211,13 +228,8 @@ export async function buildAlignedSubtitles(
     };
     const buckets: string[][] = speech.map(() => []);
     words.forEach((w: string, idx: number) => buckets[activeToSegIdx(wordActiveCenter[idx])].push(w));
-    const raw = speech.map((g, i) => ({ g, text: buckets[i].join(' ') })).filter((x) => x.text.length > 0);
-    const cues = raw.map((x, i) => {
-      const start = Math.max(0, x.g.s - CAPTION_LEAD);
-      const nextStart = i + 1 < raw.length ? Math.max(0, raw[i + 1].g.s - CAPTION_LEAD) : D0;
-      const end = Math.min(Math.max(start + 0.25, nextStart), D0);
-      return { start, end, text: x.text };
-    });
+    const raw = speech.map((g, i) => ({ s: g.s, text: buckets[i].join(' ') })).filter((x) => x.text.length > 0);
+    const cues = finalizeCues(raw, D0, CAPTION_LEAD);
     console.log(`[subtitles ${tag}] 폴백 segment-align: 발화구간 ${speech.length}개→자막 ${cues.length}개`);
     return { cues, mode: 'segment-align' };
   }

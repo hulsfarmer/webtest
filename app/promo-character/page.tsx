@@ -40,7 +40,7 @@ export default function PromoCharacterPage() {
   const [headerPreview, setHeaderPreview] = useState('');
   const [voiceKey, setVoiceKey] = useState('minji');
   const [duration, setDuration] = useState('20');
-  const [speed, setSpeed] = useState('1.1');
+  const [speed, setSpeed] = useState('1.0');
   const [preset, setPreset] = useState('preset-jieun');
   const [charFile, setCharFile] = useState<File | null>(null);
   const [charPreview, setCharPreview] = useState('');
@@ -279,8 +279,8 @@ export default function PromoCharacterPage() {
               <div>
                 <label className="block text-sm text-neutral-300 mb-1.5">영상 속도</label>
                 <select className={inputCls} value={speed} onChange={(e) => setSpeed(e.target.value)}>
-                  <option value="1.0">1.0배 (원속도)</option>
-                  <option value="1.1">1.1배 (권장)</option>
+                  <option value="1.0">1.0배 (원속도·권장)</option>
+                  <option value="1.1">1.1배</option>
                   <option value="1.2">1.2배</option>
                 </select>
               </div>

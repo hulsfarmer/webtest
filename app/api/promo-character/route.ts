@@ -94,7 +94,7 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
 
     // 3.5) 배속 (기본 1.1): 캐릭터 영상+음성을 speed 배로. 이후 계산은 배속본 기준.
     updateJob(jobId, { progress: 82 });
-    const speed = Math.min(2.0, Math.max(0.5, input.speed || 1.1));
+    const speed = Math.min(2.0, Math.max(0.5, input.speed || 1.0));
     let effCharPath = charVideoPath;
     if (Math.abs(speed - 1.0) > 0.01) {
       const spedPath = path.join(tmpDir, `${jobId}_char_sped.mp4`);
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
   const headerTheme = (fd.get('headerTheme') as string | null) ?? 'blur';
   const voice = (fd.get('voice') as string | null) ?? 'ko-KR-Chirp3-HD-Aoede';
   const duration = parseInt((fd.get('duration') as string | null) ?? '20', 10);
-  const speed = Math.min(2.0, Math.max(0.5, parseFloat((fd.get('speed') as string | null) ?? '1.1') || 1.1));
+  const speed = Math.min(2.0, Math.max(0.5, parseFloat((fd.get('speed') as string | null) ?? '1.0') || 1.0));
   const pitch = Math.max(-6, Math.min(6, parseFloat((fd.get('pitch') as string | null) ?? '0') || 0));
   const characterName = ((fd.get('characterName') as string | null) ?? '').trim();
   const tone = (fd.get('tone') as string | null) ?? '친근한';
