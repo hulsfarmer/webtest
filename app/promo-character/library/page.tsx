@@ -26,6 +26,7 @@ export default function LibraryPage() {
   const [items, setItems] = useState<LibItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [ytConnected, setYtConnected] = useState(false);
+  const [ttConnected, setTtConnected] = useState(false);
   const [busyId, setBusyId] = useState('');
   const [msg, setMsg] = useState<Record<string, string>>({});
 
@@ -40,6 +41,7 @@ export default function LibraryPage() {
   useEffect(() => {
     load();
     fetch('/api/social/youtube/status').then((r) => r.json()).then((d) => setYtConnected(!!d.connected)).catch(() => {});
+    fetch('/api/social/tiktok/status').then((r) => r.json()).then((d) => setTtConnected(!!d.connected)).catch(() => {});
   }, []);
 
   const setItemMsg = (id: string, m: string) => setMsg((p) => ({ ...p, [id]: m }));
@@ -55,6 +57,20 @@ export default function LibraryPage() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || '업로드 실패');
       setItemMsg(it.id, `업로드 완료(비공개) → ${d.url}`);
+    } catch (e) { setItemMsg(it.id, e instanceof Error ? e.message : String(e)); }
+    finally { setBusyId(''); }
+  };
+
+  const publishTikTok = async (it: LibItem) => {
+    setBusyId(it.id); setItemMsg(it.id, '');
+    try {
+      const r = await fetch('/api/social/tiktok/upload', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: it.id }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '업로드 실패');
+      setItemMsg(it.id, 'TikTok 드래프트로 전송 완료 — 틱톡 앱 알림에서 캡션 확인 후 게시하세요.');
     } catch (e) { setItemMsg(it.id, e instanceof Error ? e.message : String(e)); }
     finally { setBusyId(''); }
   };
@@ -90,9 +106,14 @@ export default function LibraryPage() {
             <Link href="/promo-character" className="text-sm text-neutral-400 hover:text-white">← 영상 만들기</Link>
             <h1 className="text-2xl font-bold mt-2">내 홍보 영상</h1>
           </div>
-          <span className={`text-[11px] rounded-full px-2 py-0.5 ${ytConnected ? 'bg-green-900/60 text-green-300' : 'bg-neutral-800 text-neutral-400'}`}>
-            YouTube {ytConnected ? '연결됨' : '미연결'}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[11px] rounded-full px-2 py-0.5 ${ytConnected ? 'bg-green-900/60 text-green-300' : 'bg-neutral-800 text-neutral-400'}`}>
+              YouTube {ytConnected ? '연결됨' : '미연결'}
+            </span>
+            <span className={`text-[11px] rounded-full px-2 py-0.5 ${ttConnected ? 'bg-green-900/60 text-green-300' : 'bg-neutral-800 text-neutral-400'}`}>
+              TikTok {ttConnected ? '연결됨' : '미연결'}
+            </span>
+          </div>
         </div>
 
         {loading && <div className="text-sm text-neutral-500">불러오는 중...</div>}
@@ -139,6 +160,15 @@ export default function LibraryPage() {
                   )}
                   {it.videoUrl && !ytConnected && (
                     <a href="/api/social/youtube/connect" className="text-xs bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2">▶ YouTube 연결</a>
+                  )}
+                  {it.videoUrl && ttConnected && (
+                    <button onClick={() => publishTikTok(it)} disabled={busyId === it.id}
+                      className="text-xs bg-black hover:bg-neutral-800 border border-neutral-700 disabled:opacity-50 text-white rounded-lg px-3 py-2">
+                      {busyId === it.id ? '전송 중...' : '♪ TikTok 드래프트'}
+                    </button>
+                  )}
+                  {it.videoUrl && !ttConnected && (
+                    <a href="/api/social/tiktok/connect" className="text-xs bg-black hover:bg-neutral-800 border border-neutral-700 text-white rounded-lg px-3 py-2">♪ TikTok 연결</a>
                   )}
                   {it.description && (
                     <button onClick={() => copyDesc(it)} className="text-xs bg-neutral-800 hover:bg-neutral-700 rounded-lg px-3 py-2">📋 설명 복사</button>
