@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { uploadVideo, isConnected } from '@/lib/youtube';
+import { getJob } from '@/lib/jobStore';
+import { buildYouTubeTags } from '@/lib/promo-description';
 import fs from 'fs';
 import path from 'path';
 
@@ -19,9 +21,19 @@ export async function POST(req: NextRequest) {
   const jobId = String(body.jobId || '').replace(/[^a-zA-Z0-9_-]/g, '');
   const title = String(body.title || '').trim();
   const description = String(body.description || '').trim();
-  const tags = Array.isArray(body.tags) ? body.tags.map((t: unknown) => String(t)).slice(0, 15) : [];
+  let tags = Array.isArray(body.tags) ? body.tags.map((t: unknown) => String(t)).slice(0, 15) : [];
   const privacyStatus = ['public', 'unlisted', 'private'].includes(body.privacyStatus) ? body.privacyStatus : 'private';
   if (!jobId || !title) return NextResponse.json({ error: 'jobId·title 필요' }, { status: 400 });
+
+  // 클라가 태그를 안 보냈으면(=메인 결과패널 발행 등) 저장된 잡 메타에서 태그를 불러온다
+  if (tags.length === 0) {
+    try {
+      const job = await getJob(jobId);
+      const meta = job?.script ? JSON.parse(job.script) as { tags?: string[]; narration?: string; businessName?: string; catchphrase?: string } : {};
+      if (meta.tags && meta.tags.length) tags = meta.tags.slice(0, 15);
+      else if (meta.narration) tags = buildYouTubeTags(meta.businessName || '', meta.catchphrase || '', meta.narration).slice(0, 15);
+    } catch { /* 태그는 부가정보이므로 실패해도 업로드는 진행 */ }
+  }
 
   const filePath = path.join(process.cwd(), 'public', 'videos', `${jobId}.mp4`);
   if (!fs.existsSync(filePath)) return NextResponse.json({ error: '영상을 찾을 수 없습니다.' }, { status: 404 });
