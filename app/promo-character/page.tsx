@@ -11,7 +11,9 @@ const VOICES: VoiceCfg[] = [
   { id: 'sua',    label: '수아 (여·활기)',    google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 0 },
   { id: 'minjun', label: '민준 (남·자연)',    google: 'ko-KR-Chirp3-HD-Charon', pitch: 0 },
   { id: 'teen',   label: '민서 (청소년·남)',  google: 'ko-KR-Chirp3-HD-Charon', pitch: 2 },
-  { id: 'child',  label: '하늘 (아이 톤)',    google: 'ko-KR-Chirp3-HD-Aoede',  pitch: 3 },
+  // 하늘 = Azure 아이 톤(YuJin). Aoede+피치로는 어른 목소리라 Azure 네이티브로 교체. 실패 시 Google Aoede+5 폴백.
+  { id: 'child',  label: '하늘 (아이 톤)',    google: 'ko-KR-Chirp3-HD-Aoede',  pitch: 5,
+    engine: 'azure', azureVoice: 'ko-KR-YuJinNeural', azurePitch: '+30%', azureRate: '+5%' },
   { id: 'dog',    label: '코코 (강아지 톤)',  google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 4 },
   // 뭉치 = Azure 네이티브(귀여운 아이 톤). 실패 시 Google Zephyr+5 폴백.
   { id: 'puppy',  label: '뭉치 (귀여운 강아지)', google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 5,
