@@ -232,6 +232,7 @@ export default function PromoCharacterPage() {
     fd.append('duration', duration);
     fd.append('speed', speed);
     fd.append('pitch', charFile ? '0' : String(v.pitch)); // 업로드 캐릭터는 피치 0
+    fd.append('childLisp', !charFile && voiceKey === 'child' ? '1' : ''); // 하늘(아이)만 혀짧은소리
     if (productFile) fd.append('product', productFile); else fd.append('productPath', importedImagePath);
     if (charFile) fd.append('character', charFile); else fd.append('preset', preset);
     fd.append('characterName', charFile ? '' : (PRESETS.find((p) => p.id === preset)?.name ?? ''));

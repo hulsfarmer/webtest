@@ -9,6 +9,7 @@ import { generatePromoScript, generateYouTubeTags, PromoInput, ScriptSection } f
 import { buildYouTubeTags } from '@/lib/promo-description';
 import { generateAudio } from '@/lib/tts';
 import { generateAzureTTS } from '@/lib/azure-tts';
+import { applyChildLisp } from '@/lib/child-voice';
 import { uploadToHedra, submitKlingAvatar, pollHedraVideo } from '@/lib/hedra';
 import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, probeDuration, sanitizeScript } from '@/lib/promo-compose';
 import { buildAlignedSubtitles, applySpeed, applyPitch } from '@/lib/promo-subtitles';
@@ -29,6 +30,7 @@ interface CharJobInput extends PromoInput {
   azureVoice?: string; // Azure 음성 (예 ko-KR-YuJinNeural)
   azurePitch?: string; // Azure 네이티브 피치 (예 '+45%')
   azureRate?: string; // Azure 속도 (예 '+8%')
+  childLisp?: boolean; // 하늘(아이) 음성: 혀짧은소리 변환을 TTS에만 적용
   sections?: ScriptSection[]; // 사용자가 편집한 대본(있으면 AI 생성 생략)
   buyLink?: string; // 쿠팡 구매 링크 (라이브러리 유튜브 설명)
 }
@@ -83,7 +85,9 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     // 2) 나레이션 음성 (연속 통 오디오 — 청크별 생성은 문장 사이 멈춤 유발)
     updateJob(jobId, { status: 'generating_audio', progress: 30, steps: { script: 'done', audio: 'running', video: 'pending' } });
     // 영어 전대문자(브랜드명 등)는 소문자로 — Chirp3-HD가 철자로 읽는 것 방지
-    const ttsText = narration.replace(/[A-Z]{2,}/g, (m) => m.toLowerCase());
+    let ttsText = narration.replace(/[A-Z]{2,}/g, (m) => m.toLowerCase());
+    // 하늘(아이) 음성이면 혀짧은소리로 읽기 — 자막/설명은 원문 narration 유지
+    if (input.childLisp) ttsText = applyChildLisp(ttsText);
     // TTS 엔진: Azure(네이티브 캐릭터 톤) 우선, 실패/미지정 시 Google
     let azureDone = false;
     if (input.ttsEngine === 'azure' && input.azureVoice) {
@@ -190,6 +194,7 @@ export async function POST(req: NextRequest) {
   const azureVoice = ((fd.get('azureVoice') as string | null) ?? '').trim();
   const azurePitch = ((fd.get('azurePitch') as string | null) ?? '0%').trim();
   const azureRate = ((fd.get('azureRate') as string | null) ?? '0%').trim();
+  const childLisp = ((fd.get('childLisp') as string | null) ?? '') === '1';
   const tone = (fd.get('tone') as string | null) ?? '친근한';
   const preset = (fd.get('preset') as string | null) ?? '';
   const characterFile = fd.get('character') as File | null;
@@ -249,7 +254,7 @@ export async function POST(req: NextRequest) {
     voice, characterBuf, characterType, productImagePath,
     overlayTitle: businessName, overlayCta: cta, // 빈 값이면 CTA 표시 안 함
     catchphrase, headerTheme, speed, pitch, characterName,
-    ttsEngine, azureVoice, azurePitch, azureRate, sections, buyLink,
+    ttsEngine, azureVoice, azurePitch, azureRate, childLisp, sections, buyLink,
   }).catch(console.error);
 
   return NextResponse.json({ jobId });
