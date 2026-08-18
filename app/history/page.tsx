@@ -53,7 +53,7 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: React.Rea
   generating_video: { label: '영상 생성중', color: 'text-purple-400 bg-purple-500/10 border-purple-500/30', icon: <Loader2 className="w-3.5 h-3.5 animate-spin" /> },
 };
 
-export default function HistoryPage() {
+export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
   const { data: session, status: authStatus } = useSession();
   const router = useRouter();
   const [data, setData] = useState<HistoryResponse | null>(null);
@@ -141,7 +141,7 @@ export default function HistoryPage() {
 
   if (authStatus === 'loading' || loading) {
     return (
-      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
+      <div className={embedded ? 'flex items-center justify-center' : 'min-h-screen bg-[#0F172A] flex items-center justify-center'} style={embedded ? { minHeight: 300 } : undefined}>
         <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
       </div>
     );
@@ -152,10 +152,10 @@ export default function HistoryPage() {
   const PLAN_LABELS: Record<string, string> = { free: '무료', pro: 'Pro', business: 'Business', admin: '관리자' };
 
   return (
-    <div className="min-h-screen bg-[#0F172A] text-white">
-      <Header />
+    <div className={embedded ? 'st-toolskin rounded-2xl text-white' : 'min-h-screen bg-[#0F172A] text-white'}>
+      {!embedded && <Header />}
 
-      <div className="pt-24 pb-16 px-4 sm:px-6">
+      <div className={embedded ? 'pt-6 pb-10 px-4 sm:px-6' : 'pt-24 pb-16 px-4 sm:px-6'}>
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -387,4 +387,9 @@ function extractScriptPreview(script: Record<string, unknown>): string {
     // ignore
   }
   return '';
+}
+
+// 기존 /history 라우트 — 단독 페이지 (스튜디오에선 <HistoryTool embedded /> 로 재사용)
+export default function HistoryPage() {
+  return <HistoryTool />;
 }
