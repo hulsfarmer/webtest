@@ -9,6 +9,7 @@ import {
   renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle,
   composePromoCharacter, probeDuration,
 } from '@/lib/promo-compose';
+import { chunkForSubtitles } from '@/lib/promo-subtitles';
 
 const execAsync = promisify(exec);
 
@@ -57,25 +58,6 @@ async function downloadImage(imgUrl: string): Promise<{ buf: Buffer; ext: string
     try { const d = await tryFetch(proxied(imgUrl)); if (d) return d; } catch { /* noop */ }
   }
   return null;
-}
-
-/** 자막용 청크: 숨 쉬는 단위(3~4어절, 구두점=쉼) — lib/promo-subtitles 와 동일 */
-function chunkForSubtitles(text: string, maxWords = 4, maxChars = 18): string[] {
-  const clean = text.replace(/\s+/g, ' ').trim();
-  if (!clean) return [];
-  const words = clean.split(' ');
-  const chunks: string[] = [];
-  let cur: string[] = [];
-  const strip = (s: string) => s.replace(/[.,!?。…、·]+/g, '').replace(/\s+/g, ' ').trim();
-  const flush = () => { const t = strip(cur.join(' ')); if (t) chunks.push(t); cur = []; };
-  for (const w of words) {
-    cur.push(w);
-    const joined = cur.join(' ');
-    const endsPunct = /[.,!?。…、·]$/.test(w);
-    if (endsPunct || cur.length >= maxWords || joined.length >= maxChars) flush();
-  }
-  flush();
-  return chunks;
 }
 
 interface Seg { start: number; end: number; text: string }

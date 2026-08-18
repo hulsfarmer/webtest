@@ -13,27 +13,73 @@ const execAsync = promisify(exec);
 export interface SubCue { start: number; end: number; text: string }
 interface SttWord { w: string; s: number; e: number }
 
+const SUB_PUNCT = /[.,!?。…、·;:]+/g;
+
 /**
- * 자막용 청크: 쇼츠 스타일 "숨 쉬는 단위"로 짧게(3~4어절).
- * 구두점(쉼표·마침표·물음표 등 = 자연스러운 쉼)에서 끊고, 구두점이 없으면
- * 최대 maxWords 어절 / maxChars 글자에서 끊는다. 표시 텍스트는 구두점 제거.
+ * 한 어절 뒤에서 자막을 끊는 게 얼마나 자연스러운지 점수.
+ * 높을수록 좋은 끊김: 문장끝 어미 > 연결어미 > 보조사 > 격조사 > 명사(중립)
+ * 음수(붙여야 함): 관형형 수식어(다음 명사 수식) / 부사·보조용언 연결.
+ * 한국어는 어미·조사가 자연스러운 쉼(숨) 지점이라 형태소 분석 없이도 이걸로 대부분 잡힌다.
  */
-export function chunkForSubtitles(text: string, maxWords = 4, maxChars = 18): string[] {
+function breakScoreAfter(word: string): number {
+  if (/[.!?…。]$/.test(word)) return 100;          // 문장 종결 부호
+  if (/[,、·;:]$/.test(word)) return 75;            // 쉼표류
+  const s = word.replace(SUB_PUNCT, '').trim();
+  // ── 관형형 수식어 / 보조용언 연결 → 다음 말과 붙어야 함(끊기 억제) ──
+  if (/(된|한|될|할|던|운|린|난|같은|다른|모든|어떤|무슨|여러|온갖|이런|그런|저런|아닌|하는|되는|있는|없는|가는|오는|보는|주는|드는|나는|사는)$/.test(s)) return -90;
+  if (/(게|히|여|아|어|해)$/.test(s)) return -30;   // 부사형/연결어미(뒤 용언에 붙음)
+  if (/의$/.test(s)) return -40;                     // 관형격 '의'(뒤 명사 수식)
+  // ── 문장 종결 어미 ──
+  if (/(입니다|습니다|ㅂ니다|세요|에요|예요|어요|아요|는다|ㄴ다|겠다|았다|었다|더라|군요|네요|죠|자|까|냐|다|요)$/.test(s)) return 90;
+  // ── 연결어미 ──
+  if (/(며|고|서|면|지만|거나|든지|다가|어서|아서|고서|는데|은데|려고|도록|자마자)$/.test(s)) return 70;
+  // ── 보조사 ──
+  if (/(까지|부터|처럼|만큼|보다|조차|마저|밖에|대로)$/.test(s)) return 60;
+  // ── 확실한 격조사(관형형과 안 겹침) ──
+  if (/(이|가|를|에서|에게|한테|께|으로|로|와|과|도|만|이나)$/.test(s)) return 40;
+  if (/(을|은|는|에)$/.test(s)) return 0;            // 관형형(받은·좋은)/조사(제로는) 구분 불가 → 중립
+  return 0;                                           // 명사/기타 = 중립
+}
+
+/**
+ * 자막용 청크: 쇼츠 스타일 "숨 쉬는 단위"로 짧게.
+ * 길이 창[MIN~HARD] 안에서 breakScoreAfter 가 가장 높은 어절 경계에서 끊어
+ * 한국어 의미 단위(관형형+명사 안 쪼갬, 어미·조사에서 끊기)로 자연스럽게 나눈다.
+ * 표시 텍스트는 구두점 제거. 단어 순서·개수는 보존(STT 정렬과 호환).
+ */
+export function chunkForSubtitles(text: string, maxChars = 18): string[] {
   const clean = text.replace(/\s+/g, ' ').trim();
   if (!clean) return [];
   const words = clean.split(' ');
+  const disp = (w: string) => w.replace(SUB_PUNCT, '').replace(/\s+/g, '').trim();
+  const MIN = 5, TARGET = 12, HARD = Math.max(maxChars, 16);
   const chunks: string[] = [];
-  let cur: string[] = [];
-  const strip = (s: string) => s.replace(/[.,!?。…、·]+/g, '').replace(/\s+/g, ' ').trim();
-  const flush = () => { const t = strip(cur.join(' ')); if (t) chunks.push(t); cur = []; };
-  for (const w of words) {
-    cur.push(w);
-    const joined = cur.join(' ');
-    const endsPunct = /[.,!?。…、·]$/.test(w); // 구두점 = 숨(쉼) 지점
-    if (endsPunct || cur.length >= maxWords || joined.length >= maxChars) flush();
+  let i = 0;
+  while (i < words.length) {
+    let len = 0, bestEnd = i, bestScore = -Infinity;
+    for (let j = i; j < words.length; j++) {
+      len += (j > i ? 1 : 0) + disp(words[j]).length; // +1 = 어절 사이 공백
+      if (len > HARD && j > i) break;                  // 최대 길이 초과 → 더 안 봄
+      if (len < MIN && j + 1 < words.length) continue;  // 너무 짧음(마지막 어절 제외)
+      const sc = breakScoreAfter(words[j]) - Math.abs(len - TARGET) * 0.6; // 목표 길이서 살짝 당김
+      if (sc >= bestScore) { bestScore = sc; bestEnd = j; }
+    }
+    const t = words.slice(i, bestEnd + 1).map(disp).filter(Boolean).join(' ').trim();
+    if (t) chunks.push(t);
+    i = bestEnd + 1;
   }
-  flush();
-  return chunks;
+  // 짧은 조각(고아) 병합 — 앞 조각에 흡수, 첫 조각이면 뒤로
+  const merged: string[] = [];
+  for (const c of chunks) {
+    if (c.replace(/\s/g, '').length < MIN && merged.length) {
+      merged[merged.length - 1] = `${merged[merged.length - 1]} ${c}`.trim();
+    } else merged.push(c);
+  }
+  if (merged.length >= 2 && merged[0].replace(/\s/g, '').length < MIN) {
+    merged[1] = `${merged[0]} ${merged[1]}`.trim();
+    merged.shift();
+  }
+  return merged;
 }
 
 /** "1.200s" | {seconds,nanos} → 초 */
