@@ -71,6 +71,8 @@
 .st-wordmark b { background: var(--grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .st-collapse { margin-left: auto; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); display: grid; place-items: center; cursor: pointer; transition: background .15s, color .15s; }
 .st-collapse:hover { background: var(--surface-2); color: var(--text); }
+.st-brand-link { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.st-collapse svg { transition: transform .2s ease; }
 
 .st-scroll { flex: 1; overflow-y: auto; padding: 12px 12px 0; min-height: 0; }
 .st-group { margin-bottom: 18px; }
@@ -97,6 +99,10 @@
 .st-who { min-width: 0; }
 .st-who b { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .st-who span { font-size: 11px; color: var(--text-faint); }
+.st-logout { margin-left: auto; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-faint); display: grid; place-items: center; cursor: pointer; font-family: inherit; }
+.st-logout:hover { background: var(--surface-2); color: var(--text); }
+.st-login-btn { display: block; width: 100%; text-align: center; padding: 10px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); font-weight: 700; font-size: 13px; }
+.st-login-btn:hover { background: var(--surface); }
 
 /* collapsed */
 .st-app.collapsed .st-wordmark,
@@ -107,8 +113,11 @@
 .st-app.collapsed .st-who { display: none; }
 .st-app.collapsed .st-nav { justify-content: center; padding: 10px; }
 .st-app.collapsed .st-head { justify-content: center; padding: 16px 10px; }
-.st-app.collapsed .st-collapse { display: none; }
+.st-app.collapsed .st-brand-link { display: none; }
+.st-app.collapsed .st-collapse { margin-left: 0; }
+.st-app.collapsed .st-collapse svg { transform: rotate(180deg); }
 .st-app.collapsed .st-account { justify-content: center; }
+.st-app.collapsed .st-logout { display: none; }
 .st-app.collapsed .st-foot { padding: 10px; }
 
 /* ── main ── */
@@ -117,6 +126,8 @@
 .st-hamburger { display: none; }
 .st-crumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-dim); }
 .st-crumb b { color: var(--text); font-weight: 700; }
+.st-crumb a { color: var(--text-dim); }
+.st-crumb a:hover { color: var(--text); }
 .st-topbar .spacer { flex: 1; }
 .st-pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font-size: 13px; font-weight: 600; color: var(--text-dim); }
 .st-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
@@ -160,6 +171,8 @@
   .st-app.collapsed .st-sidebar { width: var(--sidebar-w); }
   .st-app.collapsed .st-wordmark, .st-app.collapsed .st-label, .st-app.collapsed .st-nav .txt,
   .st-app.collapsed .st-nav .badge, .st-app.collapsed .st-credits, .st-app.collapsed .st-who { display: revert; }
+  .st-app.collapsed .st-brand-link { display: flex; }
+  .st-app.collapsed .st-logout { display: grid; }
   .st-app.collapsed .st-nav { justify-content: flex-start; padding: 9px 10px; }
   .st-collapse { display: none; }
   .st-hamburger { display: grid; }

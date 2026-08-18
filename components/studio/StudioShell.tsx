@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import ThemeToggle from '@/components/ThemeToggle';
 
 type Usage = { plan: string; used: number; limit: number | null; remaining: number | null; credits: number };
@@ -49,6 +49,9 @@ const Chevron = (
 );
 const Burger = (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+);
+const LogoutIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5M21 12H9" /></svg>
 );
 
 export default function StudioShell({ children }: { children: React.ReactNode }) {
@@ -100,9 +103,11 @@ export default function StudioShell({ children }: { children: React.ReactNode })
       <div className={`st-app${collapsed ? ' collapsed' : ''}${drawer ? ' drawer-open' : ''}`}>
         <aside className="st-sidebar">
           <div className="st-head">
-            <Link href="/studio" className="st-logo" title="ShortsAI Studio">S</Link>
-            <span className="st-wordmark">Shorts<b>AI</b></span>
-            <button className="st-collapse" onClick={() => setCollapsed((v) => !v)} aria-label="사이드바 접기/펼치기">{Chevron}</button>
+            <Link href="/" className="st-brand-link" title="홈으로">
+              <span className="st-logo">S</span>
+              <span className="st-wordmark">Shorts<b>AI</b></span>
+            </Link>
+            <button className="st-collapse" onClick={() => setCollapsed((v) => !v)} aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}>{Chevron}</button>
           </div>
 
           <div className="st-scroll">
@@ -123,10 +128,15 @@ export default function StudioShell({ children }: { children: React.ReactNode })
               <div className="st-bar"><i style={{ width: `${barPct}%` }} /></div>
               <Link className="st-buy" href="/studio/billing">이용권 충전</Link>
             </div>
-            <div className="st-account">
-              <div className="st-avatar">{initial}</div>
-              <div className="st-who"><b>{name}</b><span>{session ? '로그인됨' : '로그인 필요'}</span></div>
-            </div>
+            {session ? (
+              <div className="st-account">
+                <div className="st-avatar">{initial}</div>
+                <div className="st-who"><b>{name}</b><span>로그인됨</span></div>
+                <button className="st-logout" onClick={() => signOut({ callbackUrl: '/' })} title="로그아웃" aria-label="로그아웃">{LogoutIcon}</button>
+              </div>
+            ) : (
+              <Link className="st-login-btn" href="/login?callbackUrl=/studio">로그인</Link>
+            )}
           </div>
         </aside>
 
@@ -135,7 +145,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
         <div className="st-main">
           <header className="st-topbar">
             <button className="st-iconbtn st-hamburger" onClick={() => setDrawer(true)} aria-label="메뉴 열기">{Burger}</button>
-            <div className="st-crumb">Studio <span>›</span> <b>{crumbName}</b></div>
+            <div className="st-crumb"><Link href="/studio">Studio</Link> <span>›</span> <b>{crumbName}</b></div>
             <div className="spacer" />
             <span className="st-pill"><span className="dot" />{pillText}</span>
             <ThemeToggle />
