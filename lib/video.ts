@@ -18,6 +18,14 @@ function stripContactFromText(text: string): string {
     .trim();
 }
 
+// 자막에서 이모지 제거(사용자 요청). *강조* 별표·한글은 보존. TTS는 별도로 이미 제거함.
+function stripCaptionEmoji(text: string): string {
+  return text
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{2122}\u{2139}\u{1F1E6}-\u{1F1FF}]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 // Korean topic → gradient palette keyword mapping
 const KO_EN: Array<[string, string]> = [
   // 동물
@@ -1058,7 +1066,7 @@ export async function generateVideo(
   type SentenceItem = { sentence: string; sectionType: string; sectionIndex: number };
   const allSentences: SentenceItem[] = [];
   for (let i = 0; i < sections.length; i++) {
-    const cleaned = stripContactFromText(sections[i].text);
+    const cleaned = stripCaptionEmoji(stripContactFromText(sections[i].text));
     for (const sentence of splitIntoSentences(cleaned)) {
       allSentences.push({ sentence, sectionType: sections[i].type, sectionIndex: i });
     }
