@@ -1,0 +1,4 @@
+// 유튜브 배너 안전영역 안내 — 생성/수정 프롬프트가 공통으로 사용한다.
+// 2048x1152 기준, 모든 기기에서 보이는 가운데 영역(가로 60% × 세로 30%).
+export const BANNER_SAFE_AREA_GUIDANCE =
+  "This image is a YouTube channel banner (2048x1152, 16:9). YouTube crops it differently on phone, tablet, desktop and TV, so the channel name and every essential graphic (logo, emblem, key subject) MUST stay strictly within the central safe zone — the middle 60% of the width and the middle 30% of the height, horizontally and vertically centered. Never place text or important elements near the outer edges or corners; the outer margins may hold only background or decorative texture that is safe to crop. Keep the space directly behind the text calm and high-contrast so the words stay clearly readable and are never overlapped or camouflaged by the artwork.";

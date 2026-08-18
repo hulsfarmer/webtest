@@ -1,0 +1,61 @@
+/* ─────────────────────────────────────────────────────────────
+   logomaker(로고 스튜디오) 스타일 — 원본 globals.css를 .lgm 스코프로 격리.
+   logomaker 변수(--panel 등)를 studio 테마 토큰에 매핑 → 라이트/다크 자동.
+   (--bg/--text/--border 는 이름이 studio 토큰과 같아 그대로 상속받아 씀)
+   ───────────────────────────────────────────────────────────── */
+.lgm {
+  --panel: var(--surface);
+  --panel-2: var(--surface-2);
+  --accent: var(--purple);
+  --accent-2: #8b6dff;
+  --muted: var(--text-dim);
+  max-width: 1100px;
+  margin: 0 auto;
+  color: var(--text);
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', system-ui, sans-serif;
+}
+.lgm * { box-sizing: border-box; }
+.lgm .header h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: -0.5px; font-weight: 800; }
+.lgm .header p { margin: 0 0 22px; color: var(--muted); font-size: 15px; }
+.lgm .grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 24px; }
+@media (max-width: 980px) { .lgm .grid { grid-template-columns: 1fr; } }
+.lgm .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+.lgm label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
+.lgm textarea, .lgm input, .lgm select { width: 100%; background: var(--panel-2); border: 1px solid var(--border-strong); border-radius: 10px; color: var(--text); padding: 12px 14px; font-size: 14px; font-family: inherit; resize: vertical; }
+.lgm select { cursor: pointer; appearance: none; }
+.lgm textarea:focus, .lgm input:focus, .lgm select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--purple) 20%, transparent); }
+.lgm textarea::placeholder, .lgm input::placeholder { color: var(--text-faint); }
+.lgm .field { margin-bottom: 16px; }
+.lgm .row { display: flex; gap: 12px; }
+.lgm .row > .field { flex: 1; }
+.lgm button.primary { width: 100%; background: var(--grad, var(--accent)); color: #fff; border: none; border-radius: 10px; padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; transition: filter .15s; }
+.lgm button.primary:hover { filter: brightness(1.06); }
+.lgm button.primary:disabled { opacity: .5; cursor: not-allowed; }
+.lgm .hint { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+.lgm .results { min-height: 400px; }
+.lgm .results-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.lgm .logo-card { background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+.lgm .logo-card .img { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 18px; }
+.lgm .logo-card img { max-width: 100%; max-height: 100%; }
+.lgm .concept { padding: 12px 14px; background: #fff; border-top: 1px solid #eceff4; }
+.lgm .concept-name { font-size: 14px; font-weight: 800; color: #1a2233; margin-bottom: 4px; }
+.lgm .concept-meaning { font-size: 12.5px; line-height: 1.55; color: #4a5568; }
+.lgm .concept-palette { font-size: 11.5px; color: #7a8699; margin-top: 6px; }
+.lgm .logo-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; background: var(--panel-2); }
+.lgm .logo-actions a { flex: 1 1 40%; text-align: center; font-size: 12px; font-weight: 700; padding: 8px; border-radius: 8px; text-decoration: none; color: var(--text); background: var(--panel); border: 1px solid var(--border); cursor: pointer; }
+.lgm .logo-actions a:hover { border-color: var(--accent); }
+.lgm .empty, .lgm .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; color: var(--muted); text-align: center; gap: 10px; }
+.lgm .spinner { width: 34px; height: 34px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: lgm-spin .8s linear infinite; }
+@keyframes lgm-spin { to { transform: rotate(360deg); } }
+.lgm .modal-bg { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
+.lgm .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 22px; max-width: 460px; width: 100%; }
+.lgm .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+.lgm .edit-canvas-wrap { position: relative; margin: 6px auto 0; border-radius: 12px; overflow: hidden; background: #fff; border: 1px solid var(--border); }
+.lgm .edit-canvas-wrap img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.lgm .edit-canvas-wrap canvas { position: absolute; inset: 0; cursor: crosshair; touch-action: none; }
+.lgm .modal-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
+.lgm .modal-actions button { padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel-2); color: var(--text); font-weight: 700; font-size: 14px; cursor: pointer; }
+.lgm .modal-actions button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.lgm .modal-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+.lgm .error { background: color-mix(in srgb, #ef4444 12%, var(--surface)); border: 1px solid #ef4444; color: #dc2626; border-radius: 10px; padding: 12px 14px; font-size: 13px; margin-bottom: 16px; }
+.lgm .badge { display: inline-block; font-size: 11px; background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); padding: 3px 8px; border-radius: 999px; margin-left: 8px; }
