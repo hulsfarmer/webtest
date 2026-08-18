@@ -21,11 +21,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [social, setSocial] = useState<'' | 'Google' | '카카오'>('');
 
-  // 로그인 후 이동할 곳: ?callbackUrl 우선(내부 경로만 허용), 없으면 스튜디오
+  // 로그인 후 이동할 곳: ?callbackUrl 우선(내부 경로만 허용) — 툴·스튜디오 가려다
+  // 로그인한 경우 그 페이지로. 없으면 왔던 자리(랜딩)에 그대로 둔다.
   function getCallback() {
-    if (typeof window === 'undefined') return '/studio';
+    if (typeof window === 'undefined') return '/';
     const cb = new URLSearchParams(window.location.search).get('callbackUrl');
-    return cb && cb.startsWith('/') && !cb.startsWith('//') ? cb : '/studio';
+    return cb && cb.startsWith('/') && !cb.startsWith('//') ? cb : '/';
   }
 
   async function handleSubmit(e: React.FormEvent) {
