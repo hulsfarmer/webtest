@@ -1,0 +1,72 @@
+/* 로그인 화면 — 랜딩/스튜디오와 동일한 라이트·다크 테마 (html[data-theme] 공유) */
+.lg-root {
+  --bg: #fbfbfe; --surface: #ffffff; --surface-2: #f2f3fb;
+  --border: #e6e7f2; --border-strong: #d5d7ea;
+  --text: #12162a; --text-dim: #565d78; --text-faint: #888ea6;
+  --purple: #7c3aed; --blue: #2563eb;
+  --grad: linear-gradient(115deg, #7c3aed 0%, #2563eb 100%);
+  --grad-soft: linear-gradient(115deg, rgba(124,58,237,.14), rgba(37,99,235,.14));
+  --shadow: 0 1px 2px rgba(20,26,46,.06), 0 18px 44px -20px rgba(20,26,46,.28);
+  min-height: 100vh; background: var(--bg); color: var(--text);
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased; word-break: keep-all;
+  display: grid; place-items: center; padding: 40px 20px; position: relative; overflow: hidden;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .lg-root {
+    --bg: #080d1c; --surface: #111832; --surface-2: #182142;
+    --border: #232c4c; --border-strong: #303a60;
+    --text: #eef1fb; --text-dim: #a3abc8; --text-faint: #727aa0;
+    --grad-soft: linear-gradient(115deg, rgba(124,58,237,.22), rgba(37,99,235,.2));
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 20px 50px -22px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="light"] .lg-root { --bg:#fbfbfe; --surface:#fff; --surface-2:#f2f3fb; --border:#e6e7f2; --border-strong:#d5d7ea; --text:#12162a; --text-dim:#565d78; --text-faint:#888ea6; --grad-soft:linear-gradient(115deg,rgba(124,58,237,.14),rgba(37,99,235,.14)); --shadow:0 1px 2px rgba(20,26,46,.06),0 18px 44px -20px rgba(20,26,46,.28); }
+:root[data-theme="dark"] .lg-root { --bg:#080d1c; --surface:#111832; --surface-2:#182142; --border:#232c4c; --border-strong:#303a60; --text:#eef1fb; --text-dim:#a3abc8; --text-faint:#727aa0; --grad-soft:linear-gradient(115deg,rgba(124,58,237,.22),rgba(37,99,235,.2)); --shadow:0 1px 2px rgba(0,0,0,.4),0 20px 50px -22px rgba(0,0,0,.7); }
+
+.lg-root * { box-sizing: border-box; }
+.lg-aurora { position: absolute; inset: -30% -10% auto -10%; height: 560px; pointer-events: none; z-index: 0;
+  background: radial-gradient(closest-side at 50% 20%, rgba(124,58,237,.28), transparent 70%), radial-gradient(closest-side at 70% 40%, rgba(37,99,235,.22), transparent 70%);
+  filter: blur(8px); }
+
+.lg-wrap { position: relative; z-index: 1; width: 100%; max-width: 400px; }
+.lg-brand { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 26px; font-weight: 800; font-size: 22px; letter-spacing: -.02em; }
+.lg-brand .mk { width: 36px; height: 36px; border-radius: 10px; background: var(--grad); display: grid; place-items: center; color: #fff; font-weight: 800; box-shadow: 0 6px 16px -6px rgba(124,58,237,.7); }
+.lg-brand b { background: var(--grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+.lg-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 30px 26px; box-shadow: var(--shadow); }
+.lg-loading { position: absolute; inset: 0; z-index: 5; border-radius: 20px; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(2px); display: grid; place-items: center; gap: 14px; align-content: center; }
+.lg-loading .spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--border-strong); border-top-color: var(--purple); animation: lgspin .8s linear infinite; }
+.lg-loading p { margin: 0; font-weight: 700; font-size: 14px; color: var(--text-dim); }
+@keyframes lgspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .lg-loading .spin { animation: none; } }
+.lg-title { font-size: 23px; font-weight: 800; letter-spacing: -.02em; text-align: center; margin: 0 0 6px; }
+.lg-desc { color: var(--text-dim); font-size: 14px; text-align: center; margin: 0 0 22px; }
+
+.lg-field { margin-bottom: 11px; }
+.lg-inp { width: 100%; padding: 13px 14px; border-radius: 11px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); font-family: inherit; font-size: 15px; }
+.lg-inp::placeholder { color: var(--text-faint); }
+.lg-inp:focus { outline: 2px solid rgba(124,58,237,.4); outline-offset: 1px; border-color: transparent; }
+
+.lg-submit { width: 100%; margin-top: 6px; padding: 13px; border: none; border-radius: 11px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 15px; background: var(--grad); color: #fff; box-shadow: 0 10px 24px -10px rgba(124,58,237,.7); }
+.lg-submit:hover { filter: brightness(1.05); }
+.lg-submit:disabled { opacity: .6; cursor: default; }
+
+.lg-error { background: color-mix(in srgb, #ef4444 12%, transparent); color: #ef4444; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; text-align: center; }
+.lg-toggle { text-align: center; font-size: 13.5px; color: var(--text-dim); margin: 14px 0 4px; }
+.lg-toggle button { background: none; border: none; color: var(--purple); font-weight: 700; cursor: pointer; font-family: inherit; font-size: 13.5px; padding: 0 2px; }
+.lg-toggle button:hover { text-decoration: underline; }
+
+.lg-divider { display: flex; align-items: center; gap: 12px; margin: 18px 0; color: var(--text-faint); font-size: 12px; }
+.lg-divider::before, .lg-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+.lg-social { display: grid; gap: 10px; }
+.lg-social button { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px; border-radius: 11px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 14px; border: 1px solid transparent; }
+.lg-google { background: #fff; color: #1f2430; border-color: #dadce0 !important; }
+.lg-google:hover { background: #f7f8fa; }
+.lg-kakao { background: #FEE500; color: #191919; }
+.lg-kakao:hover { background: #FDD800; }
+
+.lg-terms { text-align: center; font-size: 12px; color: var(--text-faint); margin-top: 18px; }
+.lg-back { display: block; text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-dim); }
+.lg-back:hover { color: var(--text); }
