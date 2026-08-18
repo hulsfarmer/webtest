@@ -226,7 +226,32 @@ function wrapKorean(text: string, maxChars = 14): string {
     }
   }
   if (current) lines.push(current);
+  // 고아 방지: 마지막 줄이 짧은 단독 어절('잔' 같은)이면 앞 줄 끝 단어를 내려 붙인다.
+  // 예) '아침을 깨우는 향긋한 한 / 잔' → '아침을 깨우는 향긋한 / 한 잔' ('한 잔'을 한 단위로 유지)
+  if (lines.length >= 2) {
+    const last = lines[lines.length - 1];
+    const prevWords = lines[lines.length - 2].split(' ');
+    if (!last.includes(' ') && last.length <= 3 && prevWords.length >= 2) {
+      const moved = prevWords[prevWords.length - 1];
+      if ((moved + ' ' + last).length <= maxChars) {
+        prevWords.pop();
+        lines[lines.length - 2] = prevWords.join(' ');
+        lines[lines.length - 1] = moved + ' ' + last;
+      }
+    }
+  }
   return lines.join('\n');
+}
+
+// 다음 말과 반드시 붙어야 하는 어절(끊으면 어색) — 수관형사('두 배'의 '두')·지시관형사·관형형 수식어.
+// 이런 어절에서 자막을 끊으면 '두' / '배가 되죠' 처럼 의미 단위가 갈라진다.
+const CAPTION_BIND_NEXT = /^(한|두|세|네|다섯|여섯|일곱|여덟|아홉|열|스무|몇|여러|온갖|모든|이|그|저|어느|무슨|어떤|웬)$/;
+function captionBindsToNext(word: string): boolean {
+  const s = word.replace(/[.,!?。…、·;:]+$/g, '').trim();
+  if (CAPTION_BIND_NEXT.test(s)) return true;
+  // 관형형 수식어(뒤 명사를 꾸밈) → 다음 말과 붙어야 함
+  if (/(같은|다른|아닌|하는|되는|있는|없는|가는|오는|보는|주는|드는|나는|사는)$/.test(s)) return true;
+  return false;
 }
 
 // Split a sentence into punchy 3~4 word chunks for sequential caption reveal.
@@ -237,11 +262,18 @@ function splitIntoChunks(text: string, maxWords = 4): string[] {
   if (words.length <= maxWords) return [words.join(' ')];
   const numChunks = Math.ceil(words.length / maxWords);
   const per = Math.ceil(words.length / numChunks);
-  const chunks: string[] = [];
+  const chunks: string[][] = [];
   for (let i = 0; i < words.length; i += per) {
-    chunks.push(words.slice(i, i + per).join(' '));
+    chunks.push(words.slice(i, i + per));
   }
-  return chunks;
+  // 청크 끝이 '붙어야 할 어절'이면 그 어절을 다음 청크로 넘긴다('두'가 '배가 되죠'와 합쳐지도록).
+  for (let k = 0; k < chunks.length - 1; k++) {
+    while (chunks[k].length > 0 && chunks[k + 1].length > 0
+        && captionBindsToNext(chunks[k][chunks[k].length - 1])) {
+      chunks[k + 1].unshift(chunks[k].pop() as string);
+    }
+  }
+  return chunks.filter(c => c.length > 0).map(c => c.join(' '));
 }
 
 // ── Fixed layout constants — Safe Zone 기반 (shared by both overlay functions) ──
