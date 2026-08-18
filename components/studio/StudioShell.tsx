@@ -31,7 +31,7 @@ const CREATE: Item[] = [
   { id: 'product', name: '제품 홍보영상', icon: 'box', href: '/studio/product', badge: 'new' },
   { id: 'logo', name: '로고 생성', icon: 'sparkle', href: '/studio/logo' },
   { id: 'convert', name: '파일 변환', icon: 'file', href: '/studio/convert', badge: 'soon' },
-  { id: 'youtube', name: '유튜브 디자인', icon: 'youtube', href: '/studio/youtube', badge: 'soon' },
+  { id: 'youtube', name: '유튜브 디자인', icon: 'youtube', href: '/studio/youtube' },
 ];
 const WORK: Item[] = [
   { id: 'library', name: '내 라이브러리', icon: 'library', href: '/studio/library' },
