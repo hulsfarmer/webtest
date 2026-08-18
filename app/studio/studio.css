@@ -285,3 +285,19 @@ textarea.st-inp { resize: vertical; min-height: 80px; line-height: 1.5; }
 /* 전역 헬퍼 클래스도 스킨에 맞게 (globals.css의 glass-card 등) */
 .st-toolskin .glass-card { background: var(--surface-2) !important; border-color: var(--border) !important; backdrop-filter: none !important; }
 .st-toolskin .bg-black\/20, .st-toolskin .bg-black\/30 { background-color: color-mix(in srgb, var(--text) 6%, transparent) !important; }
+
+/* ── 스킨 보정: 컬러 버튼/선택 상태 가독성 ── */
+/* 인라인 그라데이션·그라데이션 클래스 버튼은 흰 글자 유지 (text-white 다크화 되돌림) */
+.st-toolskin [style*="gradient"], .st-toolskin [style*="gradient"] *,
+.st-toolskin .bg-gradient-brand, .st-toolskin .bg-gradient-brand * { color: #fff !important; }
+/* 선택 상태 emerald 텍스트: 라이트 모드에선 진하게(연녹→진녹) 해서 밝은 배경서도 보이게. 다크는 그대로 */
+:root[data-theme="light"] .st-toolskin .text-emerald-300,
+:root[data-theme="light"] .st-toolskin .text-emerald-400,
+:root[data-theme="light"] .st-toolskin .text-emerald-200 { color: #047857 !important; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .st-toolskin .text-emerald-300,
+  :root:not([data-theme="dark"]) .st-toolskin .text-emerald-400,
+  :root:not([data-theme="dark"]) .st-toolskin .text-emerald-200 { color: #047857 !important; }
+}
+/* 선택 칩 배경 살짝 진하게(선택 표시 명확) */
+.st-toolskin .bg-emerald-500\/20 { background-color: color-mix(in srgb, var(--good) 18%, transparent) !important; }
