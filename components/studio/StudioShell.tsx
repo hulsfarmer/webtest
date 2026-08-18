@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import ThemeToggle from '@/components/ThemeToggle';
+
+type Usage = { plan: string; used: number; limit: number | null; remaining: number | null; credits: number };
 
 type Item = {
   id: string; name: string; icon: string; href: string;
@@ -52,8 +54,24 @@ const Burger = (
 export default function StudioShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [drawer, setDrawer] = useState(false);
+  const [usage, setUsage] = useState<Usage | null>(null);
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    let alive = true;
+    fetch('/api/usage')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive && d && !d.error) setUsage(d); })
+      .catch(() => { /* ignore */ });
+    return () => { alive = false; };
+  }, [status]);
+
+  const unlimited = usage?.limit === null && usage !== null;
+  const remainText = status !== 'authenticated' ? '—' : usage == null ? '…' : unlimited ? '무제한' : String(usage.remaining ?? 0);
+  const barPct = usage && usage.limit ? Math.min(100, Math.round(((usage.remaining ?? 0) / usage.limit) * 100)) : 100;
+  const pillText = status !== 'authenticated' ? '로그인 필요' : usage == null ? '불러오는 중' : unlimited ? '무제한' : `${usage.remaining ?? 0}회 남음`;
 
   const all = [...CREATE, ...WORK];
   const active = all.find((i) => !i.external && (i.href === pathname || (i.href !== '/studio' && pathname.startsWith(i.href))));
@@ -100,10 +118,10 @@ export default function StudioShell({ children }: { children: React.ReactNode })
 
           <div className="st-foot">
             <div className="st-credits">
-              <div className="st-cnum">18<span> / 30회</span></div>
-              <div className="st-clabel">이번 달 남은 생성</div>
-              <div className="st-bar"><i style={{ width: '60%' }} /></div>
-              <Link className="st-buy" href="/pricing">이용권 충전</Link>
+              <div className="st-cnum">{remainText}{usage && !unlimited && usage.limit ? <span> / {usage.limit}회</span> : null}</div>
+              <div className="st-clabel">남은 생성 횟수{usage && usage.credits > 0 ? ` · 크레딧 ${usage.credits}` : ''}</div>
+              <div className="st-bar"><i style={{ width: `${barPct}%` }} /></div>
+              <Link className="st-buy" href="/studio/billing">이용권 충전</Link>
             </div>
             <div className="st-account">
               <div className="st-avatar">{initial}</div>
@@ -119,7 +137,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
             <button className="st-iconbtn st-hamburger" onClick={() => setDrawer(true)} aria-label="메뉴 열기">{Burger}</button>
             <div className="st-crumb">Studio <span>›</span> <b>{crumbName}</b></div>
             <div className="spacer" />
-            <span className="st-pill"><span className="dot" />크레딧 18</span>
+            <span className="st-pill"><span className="dot" />{pillText}</span>
             <ThemeToggle />
           </header>
 
