@@ -257,10 +257,12 @@ textarea.st-inp { resize: vertical; min-height: 80px; line-height: 1.5; }
 /* 어두운 배경 → 투명(루트 surface 노출) */
 .st-toolskin .bg-\[\#0F172A\], .st-toolskin .bg-\[\#0F172A\]\/80, .st-toolskin .bg-\[\#0F172A\]\/95,
 .st-toolskin .bg-neutral-950 { background-color: transparent !important; }
-/* 카드/입력 표면 흰투명·뉴트럴 → surface-2 */
-.st-toolskin .bg-white\/5, .st-toolskin .bg-white\/10, .st-toolskin .bg-white\/15,
+/* 큰 카드 컨테이너 → surface-2 (회색 카드) */
 .st-toolskin .bg-neutral-900, .st-toolskin .bg-neutral-800, .st-toolskin .bg-neutral-700\/50,
 .st-toolskin .bg-neutral-800\/50 { background-color: var(--surface-2) !important; }
+/* 칩·선택 pill 등 작은 요소 → surface (회색 카드 위에서 튀도록) + 테두리 */
+.st-toolskin .bg-white\/5, .st-toolskin .bg-white\/10, .st-toolskin .bg-white\/15 {
+  background-color: var(--surface) !important; }
 /* 텍스트 */
 .st-toolskin .text-white, .st-toolskin .text-neutral-100, .st-toolskin .text-neutral-200 { color: var(--text) !important; }
 .st-toolskin .text-gray-300, .st-toolskin .text-gray-400, .st-toolskin .text-gray-500,
@@ -268,10 +270,16 @@ textarea.st-inp { resize: vertical; min-height: 80px; line-height: 1.5; }
 /* 테두리 */
 .st-toolskin .border-white\/5, .st-toolskin .border-white\/10, .st-toolskin .border-white\/20,
 .st-toolskin .border-neutral-800, .st-toolskin .border-neutral-700 { border-color: var(--border) !important; }
-/* 입력 필드 */
+/* 입력/선택 필드 — 카드와 다른 흰(surface) 배경 + 뚜렷한 테두리·그림자로 라벨과 확실히 구분 */
 .st-toolskin input, .st-toolskin textarea, .st-toolskin select {
-  background-color: var(--surface-2) !important; color: var(--text) !important; border-color: var(--border-strong) !important; }
+  background-color: var(--surface) !important; color: var(--text) !important;
+  border: 1px solid var(--border-strong) !important;
+  box-shadow: 0 1px 2px rgba(20,26,46,.06) !important; }
+.st-toolskin input:focus, .st-toolskin textarea:focus, .st-toolskin select:focus {
+  border-color: var(--purple) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--purple) 22%, transparent) !important; outline: none !important; }
 .st-toolskin input::placeholder, .st-toolskin textarea::placeholder { color: var(--text-faint) !important; }
+/* 클릭 가능한 pill/칩(작은 테두리 요소)이 라벨과 구분되게 */
+.st-toolskin .bg-white\/5, .st-toolskin .bg-white\/10 { border-color: var(--border-strong) !important; }
 /* 상단 sticky 바(임베드시 숨겨지지만 혹시 몰라) 투명 */
 .st-toolskin .backdrop-blur-xl { backdrop-filter: none !important; }
 /* 전역 헬퍼 클래스도 스킨에 맞게 (globals.css의 glass-card 등) */
