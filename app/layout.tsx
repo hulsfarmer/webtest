@@ -64,8 +64,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <head>
+        {/* 저장된 테마(라이트/다크) 를 첫 페인트 전에 적용 — 깜빡임 방지. system 이면 속성 없음(미디어쿼리 따름) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`,
+          }}
+        />
         {/* Pretendard — 한국어 가변 폰트 */}
         <link
           rel="stylesheet"

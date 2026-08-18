@@ -1,225 +1,185 @@
-'use client';
-
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { ArrowRight, Play, Sparkles, MonitorPlay, Store, CalendarDays } from 'lucide-react';
-import Header from '@/components/Header';
-import HowItWorks from '@/components/HowItWorks';
-import PricingSection from '@/components/PricingSection';
-import TestimonialsSection from '@/components/TestimonialsSection';
-import Footer from '@/components/Footer';
+import './landing.css';
+import LandingNav from '@/components/LandingNav';
 
-const DEFAULT_SAMPLES = [
-  { src: '/sample/demo.mp4', poster: '/sample/demo_thumb.jpg' },
-  { src: '/sample/demo2.mp4', poster: '/sample/demo2_thumb.jpg' },
-  { src: '/sample/demo3.mp4', poster: '/sample/demo3_thumb.jpg' },
+const LOGO_MAKER_URL = 'https://logomaker-blush.vercel.app';
+
+const TOOLS = [
+  { icon: '🏪', name: '업체 홍보영상', desc: '가게·회사·농장·병원 등 사업장을 소개하는 세로 쇼츠.', href: '/promo' },
+  { icon: '📅', name: '행사 홍보영상', desc: '축제·마켓·세일·오픈 등 이벤트를 긴급성 있게 알립니다.', href: '/promo?mode=event' },
+  { icon: '🎭', name: '제품 홍보영상', desc: '말하는 캐릭터가 제품을 직접 소개하는 드라마형 쇼츠.', href: '/promo-character', tag: 'new' as const },
+  { icon: '✦', name: '로고 생성', desc: '브랜드 이름과 분위기만으로 로고 시안 제작·다운로드.', href: LOGO_MAKER_URL, external: true },
+  { icon: '🔄', name: '파일 변환', desc: '영상·이미지·문서 포맷을 빠르게 변환합니다.', tag: 'soon' as const },
+  { icon: '🎬', name: '유튜브 디자인', desc: '채널 배너·썸네일을 브랜드 톤에 맞춰 자동 디자인.', tag: 'soon' as const },
 ];
 
-const businessTypes = ['카페', '식당', '헬스장', '미용실', '네일샵', '꽃집', '베이커리', '학원'];
+const SAMPLES = ['향긋한 한 잔', '이번 주말 오픈', '무설탕 바삭함', '제주 노을 명당', '첫 방문 20% 할인', '매일 아침 갓 구운'];
 
-interface ShowcaseVideo {
-  videoUrl: string;
-  posterUrl: string | null;
-  businessName: string | null;
-  businessType: string | null;
-  rating: number;
-}
+const PRICES = [
+  { name: '무료', amt: '0', unit: '원', who: '처음 써보는 분', feats: ['가입 시 3회 제공', '기본 음성·BGM', '워터마크 포함'], cta: '무료로 시작', href: '/promo', style: 'ghost' as const },
+  { name: 'Lite', amt: '2,000', unit: '원/월', who: '가끔 올리는 분', feats: ['월 10회 생성', '워터마크 제거', '전체 톤·BGM'], cta: '선택', href: '/pricing', style: 'ghost' as const },
+  { name: 'Pro', amt: '4,000', unit: '원/월', who: '꾸준히 홍보하는 분', feats: ['월 30회 생성', '말하는 캐릭터', 'SNS 자동 발행'], cta: '구독하기', href: '/pricing', style: 'grad' as const, feat: true },
+  { name: '크레딧 30회', amt: '5,000', unit: '원', who: '몰아서 쓰는 분', feats: ['30회 단건 충전', '자동 갱신 없음', '3개월 유효'], cta: '충전', href: '/pricing', style: 'ghost' as const },
+];
 
-export default function HomePage() {
-  const [showcaseVideos, setShowcaseVideos] = useState<ShowcaseVideo[]>([]);
+const Arrow = (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+);
 
-  useEffect(() => {
-    fetch('/api/showcase')
-      .then(r => r.json())
-      .then(data => {
-        if (data.videos && data.videos.length > 0) {
-          setShowcaseVideos(data.videos);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  // 실제 승인된 쇼케이스 영상만 표시(최대 6). 없을 때만 기본 샘플로 대체.
-  const sampleSources: { src: string; poster: string | null; showcase?: ShowcaseVideo }[] = showcaseVideos.length > 0
-    ? showcaseVideos.slice(0, 6).map(v => ({ src: v.videoUrl, poster: v.posterUrl, showcase: v }))
-    : DEFAULT_SAMPLES.map(s => ({ src: s.src, poster: s.poster }));
-
+export default function Home() {
   return (
-    <main className="min-h-screen bg-[#0F172A] text-white overflow-x-hidden">
-      <Header />
+    <div className="sa-root">
+      <LandingNav />
 
-      {/* Hero */}
-      <section className="relative pt-24 sm:pt-32 pb-16 sm:pb-20 px-4 sm:px-6 overflow-hidden">
-        {/* Background glow */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] sm:w-[800px] h-[400px] sm:h-[600px] bg-emerald-600/10 rounded-full blur-[120px]" />
-          <div className="absolute top-20 left-1/3 w-[300px] sm:w-[400px] h-[300px] sm:h-[400px] bg-purple-600/8 rounded-full blur-[100px]" />
-        </div>
-
-        <div className="relative max-w-5xl mx-auto text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs sm:text-sm font-medium mb-6 sm:mb-8">
-            <Sparkles className="w-3.5 h-3.5" />
-            막강 클로드 기반 사업장 홍보영상 자동 생성
-          </div>
-
-          {/* Headline — fixed height to prevent CLS */}
-          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extrabold leading-tight mb-4 sm:mb-6">
-            <span className="gradient-text">고화질 3분 완성!</span>
-          </h1>
-
-          <p className="text-base sm:text-lg text-gray-300 mb-4 sm:mb-6 font-medium">
-            업종 상관없이 누구나 전문가급 홍보영상 · 한국어 완벽 지원
-          </p>
-
-          <p className="text-base sm:text-xl text-gray-400 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed">
-            업체명과 사진만 입력하면 <strong className="text-white">스크립트 → 음성 → BGM → 영상</strong>까지
-            <br className="hidden md:block" />
-            모두 자동으로 완성. 전문 영상 제작사 없이도 SNS 홍보 쇼츠 완성.
-          </p>
-
-          {/* Two entry cards: 업체 / 행사 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-w-2xl mx-auto mb-5">
-            <Link
-              href="/promo"
-              className="group relative rounded-2xl p-5 sm:p-6 bg-gradient-brand text-white text-left hover:opacity-95 transition-all glow-purple active:opacity-85"
-            >
-              <Store className="w-7 h-7 mb-3" />
-              <div className="text-lg font-bold mb-1">업체 홍보영상</div>
-              <p className="text-white/80 text-sm mb-3">가게·회사·농장·병원 등 사업장 소개</p>
-              <span className="inline-flex items-center gap-1 text-sm font-semibold">
-                무료로 시작 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </span>
-            </Link>
-            <Link
-              href="/promo?mode=event"
-              className="group relative rounded-2xl p-5 sm:p-6 bg-white/5 border border-white/10 text-white text-left hover:bg-white/10 hover:border-emerald-500/40 transition-all active:bg-white/15"
-            >
-              <CalendarDays className="w-7 h-7 mb-3 text-emerald-400" />
-              <div className="text-lg font-bold mb-1">행사 홍보영상</div>
-              <p className="text-gray-400 text-sm mb-3">축제·공연·세일·오픈 등 이벤트 안내</p>
-              <span className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-300">
-                무료로 시작 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </span>
-            </Link>
-          </div>
-          <div className="flex justify-center mb-8 sm:mb-10">
-            <a
-              href="#how-it-works"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/5 text-white font-semibold text-sm sm:text-base hover:bg-white/10 transition-all border border-white/10 active:bg-white/15"
-            >
-              <Play className="w-4 h-4" />
-              작동 방식 보기
-            </a>
-          </div>
-
-          {/* Business type pills */}
-          <div className="mb-8 sm:mb-12">
-            <p className="text-gray-500 text-xs sm:text-sm mb-3">이런 업종에 딱 맞습니다</p>
-            <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
-              {businessTypes.map((type) => (
-                <span
-                  key={type}
-                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white/5 border border-white/10 text-gray-300 text-xs sm:text-sm hover:border-emerald-500/40 transition-colors cursor-default"
-                >
-                  {type}
-                </span>
-              ))}
+      {/* HERO */}
+      <header className="sa-hero">
+        <div className="sa-aurora" />
+        <div className="sa-wrap sa-hgrid">
+          <div>
+            <span className="sa-eyebrow"><span className="d" />소상공인을 위한 AI 홍보 스튜디오</span>
+            <h1 className="sa-hl">사진 몇 장이면,<br /><span className="g">홍보 쇼츠</span>가 <u>3분</u> 만에<br />완성됩니다.</h1>
+            <p className="sa-lead">업체명과 사진만 넣으면 대본·AI 음성·BGM·자막까지 자동으로. 영상 제작사 없이, 오늘 바로 SNS에 올리세요.</p>
+            <div className="sa-cta-row">
+              <Link className="sa-btn grad lg" href="/promo">무료로 시작하기 →</Link>
+              <a className="sa-btn ghost lg" href="#samples">샘플 영상 보기</a>
+            </div>
+            <div className="sa-trust">
+              <span><span className="ck">✓</span> <b>무료 3회</b> 제공</span>
+              <span><span className="ck">✓</span> 신용카드 불필요</span>
+              <span><span className="ck">✓</span> 한국어 완벽 지원</span>
             </div>
           </div>
 
+          <div className="sa-stage">
+            <div className="sa-phone">
+              <div className="sa-screen">
+                <div className="sa-photo" />
+                <div className="sa-shdr"><small>함덕 감성카페</small><b>매일 아침, 향긋한 한 잔</b></div>
+                <div className="sa-cap-area">
+                  <div className="c">직접 로스팅한 <i>원두</i></div>
+                  <div className="c">오션뷰 <i>창가 자리</i></div>
+                  <div className="c">지금 <i>방문하세요</i></div>
+                </div>
+                <div className="sa-prog"><i /></div>
+              </div>
+            </div>
+            <div className="sa-float f1"><span className="ic" style={{ background: 'var(--grad)' }}>✦</span><span>AI 대본·자막 자동</span></div>
+            <div className="sa-float f2"><span className="ic" style={{ background: 'linear-gradient(135deg,var(--pink),var(--purple))' }}>▶</span><span>평균 3분 12초 완성</span></div>
+          </div>
+        </div>
+      </header>
+
+      {/* HOW */}
+      <section className="sa-block" id="how">
+        <div className="sa-wrap">
+          <div className="sa-sec-head">
+            <div className="sa-kick">작동 방식</div>
+            <h2>세 단계면 끝납니다</h2>
+            <p>편집 프로그램도, 촬영 장비도 필요 없습니다. 입력만 하면 나머지는 AI가 합니다.</p>
+          </div>
+          <div className="sa-steps">
+            <div className="sa-step"><div className="n" /><h3>정보·사진 입력</h3><p>업체명, 강점, 사진 몇 장만. 사진이 없으면 업종에 맞는 스톡 영상 배경을 자동으로 넣어줍니다.</p><div className="con">{Arrow}</div></div>
+            <div className="sa-step"><div className="n" /><h3>AI가 자동 제작</h3><p>클로드가 대본을 쓰고, 자연스러운 한국어 음성·BGM·자막을 나레이션에 딱 맞춰 싱크합니다.</p><div className="con">{Arrow}</div></div>
+            <div className="sa-step"><div className="n" /><h3>완성·바로 발행</h3><p>9:16 쇼츠를 내려받거나, 유튜브·틱톡으로 곧바로 발행. 마음에 안 들면 대본만 고쳐 재생성.</p></div>
+          </div>
         </div>
       </section>
 
-      {/* Sample Videos */}
-      <section className="py-12 sm:py-16 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3">
-            실제 생성된 <span className="gradient-text">홍보영상</span>
-          </h2>
-          <p className="text-gray-400 text-sm sm:text-base mb-6 sm:mb-8">
-            {showcaseVideos.length > 0 ? '실제 사용자가 만든 홍보영상입니다' : 'AI가 자동으로 만든 실제 홍보영상입니다'}
-          </p>
-          {/* 반응형 그리드: 모바일 2열, 데스크톱 3열 (최대 6개 = 2행) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
-            {sampleSources.map((item) => (
-              <div key={item.src} className="glass-card p-2 sm:p-3 rounded-2xl">
-                <video
-                  src={item.src}
-                  poster={item.poster || undefined}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  className="w-full rounded-xl aspect-[9/16] bg-gray-900"
-                />
-                {item.showcase && (
-                  <p className="text-gray-400 text-xs mt-2 text-center">
-                    {item.showcase.businessName}
-                    {item.showcase.businessType && ` · ${item.showcase.businessType}`}
-                  </p>
-                )}
+      {/* TOOLS */}
+      <section className="sa-block" id="tools" style={{ background: 'var(--surface-2)' }}>
+        <div className="sa-wrap">
+          <div className="sa-sec-head">
+            <div className="sa-kick">기능</div>
+            <h2>홍보에 필요한 걸 한곳에서</h2>
+            <p>영상부터 로고까지. 로그인하면 좌측 스튜디오에서 원하는 도구를 골라 바로 만듭니다.</p>
+          </div>
+          <div className="sa-tools">
+            {TOOLS.map((t) => {
+              const inner = (
+                <>
+                  <div className="ic">{t.icon}</div>
+                  <h3>{t.name}{t.tag === 'new' && <span className="sa-tag new">NEW</span>}{t.tag === 'soon' && <span className="sa-tag soon">준비중</span>}</h3>
+                  <p>{t.desc}</p>
+                </>
+              );
+              if (t.href && t.external) return <a key={t.name} className="sa-tool" href={t.href} target="_blank" rel="noreferrer">{inner}</a>;
+              if (t.href) return <Link key={t.name} className="sa-tool" href={t.href}>{inner}</Link>;
+              return <div key={t.name} className="sa-tool" aria-disabled="true">{inner}</div>;
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* SAMPLES */}
+      <section className="sa-block" id="samples">
+        <div className="sa-wrap sa-sec-head">
+          <div className="sa-kick">샘플</div>
+          <h2>실제로 이렇게 만들어집니다</h2>
+          <p>업체명과 사진만 입력해서 나온 결과물입니다.</p>
+        </div>
+        <div className="sa-marquee">
+          <div className="sa-track">
+            {[...SAMPLES, ...SAMPLES].map((s, i) => (
+              <div className="sa-shot" key={i}><div className="bd" /><div className="pl">▶</div><div className="cp">{s}</div></div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* PRICING */}
+      <section className="sa-block" id="pricing" style={{ background: 'var(--surface-2)' }}>
+        <div className="sa-wrap">
+          <div className="sa-sec-head">
+            <div className="sa-kick">요금</div>
+            <h2>필요한 만큼만, 부담 없이</h2>
+            <p>무료로 3개를 먼저 만들어 보세요. 표시 가격은 VAT 포함 실청구가입니다.</p>
+          </div>
+          <div className="sa-prices">
+            {PRICES.map((p) => (
+              <div className={`sa-price${p.feat ? ' feat' : ''}`} key={p.name}>
+                <h3>{p.name}</h3>
+                <div className="amt">{p.amt}<span>{p.unit}</span></div>
+                <div className="who">{p.who}</div>
+                <ul>{p.feats.map((f) => <li key={f}>{f}</li>)}</ul>
+                <Link className={`sa-btn ${p.style}`} href={p.href}>{p.cta}</Link>
               </div>
             ))}
           </div>
-          <p className="text-gray-500 text-xs sm:text-sm mt-4">
-            업체명과 사진만 입력 → 3분 만에 이런 영상이 완성됩니다
-          </p>
         </div>
       </section>
 
-      <HowItWorks />
-
-      {/* How to Use Video */}
-      <section className="py-12 sm:py-16 px-4 sm:px-6">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs sm:text-sm font-medium mb-6">
-            <MonitorPlay className="w-3.5 h-3.5" />
-            실제 사용 영상
+      {/* FINAL */}
+      <section className="sa-block">
+        <div className="sa-wrap">
+          <div className="sa-final">
+            <div className="glow" />
+            <h2>오늘, 첫 홍보 쇼츠를 만들어 보세요</h2>
+            <p>신용카드 없이 무료 3회. 3분이면 SNS에 올릴 영상이 나옵니다.</p>
+            <div className="sa-cta-row" style={{ justifyContent: 'center' }}>
+              <Link className="sa-btn ghost lg" href="/promo">무료로 시작하기 →</Link>
+            </div>
           </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3">
-            이렇게 쉽게 <span className="gradient-text">만들어집니다</span>
-          </h2>
-          <p className="text-gray-400 text-sm sm:text-base mb-6 sm:mb-8">ShortsAI로 홍보영상 만드는 전체 과정을 확인하세요</p>
-          <div className="glass-card p-2 sm:p-4 rounded-2xl max-w-2xl mx-auto">
-            <video
-              src="/sample/how-to-use.mp4"
-              poster="/sample/how-to-use_thumb.jpg"
-              controls
-              playsInline
-              preload="metadata"
-              className="w-full rounded-xl bg-gray-900"
-            />
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="sa-footer">
+        <div className="sa-wrap">
+          <div className="top">
+            <div className="sa-brand"><span className="sa-mk">S</span>Shorts<b>AI</b></div>
+            <div className="fl">
+              <Link href="/terms">이용약관</Link>
+              <Link href="/privacy">개인정보처리방침</Link>
+              <Link href="/refund">환불정책</Link>
+              <a href="mailto:support@shortsai.kr">고객문의</a>
+            </div>
           </div>
-          <p className="text-gray-500 text-xs sm:text-sm mt-4">
-            업체명 입력부터 완성 영상 다운로드까지, 단 3분이면 충분합니다
-          </p>
+          <div className="biz">
+            상호 이지온 · 대표 안수동 · 사업자등록 794-03-04121 · 통신판매 · 제주 제주시 조천읍 함덕12길 46-1 202호<br />
+            고객문의 010-4149-0673 · support@shortsai.kr &nbsp;·&nbsp; © 2026 ShortsAI
+          </div>
         </div>
-      </section>
-
-      <PricingSection />
-
-      <TestimonialsSection />
-
-      {/* Final CTA */}
-      <section className="py-16 sm:py-24 px-4 sm:px-6">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-4 sm:mb-6">
-            지금 바로 <span className="gradient-text">시작해보세요</span>
-          </h2>
-          <p className="text-gray-400 text-base sm:text-lg mb-6 sm:mb-8">
-            신용카드 없이 무료로 3개 홍보영상을 만들어보세요
-          </p>
-          <Link
-            href="/promo"
-            className="inline-flex items-center gap-2 px-8 sm:px-10 py-4 sm:py-5 rounded-xl bg-gradient-brand text-white font-bold text-base sm:text-lg hover:opacity-90 transition-all glow-purple active:opacity-80"
-          >
-            무료 홍보영상 만들기
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-        </div>
-      </section>
-
-      <Footer />
-    </main>
+      </footer>
+    </div>
   );
 }

@@ -1,0 +1,131 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import ThemeToggle from '@/components/ThemeToggle';
+
+type Item = {
+  id: string; name: string; icon: string; href: string;
+  external?: boolean; badge?: 'new' | 'soon';
+};
+
+const ICONS: Record<string, string> = {
+  store: '<path d="M4 9h16l-1-4H5L4 9Z"/><path d="M4 9v10h16V9"/><path d="M9 19v-6h6v6"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/>',
+  box: '<path d="M21 8l-9-5-9 5 9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
+  sparkle: '<path d="M12 3l1.8 4.7L18.5 9l-4.7 1.8L12 15.5l-1.8-4.7L5.5 9l4.7-1.3L12 3Z"/>',
+  file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5"/>',
+  youtube: '<rect x="3" y="6" width="18" height="12" rx="3"/><path d="M10 9.5l5 2.5-5 2.5v-5Z"/>',
+  library: '<rect x="3" y="4" width="6" height="16" rx="1"/><rect x="10" y="4" width="6" height="16" rx="1"/><path d="M18 5l3 15"/>',
+  card: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  home: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+};
+
+const CREATE: Item[] = [
+  { id: 'promo', name: '업체 홍보영상', icon: 'store', href: '/studio/promo' },
+  { id: 'event', name: '행사 홍보영상', icon: 'calendar', href: '/studio/event' },
+  { id: 'product', name: '제품 홍보영상', icon: 'box', href: '/studio/product', badge: 'new' },
+  { id: 'logo', name: '로고 생성', icon: 'sparkle', href: '/studio/logo' },
+  { id: 'convert', name: '파일 변환', icon: 'file', href: '/studio/convert', badge: 'soon' },
+  { id: 'youtube', name: '유튜브 디자인', icon: 'youtube', href: '/studio/youtube', badge: 'soon' },
+];
+const WORK: Item[] = [
+  { id: 'library', name: '내 라이브러리', icon: 'library', href: '/studio/library' },
+  { id: 'billing', name: '결제 · 이용권', icon: 'card', href: '/studio/billing' },
+];
+
+function Icon({ name }: { name: string }) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: ICONS[name] || '' }} />
+  );
+}
+
+const Chevron = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 6l-6 6 6 6" /></svg>
+);
+const Burger = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+);
+
+export default function StudioShell({ children }: { children: React.ReactNode }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [drawer, setDrawer] = useState(false);
+  const pathname = usePathname();
+  const { data: session } = useSession();
+
+  const all = [...CREATE, ...WORK];
+  const active = all.find((i) => !i.external && (i.href === pathname || (i.href !== '/studio' && pathname.startsWith(i.href))));
+  const crumbName = pathname === '/studio' ? '홈' : (active?.name ?? '스튜디오');
+
+  const name = session?.user?.name || session?.user?.email || '게스트';
+  const initial = (name || 'G').trim().charAt(0).toUpperCase();
+
+  const renderNav = (items: Item[]) =>
+    items.map((it) => {
+      const isActive = !it.external && (it.href === pathname);
+      const cls = `st-nav${isActive ? ' active' : ''}`;
+      const inner = (
+        <>
+          <span className="ico"><Icon name={it.icon} /></span>
+          <span className="txt">{it.name}</span>
+          {it.badge && <span className={`badge${it.badge === 'soon' ? ' soon' : ''}`}>{it.badge === 'new' ? 'NEW' : '준비중'}</span>}
+        </>
+      );
+      if (it.external) return <a key={it.id} className={cls} href={it.href} target="_blank" rel="noreferrer" title={it.name}>{inner}</a>;
+      return <Link key={it.id} className={cls} href={it.href} title={it.name} onClick={() => setDrawer(false)}>{inner}</Link>;
+    });
+
+  return (
+    <div className="st-root">
+      <div className={`st-app${collapsed ? ' collapsed' : ''}${drawer ? ' drawer-open' : ''}`}>
+        <aside className="st-sidebar">
+          <div className="st-head">
+            <Link href="/studio" className="st-logo" title="ShortsAI Studio">S</Link>
+            <span className="st-wordmark">Shorts<b>AI</b></span>
+            <button className="st-collapse" onClick={() => setCollapsed((v) => !v)} aria-label="사이드바 접기/펼치기">{Chevron}</button>
+          </div>
+
+          <div className="st-scroll">
+            <div className="st-group">
+              <div className="st-label">만들기</div>
+              {renderNav(CREATE)}
+            </div>
+            <div className="st-group">
+              <div className="st-label">내 작업</div>
+              {renderNav(WORK)}
+            </div>
+          </div>
+
+          <div className="st-foot">
+            <div className="st-credits">
+              <div className="st-cnum">18<span> / 30회</span></div>
+              <div className="st-clabel">이번 달 남은 생성</div>
+              <div className="st-bar"><i style={{ width: '60%' }} /></div>
+              <Link className="st-buy" href="/pricing">이용권 충전</Link>
+            </div>
+            <div className="st-account">
+              <div className="st-avatar">{initial}</div>
+              <div className="st-who"><b>{name}</b><span>{session ? '로그인됨' : '로그인 필요'}</span></div>
+            </div>
+          </div>
+        </aside>
+
+        <div className="st-scrim" onClick={() => setDrawer(false)} />
+
+        <div className="st-main">
+          <header className="st-topbar">
+            <button className="st-iconbtn st-hamburger" onClick={() => setDrawer(true)} aria-label="메뉴 열기">{Burger}</button>
+            <div className="st-crumb">Studio <span>›</span> <b>{crumbName}</b></div>
+            <div className="spacer" />
+            <span className="st-pill"><span className="dot" />크레딧 18</span>
+            <ThemeToggle />
+          </header>
+
+          <main className="st-content">{children}</main>
+        </div>
+      </div>
+    </div>
+  );
+}
