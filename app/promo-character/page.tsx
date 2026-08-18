@@ -37,7 +37,7 @@ const HEADER_THEMES = [
 type StepState = 'pending' | 'running' | 'done' | 'failed';
 type Section = { type: 'hook' | 'main' | 'cta'; label: string; text: string };
 
-export default function PromoCharacterPage() {
+export function PromoCharacterTool({ embedded = false }: { embedded?: boolean } = {}) {
   const [phase, setPhase] = useState<'form' | 'script'>('form');
   const [businessName, setBusinessName] = useState('');
   const [businessType, setBusinessType] = useState('');
@@ -280,7 +280,7 @@ export default function PromoCharacterPage() {
   const dot = (s: StepState) => s === 'done' ? '완료' : s === 'running' ? '진행' : s === 'failed' ? '실패' : '대기';
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 px-4 py-10">
+    <div className={embedded ? 'st-toolskin rounded-2xl px-4 py-8' : 'min-h-screen bg-neutral-950 text-neutral-100 px-4 py-10'}>
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">제품 홍보 캐릭터 영상</h1>
@@ -500,4 +500,9 @@ export default function PromoCharacterPage() {
       </div>
     </div>
   );
+}
+
+// 기존 /promo-character 라우트 — 단독 페이지 (스튜디오에선 <PromoCharacterTool embedded /> 로 재사용)
+export default function PromoCharacterPage() {
+  return <PromoCharacterTool />;
 }

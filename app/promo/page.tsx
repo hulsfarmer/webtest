@@ -162,7 +162,7 @@ function StepIndicator({ label, status, subMessage }: { label: string; status: S
   );
 }
 
-export default function PromoPage() {
+export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean; forceMode?: 'business' | 'event' } = {}) {
   const { data: authSession } = useSession();
   const searchParams = useSearchParams();
   const [businessName, setBusinessName]     = useState('');
@@ -224,11 +224,12 @@ export default function PromoPage() {
   useEffect(() => {
     if (modeInitRef.current) return;
     modeInitRef.current = true;
-    if (searchParams.get('mode') === 'event') {
+    const m = forceMode || (searchParams.get('mode') === 'event' ? 'event' : null);
+    if (m === 'event') {
       setMode('event');
       setTone((t) => (t === '친근한' ? '긴급한' : t)); // 행사는 긴급성 기본
     }
-  }, [searchParams]);
+  }, [searchParams, forceMode]);
 
   // 히스토리에서 스크립트 수정/재생성으로 온 경우 입력값 복원
   const restoredRef = useRef(false);
@@ -778,8 +779,9 @@ export default function PromoPage() {
   const canStart        = businessName.trim().length > 0 && businessType.length > 0 && sellingPoints.trim().length > 0 && eventReady && !loading && !loadingScript;
 
   return (
-    <main className="min-h-screen bg-[#0F172A] text-white">
-      {/* Header */}
+    <main className={embedded ? 'st-toolskin rounded-2xl overflow-hidden' : 'min-h-screen bg-[#0F172A] text-white'}>
+      {/* Header — 단독 페이지에서만 (스튜디오 셸엔 자체 상단바 있음) */}
+      {!embedded && (
       <div className="border-b border-white/5 bg-[#0F172A]/80 backdrop-blur-xl sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm">
@@ -799,6 +801,7 @@ export default function PromoPage() {
           )}
         </div>
       </div>
+      )}
 
       <div className="max-w-2xl mx-auto px-6 py-10">
         <div className="mb-8">
@@ -1683,4 +1686,9 @@ export default function PromoPage() {
       )}
     </main>
   );
+}
+
+// 기존 /promo 라우트 — 단독 페이지 (스튜디오에선 <PromoTool embedded /> 로 재사용)
+export default function PromoPage() {
+  return <PromoTool />;
 }

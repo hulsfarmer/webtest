@@ -249,3 +249,31 @@ textarea.st-inp { resize: vertical; min-height: 80px; line-height: 1.5; }
   .st-ws { grid-template-columns: 1fr; }
   .st-plans { grid-template-columns: 1fr; }
 }
+
+/* ── 스튜디오 임베드 툴 스킨 ──
+   기존 다크 툴(/promo·/promo-character)을 새 테마에 맞게 색만 덮어씌운다.
+   툴 JSX/로직은 그대로(안전) — .st-toolskin 안에서만 적용. */
+.st-toolskin { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+/* 어두운 배경 → 투명(루트 surface 노출) */
+.st-toolskin .bg-\[\#0F172A\], .st-toolskin .bg-\[\#0F172A\]\/80, .st-toolskin .bg-\[\#0F172A\]\/95,
+.st-toolskin .bg-neutral-950 { background-color: transparent !important; }
+/* 카드/입력 표면 흰투명·뉴트럴 → surface-2 */
+.st-toolskin .bg-white\/5, .st-toolskin .bg-white\/10, .st-toolskin .bg-white\/15,
+.st-toolskin .bg-neutral-900, .st-toolskin .bg-neutral-800, .st-toolskin .bg-neutral-700\/50,
+.st-toolskin .bg-neutral-800\/50 { background-color: var(--surface-2) !important; }
+/* 텍스트 */
+.st-toolskin .text-white, .st-toolskin .text-neutral-100, .st-toolskin .text-neutral-200 { color: var(--text) !important; }
+.st-toolskin .text-gray-300, .st-toolskin .text-gray-400, .st-toolskin .text-gray-500,
+.st-toolskin .text-neutral-300, .st-toolskin .text-neutral-400, .st-toolskin .text-neutral-500 { color: var(--text-dim) !important; }
+/* 테두리 */
+.st-toolskin .border-white\/5, .st-toolskin .border-white\/10, .st-toolskin .border-white\/20,
+.st-toolskin .border-neutral-800, .st-toolskin .border-neutral-700 { border-color: var(--border) !important; }
+/* 입력 필드 */
+.st-toolskin input, .st-toolskin textarea, .st-toolskin select {
+  background-color: var(--surface-2) !important; color: var(--text) !important; border-color: var(--border-strong) !important; }
+.st-toolskin input::placeholder, .st-toolskin textarea::placeholder { color: var(--text-faint) !important; }
+/* 상단 sticky 바(임베드시 숨겨지지만 혹시 몰라) 투명 */
+.st-toolskin .backdrop-blur-xl { backdrop-filter: none !important; }
+/* 전역 헬퍼 클래스도 스킨에 맞게 (globals.css의 glass-card 등) */
+.st-toolskin .glass-card { background: var(--surface-2) !important; border-color: var(--border) !important; backdrop-filter: none !important; }
+.st-toolskin .bg-black\/20, .st-toolskin .bg-black\/30 { background-color: color-mix(in srgb, var(--text) 6%, transparent) !important; }
