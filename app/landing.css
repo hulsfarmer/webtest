@@ -81,6 +81,8 @@
 .sa-links a { cursor: pointer; }
 .sa-links a:hover { color: var(--text); }
 .sa-nav-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.sa-user { font-size: 14px; font-weight: 700; color: var(--text); display: inline-flex; align-items: center; gap: 6px; }
+.sa-user::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
 
 /* theme segmented control */
 .sa-seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px; gap: 2px; }

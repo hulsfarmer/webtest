@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import ThemeToggle from './ThemeToggle';
 
 export default function LandingNav() {
   const { data: session, status } = useSession();
   const loggedIn = !!session?.user;
+  const displayName = session?.user?.name || session?.user?.email?.split('@')[0] || '';
 
   return (
     <div className="sa-nav">
@@ -24,7 +25,8 @@ export default function LandingNav() {
           <ThemeToggle />
           {status === 'loading' ? null : loggedIn ? (
             <>
-              <Link className="sa-btn text sa-hide-sm" href="/history">내 영상</Link>
+              <span className="sa-user sa-hide-sm">{displayName}님</span>
+              <button className="sa-btn text sa-hide-sm" type="button" onClick={() => signOut({ callbackUrl: '/' })}>로그아웃</button>
               <Link className="sa-btn grad" href="/studio">스튜디오 →</Link>
             </>
           ) : (

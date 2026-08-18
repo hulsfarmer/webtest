@@ -13,6 +13,13 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // 로그인 후 이동할 곳: ?callbackUrl 우선(내부 경로만 허용), 없으면 스튜디오
+  function getCallback() {
+    if (typeof window === 'undefined') return '/studio';
+    const cb = new URLSearchParams(window.location.search).get('callbackUrl');
+    return cb && cb.startsWith('/') && !cb.startsWith('//') ? cb : '/studio';
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -41,7 +48,7 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      window.location.href = '/promo';
+      window.location.href = getCallback();
     } catch {
       setError('처리 중 오류가 발생했습니다.');
       setLoading(false);
@@ -125,7 +132,7 @@ export default function LoginPage() {
 
           <div className="space-y-3">
             <button
-              onClick={() => signIn('google', { callbackUrl: '/promo' })}
+              onClick={() => signIn('google', { callbackUrl: getCallback() })}
               className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl bg-white text-gray-900 font-semibold text-sm hover:bg-gray-100 transition-colors active:bg-gray-200"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -138,7 +145,7 @@ export default function LoginPage() {
             </button>
 
             <button
-              onClick={() => signIn('kakao', { callbackUrl: '/promo' })}
+              onClick={() => signIn('kakao', { callbackUrl: getCallback() })}
               className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl bg-[#FEE500] text-[#191919] font-semibold text-sm hover:bg-[#FDD800] transition-colors active:bg-[#F5D000]"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
