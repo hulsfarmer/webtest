@@ -48,8 +48,10 @@ async function generateGoogleCloudTTS(
 
   const voiceName = resolveGoogleVoice(voice);
 
-  // 콤마→공백(과도한 쉼 방지), 느낌표·물음표 뒤엔 문장 쉼 삽입(Chirp3-HD가 자연 쉼을 잘 안 줌)
-  const withBreaks = escapeXml(text.replace(/\s*,\s*/g, ' ')).replace(/([!?])(\s|$)/g, '$1<break time="350ms"/>$2');
+  // 콤마→짧은 쉼(300ms), 느낌표·물음표 뒤엔 문장 쉼(350ms) 삽입(Chirp3-HD가 자연 쉼을 잘 안 줌)
+  const withBreaks = escapeXml(text)
+    .replace(/\s*,\s*/g, '<break time="300ms"/> ')
+    .replace(/([!?])(\s|$)/g, '$1<break time="350ms"/>$2');
   const ssmlText = `<speak>${withBreaks}</speak>`;
 
   const response = await axios.post(
@@ -222,9 +224,11 @@ export async function generateAudioWithTimepoints(
       const dir = path.dirname(outputPath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-      // Build SSML with <mark> between sentences (콤마→공백, 느낌표·물음표 뒤 문장 쉼)
+      // Build SSML with <mark> between sentences (콤마→짧은 쉼 300ms, 느낌표·물음표 뒤 문장 쉼 350ms)
       const ssmlParts = sentences.map((s, i) => {
-        const clean = escapeXml(s.replace(/\s*,\s*/g, ' ')).replace(/([!?])(\s|$)/g, '$1<break time="350ms"/>$2');
+        const clean = escapeXml(s)
+          .replace(/\s*,\s*/g, '<break time="300ms"/> ')
+          .replace(/([!?])(\s|$)/g, '$1<break time="350ms"/>$2');
         return `<mark name="s${i}"/>${clean}`;
       });
       const ssml = `<speak>${ssmlParts.join(' ')}<mark name="s${sentences.length}"/></speak>`;
@@ -258,8 +262,10 @@ export async function generateAudioWithTimepoints(
         try {
           for (let i = 0; i < sentences.length; i++) {
             const segPath = path.join(tmpDir, `seg_${i}_${Date.now()}.mp3`);
-            // 콤마→공백, 느낌표·물음표 뒤 문장 쉼
-            const ssmlText = `<speak>${escapeXml(sentences[i].replace(/\s*,\s*/g, ' ')).replace(/([!?])(\s|$)/g, '$1<break time="350ms"/>$2')}</speak>`;
+            // 콤마→짧은 쉼(300ms), 느낌표·물음표 뒤 문장 쉼(350ms)
+            const ssmlText = `<speak>${escapeXml(sentences[i])
+              .replace(/\s*,\s*/g, '<break time="300ms"/> ')
+              .replace(/([!?])(\s|$)/g, '$1<break time="350ms"/>$2')}</speak>`;
             const segResp = await axios.post(
               `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
               {
