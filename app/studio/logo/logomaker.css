@@ -19,11 +19,12 @@
 .lgm .header p { margin: 0 0 22px; color: var(--muted); font-size: 15px; }
 .lgm .grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 24px; }
 @media (max-width: 980px) { .lgm .grid { grid-template-columns: 1fr; } }
-.lgm .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
-.lgm label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
-.lgm textarea, .lgm input, .lgm select { width: 100%; background: var(--panel-2); border: 1px solid var(--border-strong); border-radius: 10px; color: var(--text); padding: 12px 14px; font-size: 14px; font-family: inherit; resize: vertical; }
+/* 카드=회색(surface-2), 입력=흰(surface) — 업체/행사(.st-toolskin)와 동일한 필드 룩으로 통일 */
+.lgm .card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+.lgm label { display: block; font-size: 13px; color: var(--text-dim); margin: 0 0 7px; font-weight: 600; }
+.lgm textarea, .lgm input, .lgm select { width: 100%; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; color: var(--text); padding: 12px 14px; font-size: 14px; font-family: inherit; resize: vertical; box-shadow: 0 1px 2px rgba(20,26,46,.06); }
 .lgm select { cursor: pointer; appearance: none; }
-.lgm textarea:focus, .lgm input:focus, .lgm select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--purple) 20%, transparent); }
+.lgm textarea:focus, .lgm input:focus, .lgm select:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 3px color-mix(in srgb, var(--purple) 22%, transparent); }
 .lgm textarea::placeholder, .lgm input::placeholder { color: var(--text-faint); }
 .lgm .field { margin-bottom: 16px; }
 .lgm .row { display: flex; gap: 12px; }

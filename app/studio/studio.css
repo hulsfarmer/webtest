@@ -305,3 +305,9 @@ textarea.st-inp { resize: vertical; min-height: 80px; line-height: 1.5; }
 }
 /* 선택 칩 배경 살짝 진하게(선택 표시 명확) */
 .st-toolskin .bg-emerald-500\/20 { background-color: color-mix(in srgb, var(--good) 18%, transparent) !important; }
+
+/* 입력 필드 일관성 강제 — 제품 툴은 입력에 bg-neutral-950 등을 써서 요소 규칙을 이기므로,
+   .st-content 를 앞에 붙여 특이성을 올려 모든 툴 입력을 흰(surface)+border-strong 으로 통일 */
+.st-content .st-toolskin input, .st-content .st-toolskin textarea, .st-content .st-toolskin select {
+  background-color: var(--surface) !important; border-color: var(--border-strong) !important; color: var(--text) !important;
+}
