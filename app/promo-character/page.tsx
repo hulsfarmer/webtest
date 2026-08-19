@@ -20,12 +20,20 @@ const VOICES: VoiceCfg[] = [
     engine: 'azure', azureVoice: 'ko-KR-YuJinNeural', azurePitch: '+45%', azureRate: '+8%' },
 ];
 const PRESETS = [
-  { id: 'preset-jieun', label: '민지·여성',   name: '민지', src: '/characters/preset-jieun.png', voiceKey: 'minji' },
-  { id: 'preset-male',  label: '준호·남성',   name: '준호', src: '/characters/preset-male.png',  voiceKey: 'minjun' },
-  { id: 'preset-teen',  label: '민서·청소년', name: '민서', src: '/characters/preset-teen.png',  voiceKey: 'teen' },
-  { id: 'preset-child', label: '하늘·아이',   name: '하늘', src: '/characters/preset-child.png', voiceKey: 'child' },
-  { id: 'preset-dog',   label: '코코·강아지', name: '코코', src: '/characters/preset-dog.png',   voiceKey: 'dog' },
-  { id: 'preset-puppy', label: '뭉치·카툰강아지', name: '뭉치', src: '/characters/preset-puppy.png', voiceKey: 'puppy' },
+  { id: 'preset-jieun', label: '민지·여성',   name: '민지', src: '/characters/preset-jieun.png', voiceKey: 'minji',  vsVoice: 'Aoede' },
+  { id: 'preset-male',  label: '준호·남성',   name: '준호', src: '/characters/preset-male.png',  voiceKey: 'minjun', vsVoice: 'Charon' },
+  { id: 'preset-teen',  label: '민서·청소년', name: '민서', src: '/characters/preset-teen.png',  voiceKey: 'teen',   vsVoice: 'Puck' },
+  { id: 'preset-child', label: '하늘·아이',   name: '하늘', src: '/characters/preset-child.png', voiceKey: 'child',  vsVoice: 'Leda' },
+  { id: 'preset-dog',   label: '코코·강아지', name: '코코', src: '/characters/preset-dog.png',   voiceKey: 'dog',    vsVoice: 'Puck' },
+  { id: 'preset-puppy', label: '뭉치·카툰강아지', name: '뭉치', src: '/characters/preset-puppy.png', voiceKey: 'puppy', vsVoice: 'Leda' },
+];
+// VisionStory(Gemini) 음성 — 한국어 텍스트를 그대로 읽음. 제품홍보(신규) 엔진 전용.
+const VS_VOICES = [
+  { id: 'Aoede',  label: '민지 (여·자연)' },
+  { id: 'Leda',   label: '수아 (여·활기)' },
+  { id: 'Kore',   label: '지아 (여·차분)' },
+  { id: 'Charon', label: '준호 (남·자연)' },
+  { id: 'Puck',   label: '준서 (남·활기)' },
 ];
 const HEADER_THEMES = [
   { id: 'navy', label: '테크 네이비', desc: 'IT·재테크', bg: '#0A192F', bn: '#00E5FF', title: '#FFFFFF' },
@@ -37,7 +45,10 @@ const HEADER_THEMES = [
 type StepState = 'pending' | 'running' | 'done' | 'failed';
 type Section = { type: 'hook' | 'main' | 'cta'; label: string; text: string };
 
-export function PromoCharacterTool({ embedded = false }: { embedded?: boolean } = {}) {
+export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { embedded?: boolean; engine?: 'hedra' | 'visionstory' } = {}) {
+  const isVS = engine === 'visionstory';
+  const apiBase = isVS ? '/api/promo-character-vs' : '/api/promo-character';
+  const voiceOptions = isVS ? VS_VOICES : VOICES;
   const [phase, setPhase] = useState<'form' | 'script'>('form');
   const [businessName, setBusinessName] = useState('');
   const [businessType, setBusinessType] = useState('');
@@ -46,7 +57,7 @@ export function PromoCharacterTool({ embedded = false }: { embedded?: boolean } 
   const [catchphrase, setCatchphrase] = useState('');
   const [headerTheme, setHeaderTheme] = useState('navy');
   const [headerPreview, setHeaderPreview] = useState('');
-  const [voiceKey, setVoiceKey] = useState('minji');
+  const [voiceKey, setVoiceKey] = useState(engine === 'visionstory' ? 'Aoede' : 'minji');
   const [duration, setDuration] = useState('20');
   const [speed, setSpeed] = useState('1.1');
   const [preset, setPreset] = useState('preset-jieun');
@@ -223,16 +234,24 @@ export function PromoCharacterTool({ embedded = false }: { embedded?: boolean } 
     fd.append('businessType', businessType);
     fd.append('sellingPoints', sellingPoints);
     fd.append('cta', cta);
-    const v = VOICES.find((x) => x.id === voiceKey) ?? VOICES[0];
-    fd.append('voice', v.google);
-    fd.append('ttsEngine', v.engine ?? 'google');
-    fd.append('azureVoice', v.azureVoice ?? '');
-    fd.append('azurePitch', v.azurePitch ?? '0%');
-    fd.append('azureRate', v.azureRate ?? '0%');
-    fd.append('duration', duration);
-    fd.append('speed', speed);
-    fd.append('pitch', charFile ? '0' : String(v.pitch)); // 업로드 캐릭터는 피치 0
-    fd.append('childLisp', !charFile && voiceKey === 'child' ? '1' : ''); // 하늘(아이)만 혀짧은소리
+    if (isVS) {
+      // VisionStory: 음성 = Gemini voice_id 그대로 전달, 내부 TTS가 처리
+      fd.append('voice', voiceKey);
+      fd.append('emotion', 'cheerful');
+      fd.append('duration', duration);
+      fd.append('speed', '1.0'); // VisionStory는 자체 페이싱 자연스러움
+    } else {
+      const v = VOICES.find((x) => x.id === voiceKey) ?? VOICES[0];
+      fd.append('voice', v.google);
+      fd.append('ttsEngine', v.engine ?? 'google');
+      fd.append('azureVoice', v.azureVoice ?? '');
+      fd.append('azurePitch', v.azurePitch ?? '0%');
+      fd.append('azureRate', v.azureRate ?? '0%');
+      fd.append('duration', duration);
+      fd.append('speed', speed);
+      fd.append('pitch', charFile ? '0' : String(v.pitch)); // 업로드 캐릭터는 피치 0
+      fd.append('childLisp', !charFile && voiceKey === 'child' ? '1' : ''); // 하늘(아이)만 혀짧은소리
+    }
     if (productFile) fd.append('product', productFile); else fd.append('productPath', importedImagePath);
     if (charFile) fd.append('character', charFile); else fd.append('preset', preset);
     fd.append('characterName', charFile ? '' : (PRESETS.find((p) => p.id === preset)?.name ?? ''));
@@ -244,7 +263,7 @@ export function PromoCharacterTool({ embedded = false }: { embedded?: boolean } 
     setBusy(true); setSteps({ script: 'done', audio: 'running', video: 'pending' });
     setStatusMsg('나레이션 음성 생성 중...');
     try {
-      const r = await fetch('/api/promo-character', { method: 'POST', body: fd });
+      const r = await fetch(apiBase, { method: 'POST', body: fd });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || '생성 실패');
       setJobId(data.jobId); setYtMsg(''); setYtUrl('');
@@ -271,7 +290,7 @@ export function PromoCharacterTool({ embedded = false }: { embedded?: boolean } 
           if (pollRef.current) clearInterval(pollRef.current);
           setError(d.error || '생성 실패'); setStatusMsg(''); setBusy(false);
         } else {
-          setStatusMsg(`처리 중... (${secs}초 경과 · 캐릭터 영상 생성은 길이에 따라 5~15분 걸립니다)`);
+          setStatusMsg(`처리 중... (${secs}초 경과 · 캐릭터 영상 생성은 ${isVS ? '보통 수분' : '길이에 따라 5~15분'} 걸립니다)`);
         }
       } catch { /* keep polling */ }
     }, 3000);
@@ -283,7 +302,7 @@ export function PromoCharacterTool({ embedded = false }: { embedded?: boolean } 
     <div className={embedded ? 'st-toolskin rounded-2xl px-4 py-8' : 'min-h-screen bg-neutral-950 text-neutral-100 px-4 py-10'}>
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">제품 홍보 캐릭터 영상</h1>
+          <h1 className="text-2xl font-bold">제품 홍보 캐릭터 영상{isVS ? '' : ' (고급)'}</h1>
           <Link href="/promo-character/library" className="text-sm text-sky-400 hover:text-sky-300 border border-sky-800/60 rounded-lg px-3 py-1.5">📁 내 영상</Link>
         </div>
         <p className="text-sm text-neutral-400 mt-1 mb-8">
@@ -337,7 +356,7 @@ export function PromoCharacterTool({ embedded = false }: { embedded?: boolean } 
                 <div className="flex gap-3 flex-wrap">
                   {PRESETS.map((p) => (
                     <button key={p.id} title={p.label}
-                      onClick={() => { setPreset(p.id); setVoiceKey(p.voiceKey); setCharFile(null); setCharPreview(''); }}
+                      onClick={() => { setPreset(p.id); setVoiceKey(isVS ? p.vsVoice : p.voiceKey); setCharFile(null); setCharPreview(''); }}
                       className={`w-16 h-20 rounded-lg overflow-hidden border-2 ${preset === p.id && !charFile ? 'border-emerald-400' : 'border-neutral-700'}`}>
                       <img src={p.src} alt={p.label} className="w-full h-full object-cover" />
                     </button>
@@ -352,7 +371,7 @@ export function PromoCharacterTool({ embedded = false }: { embedded?: boolean } 
                 <div>
                   <label className="block text-sm text-neutral-300 mb-1.5">목소리</label>
                   <select className={inputCls} value={voiceKey} onChange={(e) => setVoiceKey(e.target.value)}>
-                    {VOICES.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
+                    {voiceOptions.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
                   </select>
                 </div>
                 <div>
