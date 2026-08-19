@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function slugify(text: string): string {
   const first = (text || "logo").split(/\s|\n/).find((w) => w.trim().length > 0) || "logo";
@@ -83,6 +83,23 @@ export default function LogoStudio() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedSet, setSavedSet] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null); // 라이브러리에서 수정하러 온 로고 id
+
+  // 라이브러리 [수정]으로 들어오면 해당 로고를 불러와 편집 시작
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("editLogo");
+      if (!raw) return;
+      sessionStorage.removeItem("editLogo");
+      const o = JSON.parse(raw) as { id?: string; image?: string; title?: string };
+      if (o.image) {
+        setHistory([o.image]);
+        setCurrent(0);
+        if (o.title) setBrand(o.title);
+        if (o.id) setEditingId(o.id);
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   const image = current >= 0 ? history[current] : "";
   const isSaved = !!image && savedSet.has(image);
@@ -92,11 +109,17 @@ export default function LogoStudio() {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch("/api/assets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "logo", title: brand || description, image }),
-      });
+      const res = editingId
+        ? await fetch("/api/assets", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: editingId, image, title: brand || description }),
+          })
+        : await fetch("/api/assets", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: "logo", title: brand || description, image }),
+          });
       const data = await res.json();
       if (!res.ok) setError(data.error || "저장에 실패했습니다.");
       else setSavedSet((s) => new Set(s).add(image));
@@ -424,7 +447,10 @@ export default function LogoStudio() {
                 onClick={saveToLibrary}
                 disabled={saving || isSaved}
               >
-                {isSaved ? "✓ 라이브러리에 저장됨" : saving ? "저장 중…" : "＋ 라이브러리에 저장"}
+                {isSaved
+                  ? (editingId ? "✓ 수정 저장됨" : "✓ 라이브러리에 저장됨")
+                  : saving ? "저장 중…"
+                  : (editingId ? "수정 내용 저장" : "＋ 라이브러리에 저장")}
               </button>
               <div className="field" style={{ marginTop: 16 }}>
                 <label>부분 수정 (자연어)</label>

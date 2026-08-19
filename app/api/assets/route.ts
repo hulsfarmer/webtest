@@ -45,6 +45,25 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, id: data?.id });
 }
 
+// PATCH /api/assets — 기존 항목 수정 { id, image?, title? }
+export async function PATCH(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  let body: { id?: string; image?: string; title?: string };
+  try { body = await req.json(); } catch { return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 }); }
+  const { id, image, title } = body;
+  if (!id) return NextResponse.json({ error: 'id가 필요합니다.' }, { status: 400 });
+  const { data: row } = await supabase.from('assets').select('user_id').eq('id', id).single();
+  if (!row || row.user_id !== session.user.id) return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
+  const patch: { image?: string; title?: string } = {};
+  if (typeof image === 'string' && image.startsWith('data:image')) patch.image = image;
+  if (typeof title === 'string') patch.title = title.slice(0, 80);
+  if (Object.keys(patch).length === 0) return NextResponse.json({ error: '변경할 내용이 없습니다.' }, { status: 400 });
+  const { error } = await supabase.from('assets').update(patch).eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+
 // DELETE /api/assets?id=
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions);
