@@ -294,7 +294,10 @@ export async function composePromoCharacter(opts: {
     // 제품 풀프레임(흰 여백 contain) — 중간 구간에만 덮음
     `[0:v]scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=white,setsar=1[prod]`,
     // 코너 원형 PiP(캐릭터) + 흰 링
-    `[cpip]pad=900:1280:90:0:color=white,crop=900:900:0:${CROP_Y},scale=${PIP}:${PIP}[pipraw]`,
+    // ⚠ Kling이 9:16이 아닌 크기(예: 960x944 정사각)를 반환할 수 있어, 먼저 720x1280로
+    //   정규화(cover+crop)한다. 그래야 아래 pad=900:1280:90(=(900-720)/2) 가정이 항상 성립.
+    //   정상 프리셋(720x1280)엔 no-op.
+    `[cpip]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,pad=900:1280:90:0:color=white,crop=900:900:0:${CROP_Y},scale=${PIP}:${PIP}[pipraw]`,
     `[pipraw][4:v]alphamerge[pipc]`,
     `[5:v][pipc]overlay=(W-w)/2:(H-h)/2[pipring]`,
     // 타임라인 합성: 중간[t1,t2]엔 제품+PiP, 헤더는 항상 위, CTA는 아웃트로[t2,D]
