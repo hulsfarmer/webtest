@@ -60,6 +60,8 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [assets, setAssets] = useState<{ id: string; type: string; title: string | null; image: string; created_at: string }[]>([]);
+  const [tab, setTab] = useState<'all' | 'video' | 'logo' | 'banner'>('all');
 
   useEffect(() => {
     if (authStatus === 'unauthenticated') {
@@ -69,15 +71,25 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch('/api/jobs');
-      if (res.ok) {
-        setData(await res.json());
-      }
+      const [jr, ar] = await Promise.all([fetch('/api/jobs'), fetch('/api/assets')]);
+      if (jr.ok) setData(await jr.json());
+      if (ar.ok) { const ad = await ar.json(); setAssets(ad.assets || []); }
     } catch {
       // ignore
     } finally {
       setLoading(false);
     }
+  };
+
+  const deleteAsset = async (id: string) => {
+    if (!confirm('이 항목을 삭제하시겠습니까?')) return;
+    setDeleting(id);
+    try {
+      const res = await fetch(`/api/assets?id=${id}`, { method: 'DELETE' });
+      if (res.ok) setAssets((prev) => prev.filter((a) => a.id !== id));
+      else alert('삭제에 실패했습니다.');
+    } catch { alert('삭제 중 오류가 발생했습니다.'); }
+    setDeleting(null);
   };
 
   useEffect(() => {
@@ -151,6 +163,14 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
 
   const PLAN_LABELS: Record<string, string> = { free: '무료', pro: 'Pro', business: 'Business', admin: '관리자' };
 
+  const showVideos = tab === 'all' || tab === 'video';
+  const showAssets = tab === 'all' || tab === 'logo' || tab === 'banner';
+  const filteredAssets = assets.filter((a) => tab === 'all' || tab === a.type);
+  const jobsToShow = showVideos ? (data?.jobs ?? []) : [];
+  const TABS: { id: typeof tab; label: string }[] = [
+    { id: 'all', label: '전체' }, { id: 'video', label: '영상' }, { id: 'logo', label: '로고' }, { id: 'banner', label: '배너' },
+  ];
+
   return (
     <div className={embedded ? 'st-toolskin rounded-2xl text-white' : 'min-h-screen bg-[#0F172A] text-white'}>
       {!embedded && <Header />}
@@ -190,8 +210,21 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
             </div>
           </div>
 
-          {/* Empty state */}
-          {data?.jobs.length === 0 && (
+          {/* 콘텐츠 타입 탭 */}
+          <div className="flex gap-2 mb-6">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${tab === t.id ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border-transparent' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Empty state (영상) */}
+          {showVideos && (data?.jobs?.length ?? 0) === 0 && filteredAssets.length === 0 && (
             <div className="text-center py-20">
               <Film className="w-16 h-16 text-gray-600 mx-auto mb-4" />
               <h2 className="text-xl font-semibold text-gray-300 mb-2">아직 만든 영상이 없어요</h2>
@@ -206,9 +239,9 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
             </div>
           )}
 
-          {/* Job list */}
+          {/* Job list (영상) */}
           <div className="space-y-4">
-            {data?.jobs.map((job) => {
+            {jobsToShow.map((job) => {
               const st = STATUS_MAP[job.status] || STATUS_MAP.queued;
               const isPlaying = playingId === job.id;
 
@@ -362,6 +395,35 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
               );
             })}
           </div>
+
+          {/* 에셋(로고·배너) 그리드 */}
+          {showAssets && filteredAssets.length > 0 && (
+            <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {filteredAssets.map((a) => (
+                <div key={a.id} className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+                  <div className="aspect-square bg-white flex items-center justify-center p-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={a.image} alt={a.title || a.type} className="max-w-full max-h-full object-contain" />
+                  </div>
+                  <div className="p-3 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{a.title || (a.type === 'logo' ? '로고' : '배너')}</p>
+                      <p className="text-xs text-gray-500">{a.type === 'logo' ? '로고' : '배너'}</p>
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <a href={a.image} download={`${a.title || a.type}.png`} className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10"><Download className="w-4 h-4" /></a>
+                      <button onClick={() => deleteAsset(a.id)} disabled={deleting === a.id} className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10">
+                        {deleting === a.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {(tab === 'logo' || tab === 'banner') && filteredAssets.length === 0 && (
+            <div className="text-center py-16 text-gray-500">저장된 {tab === 'logo' ? '로고' : '배너'}가 없어요.</div>
+          )}
         </div>
       </div>
     </div>

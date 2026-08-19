@@ -81,8 +81,31 @@ export default function LogoStudio() {
   const [exportingAi, setExportingAi] = useState(false);
   const [vectorCache, setVectorCache] = useState<Record<string, string>>({}); // image data URL → svg
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savedSet, setSavedSet] = useState<Set<string>>(new Set());
 
   const image = current >= 0 ? history[current] : "";
+  const isSaved = !!image && savedSet.has(image);
+
+  async function saveToLibrary() {
+    if (!image || saving || isSaved) return;
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/assets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "logo", title: brand || description, image }),
+      });
+      const data = await res.json();
+      if (!res.ok) setError(data.error || "저장에 실패했습니다.");
+      else setSavedSet((s) => new Set(s).add(image));
+    } catch {
+      setError("저장 중 오류가 발생했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function pushImage(dataUrl: string) {
     setHistory((h) => {
@@ -395,6 +418,14 @@ export default function LogoStudio() {
 
           {image && !rendering && (
             <>
+              <button
+                className="primary"
+                style={{ marginTop: 16, background: isSaved ? "var(--good, #10b981)" : undefined }}
+                onClick={saveToLibrary}
+                disabled={saving || isSaved}
+              >
+                {isSaved ? "✓ 라이브러리에 저장됨" : saving ? "저장 중…" : "＋ 라이브러리에 저장"}
+              </button>
               <div className="field" style={{ marginTop: 16 }}>
                 <label>부분 수정 (자연어)</label>
                 <input
