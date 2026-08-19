@@ -756,7 +756,7 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
     ? {
         heroTitle: '행사 홍보 영상',
         heroSub: '행사 정보를 입력하면 AI가 홍보 영상을 만들어드립니다',
-        nameLabel: '행사명', namePh: '예: 함덕 봄맞이 플리마켓',
+        nameLabel: '행사명', namePh: '예: 성수동 봄맞이 플리마켓',
         typeLabel: '행사 종류', types: EVENT_TYPES,
         pointsLabel: '주요 내용 · 프로그램',
         pointsPh: '예: 수공예 60팀, 푸드트럭, 라이브 공연 무대, 경품추첨',
@@ -891,7 +891,7 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
                     type="text"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    placeholder="예: 함덕 서우봉 해변 일대"
+                    placeholder="예: 성수동 연무장길 일대"
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-white/8 transition-all text-sm"
                   />
                 </div>

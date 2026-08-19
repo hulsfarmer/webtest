@@ -59,7 +59,7 @@ export default function Home() {
             <div className="sa-phone">
               <div className="sa-screen">
                 <div className="sa-photo" />
-                <div className="sa-shdr"><small>함덕 감성카페</small><b>매일 아침, 향긋한 한 잔</b></div>
+                <div className="sa-shdr"><small>연남동 감성카페</small><b>매일 아침, 향긋한 한 잔</b></div>
                 <div className="sa-cap-area">
                   <div className="c">직접 로스팅한 <i>원두</i></div>
                   <div className="c">오션뷰 <i>창가 자리</i></div>

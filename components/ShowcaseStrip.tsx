@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 type Video = { videoUrl: string; posterUrl: string | null; businessName?: string; businessType?: string };
 
-const FALLBACK = ['향긋한 한 잔', '이번 주말 오픈', '무설탕 바삭함', '제주 노을 명당', '첫 방문 20% 할인', '매일 아침 갓 구운'];
+const FALLBACK = ['향긋한 한 잔', '이번 주말 오픈', '무설탕 바삭함', '한강뷰 루프탑', '첫 방문 20% 할인', '매일 아침 갓 구운'];
 
 export default function ShowcaseStrip() {
   const [videos, setVideos] = useState<Video[] | null>(null);
