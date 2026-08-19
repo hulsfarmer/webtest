@@ -244,10 +244,9 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
             </div>
           )}
 
-          {/* Job list (영상) */}
-          <div className="space-y-4">
+          {/* Job list (영상) — 콤팩트 그리드 (로고처럼) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {jobsToShow.map((job) => {
-              const st = STATUS_MAP[job.status] || STATUS_MAP.queued;
               const isPlaying = playingId === job.id;
 
               return (
@@ -255,11 +254,11 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
                   key={job.id}
                   className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden hover:border-purple-500/30 transition-colors"
                 >
-                  <div className="flex flex-col md:flex-row">
+                  <div>
                     {/* 영상 썸네일/플레이어 */}
-                    <div className="w-full md:w-48 lg:w-56 flex-shrink-0 bg-black/40 max-h-[280px] sm:max-h-none overflow-hidden">
+                    <div className="bg-black/40 overflow-hidden">
                       {job.videoUrl && job.status === 'done' ? (
-                        <div className="relative aspect-[9/16] md:h-full">
+                        <div className="relative aspect-[9/16]">
                           {isPlaying ? (
                             <div className="relative w-full h-full">
                               <video
@@ -302,7 +301,7 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
                           )}
                         </div>
                       ) : (
-                        <div className="aspect-[9/16] md:h-full flex items-center justify-center bg-gradient-to-br from-gray-800/50 to-gray-900/50">
+                        <div className="aspect-[9/16] flex items-center justify-center bg-gradient-to-br from-gray-800/50 to-gray-900/50">
                           {job.status === 'failed' ? (
                             <AlertCircle className="w-10 h-10 text-red-400/50" />
                           ) : (
@@ -315,83 +314,24 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
                       )}
                     </div>
 
-                    {/* 정보 */}
-                    <div className="flex-1 p-4 sm:p-5 flex flex-col">
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-lg truncate">
-                            {job.businessName || job.topic || '제목 없음'}
-                          </h3>
-                          <p className="text-sm text-gray-400 mt-0.5 truncate">
-                            {job.topic && job.businessName ? job.topic : ''}
-                          </p>
-                        </div>
-                        <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border shrink-0 ${st.color}`}>
-                          {st.icon}
-                          {st.label}
-                        </span>
-                      </div>
-
-                      {/* 메타 정보 */}
-                      <div className="flex flex-wrap gap-3 text-xs text-gray-500 mb-4">
-                        <span>{formatDate(job.createdAt)}</span>
-                        {job.duration && <span>{job.duration}초</span>}
-                        {job.tone && <span>{job.tone}</span>}
-                        {job.imageCount > 0 && (
-                          <span className="flex items-center gap-1">
-                            <ImageIcon className="w-3 h-3" />
-                            사진 {job.imageCount}장
-                          </span>
-                        )}
-                      </div>
-
-                      {/* 에러 메시지 */}
-                      {job.error && (
-                        <p className="text-sm text-red-400/80 bg-red-500/10 rounded-lg px-3 py-2 mb-4">
-                          {job.error}
-                        </p>
-                      )}
-
-                      {/* 스크립트 미리보기 */}
-                      {job.script && (
-                        <div className="text-sm text-gray-400 bg-white/5 rounded-lg px-3 py-2 mb-4 line-clamp-2">
-                          {extractScriptPreview(job.script)}
-                        </div>
-                      )}
-
-                      {/* 액션 버튼 */}
-                      <div className="mt-auto flex flex-wrap gap-2">
-                        {job.videoUrl && job.status === 'done' && (
-                          <a
-                            href={job.videoUrl}
-                            download={`${job.businessName || 'shortsai'}_홍보영상.mp4`}
-                            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 text-white text-sm font-medium hover:bg-purple-500 transition-colors active:bg-purple-700"
-                          >
-                            <Download className="w-4 h-4" />
-                            다운로드
-                          </a>
-                        )}
-
+                    {/* 콤팩트 정보 + 아이콘 (로고 카드와 동일) */}
+                    <div className="p-3 flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium truncate flex-1" title={job.businessName || job.topic || ''}>
+                        {job.businessName || job.topic || '홍보영상'}
+                      </p>
+                      <div className="flex gap-1 flex-shrink-0">
                         {job.script && (
-                          <button
-                            onClick={() => handleReuse(job)}
-                            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors border border-white/10 active:bg-white/25"
-                          >
+                          <button onClick={() => handleReuse(job)} title="수정" className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10">
                             <Pencil className="w-4 h-4" />
-                            스크립트 수정 / 재생성
                           </button>
                         )}
-
-                        <button
-                          onClick={() => handleDelete(job.id)}
-                          disabled={deleting === job.id}
-                          className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-gray-400 text-sm hover:text-red-400 hover:bg-red-500/10 transition-colors active:bg-red-500/20 ml-auto"
-                        >
-                          {deleting === job.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-4 h-4" />
-                          )}
+                        {job.videoUrl && job.status === 'done' && (
+                          <a href={job.videoUrl} download={`${job.businessName || 'shortsai'}.mp4`} title="다운로드" className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10">
+                            <Download className="w-4 h-4" />
+                          </a>
+                        )}
+                        <button onClick={() => handleDelete(job.id)} disabled={deleting === job.id} title="삭제" className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10">
+                          {deleting === job.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
