@@ -138,7 +138,10 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
       if (meta.eventDate) params.set('eventDate', meta.eventDate);
       if (meta.location) params.set('location', meta.location);
     }
-    router.push(`/promo?${params.toString()}`);
+    const base = embedded
+      ? (meta?.mode === 'event' ? '/studio/event' : '/studio/promo')
+      : '/promo';
+    router.push(`${base}?${params.toString()}`);
   };
 
   const formatDate = (dateStr: string) => {
@@ -185,14 +188,16 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             <div>
-              <Link
-                href="/promo"
-                className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors mb-3"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                영상 만들기
-              </Link>
-              <h1 className="text-2xl font-bold">내 영상 히스토리</h1>
+              {!embedded && (
+                <Link
+                  href="/promo"
+                  className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors mb-3"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  영상 만들기
+                </Link>
+              )}
+              <h1 className="text-2xl font-bold">내 라이브러리</h1>
               <p className="text-sm text-gray-400 mt-1">
                 {PLAN_LABELS[data?.plan || 'free']} 플랜 · 최대 {data?.historyLimit}개 보관
               </p>
@@ -205,13 +210,15 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
               >
                 <RefreshCw className="w-4 h-4" />
               </button>
-              <Link
-                href="/promo"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-              >
-                <Plus className="w-4 h-4" />
-                새 영상 만들기
-              </Link>
+              {!embedded && (
+                <Link
+                  href="/promo"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                >
+                  <Plus className="w-4 h-4" />
+                  새 영상 만들기
+                </Link>
+              )}
             </div>
           </div>
 
