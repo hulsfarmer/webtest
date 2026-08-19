@@ -311,3 +311,23 @@ textarea.st-inp { resize: vertical; min-height: 80px; line-height: 1.5; }
 .st-content .st-toolskin input, .st-content .st-toolskin textarea, .st-content .st-toolskin select {
   background-color: var(--surface) !important; border-color: var(--border-strong) !important; color: var(--text) !important;
 }
+
+/* ── 스튜디오 진입 스켈레톤 (loading.tsx) ── */
+.st-skel { animation: st-skel-fade .15s ease-out; }
+@keyframes st-skel-fade { from { opacity: 0; } to { opacity: 1; } }
+.st-skel-head { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+.st-skel-line { border-radius: 8px; background: var(--surface-2); position: relative; overflow: hidden; }
+.st-skel-line.sm { width: 90px; height: 14px; }
+.st-skel-line.lg { width: 320px; max-width: 70%; height: 32px; }
+.st-skel-line.md { width: 460px; max-width: 90%; height: 16px; }
+.st-skel-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.st-skel-card { height: 148px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--border); position: relative; overflow: hidden; }
+.st-skel-line::after, .st-skel-card::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  transform: translateX(-100%); animation: st-shimmer 1.3s infinite;
+}
+@keyframes st-shimmer { 100% { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .st-skel-line::after, .st-skel-card::after { animation: none; }
+}
