@@ -59,17 +59,29 @@ export async function POST(req: NextRequest) {
 
   // 1) 페이지 fetch (ScraperAPI 키 있으면 프록시 경유 → 쿠팡·네이버 우회)
   const useProxy = !!process.env.SCRAPER_API_KEY;
+  // ScraperAPI 는 간헐적으로 5xx(특히 500)를 뱉는다 → 5xx·네트워크오류면 최대 3회 재시도(백오프).
+  // 4xx 는 요청 자체 문제라 즉시 중단.
   let html = '';
-  try {
-    const res = await fetchWithTimeout(proxied(url), useProxy ? {} : { headers: BROWSER_HEADERS }, useProxy ? 70000 : 15000);
-    if (!res.ok) {
-      return NextResponse.json({
-        error: `자동 불러오기에 실패했어요 (HTTP ${res.status}). 직접 입력해주세요.`,
-      }, { status: 422 });
+  let lastStatus = 0; // 0=미시도, -1=네트워크/타임아웃, 그외=HTTP status
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetchWithTimeout(proxied(url), useProxy ? {} : { headers: BROWSER_HEADERS }, useProxy ? 70000 : 15000);
+      if (res.ok) { html = await res.text(); break; }
+      lastStatus = res.status;
+      console.warn(`[import] 시도 ${attempt}/${maxAttempts} HTTP ${res.status} — ${url}`);
+      if (res.status < 500) break; // 4xx 는 재시도 무의미
+    } catch {
+      lastStatus = -1;
+      console.warn(`[import] 시도 ${attempt}/${maxAttempts} 네트워크/타임아웃 — ${url}`);
     }
-    html = await res.text();
-  } catch {
-    return NextResponse.json({ error: '페이지를 불러오지 못했어요 (차단·시간초과). 직접 입력해주세요.' }, { status: 422 });
+    if (attempt < maxAttempts) await new Promise((r) => setTimeout(r, 1500 * attempt)); // 1.5s, 3s 백오프
+  }
+  if (!html) {
+    if (lastStatus === -1) return NextResponse.json({ error: '페이지를 불러오지 못했어요 (차단·시간초과). 직접 입력해주세요.' }, { status: 422 });
+    return NextResponse.json({
+      error: `자동 불러오기에 실패했어요 (HTTP ${lastStatus}). 잠시 후 다시 시도하거나 직접 입력해주세요.`,
+    }, { status: 422 });
   }
 
   // 2) og 메타 추출
