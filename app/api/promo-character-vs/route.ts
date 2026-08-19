@@ -8,6 +8,7 @@ import { createJob, updateJob } from '@/lib/jobStore';
 import { generatePromoScript, generateYouTubeTags, PromoInput, ScriptSection } from '@/lib/anthropic';
 import { buildYouTubeTags } from '@/lib/promo-description';
 import { createVisionStoryAvatar, submitVisionStoryVideo, pollVisionStoryVideo } from '@/lib/visionstory';
+import { generateGeminiAudio } from '@/lib/gemini-tts';
 import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, probeDuration, sanitizeScript } from '@/lib/promo-compose';
 import { buildAlignedSubtitles, applySpeed } from '@/lib/promo-subtitles';
 // import { canGenerate, incrementUsage } from '@/lib/usageStore'; // TODO(credits)
@@ -29,8 +30,6 @@ interface CharVsJobInput extends PromoInput {
   sections?: ScriptSection[];
   buyLink?: string;
 }
-
-const VS_EMOTIONS = new Set(['cheerful', 'angry', 'marketing', 'news', 'singing']);
 
 async function processPromoCharacterVsJob(jobId: string, input: CharVsJobInput) {
   const tmpDir = path.join(process.cwd(), 'data', 'tmp');
@@ -73,15 +72,19 @@ async function processPromoCharacterVsJob(jobId: string, input: CharVsJobInput) 
     let f2 = L > 0 ? (hookT.length + mainT.length) / L : 0.72;
     if (!(f1 > 0.08 && f2 > f1 + 0.1 && f2 < 0.92)) { f1 = 0.28; f2 = 0.72; }
 
-    // 2) VisionStory 캐릭터 영상 (내부 TTS로 한국어 음성까지 생성)
-    updateJob(jobId, { status: 'generating_video', progress: 35, steps: { script: 'done', audio: 'running', video: 'running' } });
-    // 영어 전대문자(브랜드명 등)는 소문자로 — 철자 읽기 방지
-    const speakText = narration.replace(/[A-Z]{2,}/g, (m) => m.toLowerCase());
-    const emotion = (VS_EMOTIONS.has(input.emotion) ? input.emotion : 'cheerful') as 'cheerful' | 'marketing' | 'news' | 'angry' | 'singing';
+    // 2) 나레이션 음성 — 우리가 Gemini(광고 톤)로 직접 생성 (페르소나별 음성+스타일)
+    updateJob(jobId, { status: 'generating_audio', progress: 30, steps: { script: 'done', audio: 'running', video: 'pending' } });
+    const speakText = narration.replace(/[A-Z]{2,}/g, (m) => m.toLowerCase()); // 전대문자 철자읽기 방지
+    const audioPath = path.join(tmpDir, `${jobId}.mp3`);
+    subPaths.push(audioPath);
+    await generateGeminiAudio(speakText, input.voiceId, audioPath);
+    const audioBuf = fs.readFileSync(audioPath);
+
+    // 3) VisionStory 캐릭터 영상 — 우리 오디오를 그대로 립싱크(voice_change off)
+    updateJob(jobId, { status: 'generating_video', progress: 45, steps: { script: 'done', audio: 'done', video: 'running' } });
     const avatarId = await createVisionStoryAvatar(input.characterBuf, 'image/png');
     const videoId = await submitVisionStoryVideo({
-      avatarId, text: speakText, voiceId: input.voiceId, model: 'vs_character_v4',
-      aspectRatio: '9:16', resolution: '720p', emotion,
+      avatarId, audioBuf, model: 'vs_character_v4', aspectRatio: '9:16', resolution: '720p',
     });
     const charBuf = await pollVisionStoryVideo(videoId, () => updateJob(jobId, { progress: 70, status: 'generating_video' }));
     fs.writeFileSync(charVideoPath, charBuf);
@@ -103,7 +106,7 @@ async function processPromoCharacterVsJob(jobId: string, input: CharVsJobInput) 
     if (!(D > 1)) D = await probeDuration(charVideoPath);
     const t1 = +(D * f1).toFixed(2), t2 = +(D * f2).toFixed(2);
 
-    const { cues, mode } = await buildAlignedSubtitles(effCharPath, narration, D, tmpDir, jobId, { sttSource: charVideoPath, timeScale: 1 / speed });
+    const { cues, mode } = await buildAlignedSubtitles(effCharPath, narration, D, tmpDir, jobId, { sttSource: audioPath, timeScale: 1 / speed });
     const subtitles: { path: string; start: number; end: number }[] = [];
     for (let i = 0; i < cues.length; i++) {
       const sp = path.join(tmpDir, `${jobId}_sub${i}.png`);

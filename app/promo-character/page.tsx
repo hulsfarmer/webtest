@@ -20,20 +20,22 @@ const VOICES: VoiceCfg[] = [
     engine: 'azure', azureVoice: 'ko-KR-YuJinNeural', azurePitch: '+45%', azureRate: '+8%' },
 ];
 const PRESETS = [
-  { id: 'preset-jieun', label: '민지·여성',   name: '민지', src: '/characters/preset-jieun.png', voiceKey: 'minji',  vsVoice: 'Aoede' },
-  { id: 'preset-male',  label: '준호·남성',   name: '준호', src: '/characters/preset-male.png',  voiceKey: 'minjun', vsVoice: 'Charon' },
-  { id: 'preset-teen',  label: '민서·청소년', name: '민서', src: '/characters/preset-teen.png',  voiceKey: 'teen',   vsVoice: 'Puck' },
-  { id: 'preset-child', label: '하늘·아이',   name: '하늘', src: '/characters/preset-child.png', voiceKey: 'child',  vsVoice: 'Leda' },
-  { id: 'preset-dog',   label: '코코·강아지', name: '코코', src: '/characters/preset-dog.png',   voiceKey: 'dog',    vsVoice: 'Puck' },
-  { id: 'preset-puppy', label: '뭉치·카툰강아지', name: '뭉치', src: '/characters/preset-puppy.png', voiceKey: 'puppy', vsVoice: 'Leda' },
+  { id: 'preset-jieun', label: '민지·여성',   name: '민지', src: '/characters/preset-jieun.png', voiceKey: 'minji',  vsVoice: 'aoede' },
+  { id: 'preset-male',  label: '준호·남성',   name: '준호', src: '/characters/preset-male.png',  voiceKey: 'minjun', vsVoice: 'charon' },
+  { id: 'preset-teen',  label: '민서·청소년', name: '민서', src: '/characters/preset-teen.png',  voiceKey: 'teen',   vsVoice: 'teen' },
+  { id: 'preset-child', label: '하늘·아이',   name: '하늘', src: '/characters/preset-child.png', voiceKey: 'child',  vsVoice: 'child' },
+  { id: 'preset-dog',   label: '코코·강아지', name: '코코', src: '/characters/preset-dog.png',   voiceKey: 'dog',    vsVoice: 'puppy' },
+  { id: 'preset-puppy', label: '뭉치·카툰강아지', name: '뭉치', src: '/characters/preset-puppy.png', voiceKey: 'puppy', vsVoice: 'puppy' },
 ];
-// VisionStory(Gemini) 음성 — 한국어 텍스트를 그대로 읽음. 제품홍보(신규) 엔진 전용.
+// VisionStory(신규) 음성 = Gemini TTS 페르소나 id (lib/gemini-tts VS_VOICE_MAP 와 일치).
 const VS_VOICES = [
-  { id: 'Aoede',  label: '민지 (여·자연)' },
-  { id: 'Leda',   label: '수아 (여·활기)' },
-  { id: 'Kore',   label: '지아 (여·차분)' },
-  { id: 'Charon', label: '준호 (남·자연)' },
-  { id: 'Puck',   label: '준서 (남·활기)' },
+  { id: 'aoede',  label: '민지 (여·자연)' },
+  { id: 'leda',   label: '수아 (여·활기)' },
+  { id: 'charon', label: '준호 (남·자연)' },
+  { id: 'puck',   label: '준서 (남·활기)' },
+  { id: 'teen',   label: '민서 (청소년)' },
+  { id: 'child',  label: '하늘 (아이)' },
+  { id: 'puppy',  label: '코코 (강아지)' },
 ];
 const HEADER_THEMES = [
   { id: 'navy', label: '테크 네이비', desc: 'IT·재테크', bg: '#0A192F', bn: '#00E5FF', title: '#FFFFFF' },
@@ -57,7 +59,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
   const [catchphrase, setCatchphrase] = useState('');
   const [headerTheme, setHeaderTheme] = useState('navy');
   const [headerPreview, setHeaderPreview] = useState('');
-  const [voiceKey, setVoiceKey] = useState(engine === 'visionstory' ? 'Aoede' : 'minji');
+  const [voiceKey, setVoiceKey] = useState(engine === 'visionstory' ? 'aoede' : 'minji');
   const [duration, setDuration] = useState('20');
   const [speed, setSpeed] = useState('1.1');
   const [preset, setPreset] = useState('preset-jieun');

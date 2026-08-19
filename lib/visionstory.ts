@@ -36,21 +36,28 @@ export async function createVisionStoryAvatar(buf: Buffer, mime = 'image/png'): 
 /** 영상 생성 요청(텍스트→내부 TTS→립싱크) → video_id. */
 export async function submitVisionStoryVideo(opts: {
   avatarId: string;
-  text: string;
-  voiceId: string;
+  audioBuf?: Buffer;         // 있으면 우리 오디오로 립싱크(audio_script, voice_change off)
+  text?: string;             // audioBuf 없을 때 내부 TTS(text_script)
+  voiceId?: string;
   model?: string;            // vs_character_v4(기본) | vs_talk_v1
   aspectRatio?: '9:16' | '16:9' | '1:1';
   resolution?: '480p' | '720p' | '1080p';
   emotion?: 'cheerful' | 'angry' | 'marketing' | 'news' | 'singing';
 }): Promise<string> {
-  const body = JSON.stringify({
+  const payload: Record<string, unknown> = {
     model_id: opts.model || 'vs_character_v4',
     avatar_id: opts.avatarId,
-    text_script: { text: opts.text, voice_id: opts.voiceId },
     aspect_ratio: opts.aspectRatio || '9:16',
     resolution: opts.resolution || '720p', // Pro 플랜 상한 720p
     emotion: opts.emotion || 'cheerful',
-  });
+  };
+  if (opts.audioBuf) {
+    // 우리가 만든 Gemini 나레이션을 그대로 립싱크 (목소리 재합성 안 함)
+    payload.audio_script = { inline_data: { mime_type: 'audio/mpeg', data: opts.audioBuf.toString('base64') }, voice_change: false };
+  } else {
+    payload.text_script = { text: opts.text || '', voice_id: opts.voiceId || 'Aoede' };
+  }
+  const body = JSON.stringify(payload);
   const res = await fetch(`${BASE}/video`, { method: 'POST', headers: headers(), body });
   const text = await res.text();
   if (!res.ok) throw new Error(`VisionStory 영상 요청 실패 (${res.status}): ${text}`);
