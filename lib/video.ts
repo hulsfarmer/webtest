@@ -381,6 +381,13 @@ function drawEndcard(ctx: any, W: number, H: number, o: {
   let bn = 108; ctx.font = `bold ${bn}px ${o.fontFamily}`;
   while (bn > 56 && ctx.measureText(o.businessName).width > W - 140) { bn -= 4; ctx.font = `bold ${bn}px ${o.fontFamily}`; }
   ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 20;
+  // 어두운 글자색(예: 네온 테마 남색 #14213D)은 어두운 엔드카드 배경에 묻히므로 밝은 흰 테두리로 가독성 확보
+  if (lum(o.bnColor) < 0.5) {
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(7, bn * 0.09);
+    ctx.strokeStyle = 'rgba(255,255,255,0.96)';
+    ctx.strokeText(o.businessName, W / 2, H * 0.43);
+  }
   ctx.fillStyle = o.bnColor; ctx.fillText(o.businessName, W / 2, H * 0.43);
   ctx.shadowBlur = 0;
   if (o.ctaText) {
