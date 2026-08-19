@@ -343,7 +343,7 @@ export function PromoCharacterTool({ embedded = false }: { embedded?: boolean } 
                     </button>
                   ))}
                   <label className={`w-16 h-20 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer text-xs text-neutral-400 ${charFile ? 'border-emerald-400' : 'border-neutral-700'}`}>
-                    {charPreview ? <img src={charPreview} alt="up" className="w-full h-full object-cover rounded-md" /> : <span>+업로드</span>}
+                    {charPreview ? <img src={charPreview} alt="up" className="w-full h-full object-cover rounded-md" /> : <span className="flex flex-col items-center leading-tight text-center"><span>+업로드</span><span className="text-[9px] text-neutral-500 mt-0.5">9:16 권장</span></span>}
                     <input type="file" accept="image/*" className="hidden" onChange={onChar} />
                   </label>
                 </div>
