@@ -225,16 +225,7 @@ export default function LogoStudio() {
         <h1>
           AI 로고 스튜디오 <span className="badge">Gemini</span>
         </h1>
-        <p>
-          AI가 로고 이미지를 만들고, 자연어로 부분 수정합니다. 색상만 바꾸면 나머지는 그대로 유지돼요.
-          (결과물은 PNG 이미지입니다){" "}
-          <a href="/banner" style={{ color: "var(--accent)", textDecoration: "underline" }}>
-            배너 스튜디오 →
-          </a>{" "}
-          <a href="/youtube" style={{ color: "var(--accent)", textDecoration: "underline" }}>
-            유튜브 채널 아트 →
-          </a>
-        </p>
+        <p>AI가 로고 이미지를 만들고, 자연어로 부분 수정합니다.</p>
       </div>
 
       <div className="grid">
