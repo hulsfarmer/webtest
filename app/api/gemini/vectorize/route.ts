@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { adminGuard } from "@/lib/admin-guard";
 import { parseDataUrl, GeminiError } from "@/lib/logomaker/gemini";
 
 export const runtime = "nodejs";
@@ -9,6 +10,8 @@ const VECTORIZE_URL = "https://external.api.recraft.ai/v1/images/vectorize";
 type Body = { image?: string }; // 현재 로고 (data URL)
 
 export async function POST(req: NextRequest) {
+  const _denied = await adminGuard();
+  if (_denied) return _denied;
   const token = process.env.RECRAFT_API_TOKEN;
   if (!token || token.includes("여기에")) {
     return NextResponse.json(

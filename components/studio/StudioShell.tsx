@@ -10,7 +10,7 @@ type Usage = { plan: string; used: number; limit: number | null; remaining: numb
 
 type Item = {
   id: string; name: string; icon: string; href: string;
-  external?: boolean; badge?: 'new' | 'soon';
+  external?: boolean; badge?: 'new' | 'soon'; adminOnly?: boolean;
 };
 
 const ICONS: Record<string, string> = {
@@ -28,10 +28,10 @@ const ICONS: Record<string, string> = {
 const CREATE: Item[] = [
   { id: 'promo', name: '업체 홍보영상', icon: 'store', href: '/studio/promo' },
   { id: 'event', name: '행사 홍보영상', icon: 'calendar', href: '/studio/event' },
-  { id: 'product', name: '제품 홍보영상', icon: 'box', href: '/studio/product', badge: 'new' },
-  { id: 'logo', name: '로고 생성', icon: 'sparkle', href: '/studio/logo' },
-  { id: 'convert', name: '파일 변환', icon: 'file', href: '/studio/convert', badge: 'soon' },
-  { id: 'youtube', name: '유튜브 디자인', icon: 'youtube', href: '/studio/youtube' },
+  { id: 'product', name: '제품 홍보영상', icon: 'box', href: '/studio/product', badge: 'new', adminOnly: true },
+  { id: 'logo', name: '로고 생성', icon: 'sparkle', href: '/studio/logo', adminOnly: true },
+  { id: 'convert', name: '파일 변환', icon: 'file', href: '/studio/convert', badge: 'soon', adminOnly: true },
+  { id: 'youtube', name: '유튜브 디자인', icon: 'youtube', href: '/studio/youtube', adminOnly: true },
 ];
 const WORK: Item[] = [
   { id: 'library', name: '내 라이브러리', icon: 'library', href: '/studio/library' },
@@ -76,6 +76,8 @@ export default function StudioShell({ children }: { children: React.ReactNode })
   const barPct = usage && usage.limit ? Math.min(100, Math.round(((usage.remaining ?? 0) / usage.limit) * 100)) : 100;
   const pillText = status !== 'authenticated' ? '로그인 필요' : usage == null ? '불러오는 중' : unlimited ? '무제한' : `${usage.remaining ?? 0}회 남음`;
 
+  const isAdmin = !!(session?.user as { isAdmin?: boolean } | undefined)?.isAdmin;
+  const createItems = CREATE.filter((i) => !i.adminOnly || isAdmin);
   const all = [...CREATE, ...WORK];
   const active = all.find((i) => !i.external && (i.href === pathname || (i.href !== '/studio' && pathname.startsWith(i.href))));
   const crumbName = pathname === '/studio' ? '홈' : (active?.name ?? '스튜디오');
@@ -113,7 +115,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
           <div className="st-scroll">
             <div className="st-group">
               <div className="st-label">만들기</div>
-              {renderNav(CREATE)}
+              {renderNav(createItems)}
             </div>
             <div className="st-group">
               <div className="st-label">내 작업</div>

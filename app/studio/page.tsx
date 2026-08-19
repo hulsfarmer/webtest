@@ -1,15 +1,22 @@
 import Link from 'next/link';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { isAdminEmail } from '@/lib/admin';
 
 const CARDS = [
   { icon: '🏪', name: '업체 홍보영상', desc: '가게·회사·농장·병원 등 사업장을 소개하는 세로 쇼츠.', href: '/studio/promo' },
   { icon: '📅', name: '행사 홍보영상', desc: '축제·마켓·세일·오픈 등 이벤트를 긴급성 있게 알립니다.', href: '/studio/event' },
-  { icon: '🎭', name: '제품 홍보영상', desc: '말하는 캐릭터가 제품을 직접 소개하는 드라마형 쇼츠.', href: '/studio/product', tag: 'new' as const },
-  { icon: '✦', name: '로고 생성', desc: '브랜드 이름과 분위기만으로 로고 시안 제작·다운로드.', href: '/studio/logo' },
-  { icon: '🔄', name: '파일 변환', desc: '영상·이미지·문서 포맷을 빠르게 변환합니다.', href: '/studio/convert', tag: 'soon' as const },
-  { icon: '🎬', name: '유튜브 디자인', desc: '채널 배너·썸네일을 브랜드 톤에 맞춰 자동 디자인.', href: '/studio/youtube' },
+  { icon: '🎭', name: '제품 홍보영상', desc: '말하는 캐릭터가 제품을 직접 소개하는 드라마형 쇼츠.', href: '/studio/product', tag: 'new' as const, adminOnly: true },
+  { icon: '✦', name: '로고 생성', desc: '브랜드 이름과 분위기만으로 로고 시안 제작·다운로드.', href: '/studio/logo', adminOnly: true },
+  { icon: '🔄', name: '파일 변환', desc: '영상·이미지·문서 포맷을 빠르게 변환합니다.', href: '/studio/convert', tag: 'soon' as const, adminOnly: true },
+  { icon: '🎬', name: '유튜브 디자인', desc: '채널 배너·썸네일을 브랜드 톤에 맞춰 자동 디자인.', href: '/studio/youtube', adminOnly: true },
 ];
 
-export default function StudioHome() {
+export default async function StudioHome() {
+  const session = await getServerSession(authOptions);
+  const admin = isAdminEmail(session?.user?.email);
+  const cards = CARDS.filter((c) => !c.adminOnly || admin);
+
   return (
     <>
       <div className="st-page-head">
@@ -19,7 +26,7 @@ export default function StudioHome() {
       </div>
 
       <div className="st-cards">
-        {CARDS.map((c) => {
+        {cards.map((c) => {
           const inner = (
             <>
               <div className="ic">{c.icon}</div>

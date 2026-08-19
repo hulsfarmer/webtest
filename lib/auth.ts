@@ -4,6 +4,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { CustomSupabaseAdapter } from './supabase-adapter';
 import { supabase } from './supabase';
+import { isAdminEmail } from './admin';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const providers: any[] = [
@@ -96,6 +97,7 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        (session.user as { isAdmin?: boolean }).isAdmin = isAdminEmail(session.user.email);
       }
       return session;
     },

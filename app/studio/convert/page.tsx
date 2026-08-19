@@ -1,8 +1,10 @@
+import AdminOnly from '@/components/studio/AdminOnly';
+
 export const metadata = { title: '파일 변환' };
 
 export default function ConvertPage() {
   return (
-    <>
+    <AdminOnly>
       <div className="st-page-head">
         <div className="st-eyebrow">유틸리티</div>
         <h1 className="st-title">파일 변환</h1>
@@ -15,6 +17,6 @@ export default function ConvertPage() {
           <p>MP4 · MOV · GIF · PNG · PDF 변환을 준비하고 있습니다.</p>
         </div>
       </div>
-    </>
+    </AdminOnly>
   );
 }

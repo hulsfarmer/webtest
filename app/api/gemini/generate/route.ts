@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { adminGuard } from "@/lib/admin-guard";
 import { geminiImage, toDataUrl, parseDataUrl, GeminiError, GeminiPart } from "@/lib/logomaker/gemini";
 
 export const runtime = "nodejs";
@@ -51,6 +52,8 @@ function buildPrompt(b: Body, refCount: number): string {
 }
 
 export async function POST(req: NextRequest) {
+  const _denied = await adminGuard();
+  if (_denied) return _denied;
   let body: Body;
   try {
     body = await req.json();
