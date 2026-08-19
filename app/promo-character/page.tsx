@@ -299,7 +299,7 @@ export function PromoCharacterTool({ embedded = false }: { embedded?: boolean } 
                 <div className="flex gap-2">
                   <input className={inputCls} value={importUrl} onChange={(e) => setImportUrl(e.target.value)} placeholder="상품 페이지 URL (쿠팡·네이버·자사몰 등)" />
                   <button onClick={onImport} disabled={importBusy}
-                    className="shrink-0 px-4 rounded-lg bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 text-sm font-medium">
+                    className="shrink-0 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-medium">
                     {importBusy ? '불러오는 중' : '불러오기'}
                   </button>
                 </div>
