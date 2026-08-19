@@ -27,15 +27,17 @@ export async function submitKlingAvatar(opts: {
   audioUrl: string;
   aspectRatio?: '9:16' | '16:9' | '1:1';
   prompt?: string;
+  quality?: 'standard' | 'pro'; // standard=720p(기본), pro=1080p(원가 약 2배)
 }): Promise<string> {
+  const quality = opts.quality === 'pro' ? 'pro' : 'standard';
   const body = {
     input: {
       start_image: { source: 'url', url: opts.imageUrl },
       audio: { source: 'url', url: opts.audioUrl },
       prompt: opts.prompt || 'A person speaking naturally to the camera with accurate mouth movements',
       aspect_ratio: opts.aspectRatio || '9:16',
-      resolution: '720p',
-      quality: 'standard',
+      resolution: quality === 'pro' ? '1080p' : '720p',
+      quality,
     },
   };
   const res = await fetch(`${BASE}/models/kling-ai-avatar-v2`, {

@@ -11,7 +11,7 @@ import { generateAudio } from '@/lib/tts';
 import { generateAzureTTS } from '@/lib/azure-tts';
 import { applyChildLisp } from '@/lib/child-voice';
 import { uploadToHedra, submitKlingAvatar, pollHedraVideo } from '@/lib/hedra';
-import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, probeDuration, sanitizeScript } from '@/lib/promo-compose';
+import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, probeDuration, sanitizeScript, fitCharTo916 } from '@/lib/promo-compose';
 import { buildAlignedSubtitles, applySpeed, applyPitch } from '@/lib/promo-subtitles';
 // import { canGenerate, incrementUsage } from '@/lib/usageStore'; // TODO(credits)
 
@@ -33,6 +33,7 @@ interface CharJobInput extends PromoInput {
   childLisp?: boolean; // 하늘(아이) 음성: 혀짧은소리 변환을 TTS에만 적용
   sections?: ScriptSection[]; // 사용자가 편집한 대본(있으면 AI 생성 생략)
   buyLink?: string; // 쿠팡 구매 링크 (라이브러리 유튜브 설명)
+  quality?: 'standard' | 'pro'; // 말하는 영상 화질: standard=720p(기본), pro=1080p
 }
 
 async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
@@ -113,12 +114,21 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
 
     // 3) Kling 캐릭터 영상
     updateJob(jobId, { status: 'generating_video', progress: 45, steps: { script: 'done', audio: 'done', video: 'running' } });
+    // 캐릭터 이미지를 9:16(720x1280)로 정규화 — 머리(위) 고정, 넘치면 아래만 크롭.
+    // Kling이 입력 비율을 따라가므로 9:16로 보내면 출력도 9:16 → 합성 잘림/크래시 방지.
+    const charInPath = path.join(tmpDir, `${jobId}_charin.png`);
+    const char916Path = path.join(tmpDir, `${jobId}_char916.png`);
+    fs.writeFileSync(charInPath, input.characterBuf);
+    await fitCharTo916(charInPath, char916Path);
+    const charUploadBuf = fs.readFileSync(char916Path);
+    subPaths.push(charInPath, char916Path);
+
     const audioBuf = fs.readFileSync(audioPath);
     const [imageUrl, audioUrl] = await Promise.all([
-      uploadToHedra(input.characterBuf, 'character.png', input.characterType),
+      uploadToHedra(charUploadBuf, 'character.png', 'image/png'),
       uploadToHedra(audioBuf, 'narration.mp3', 'audio/mpeg'),
     ]);
-    const hedraJob = await submitKlingAvatar({ imageUrl, audioUrl, aspectRatio: '9:16' });
+    const hedraJob = await submitKlingAvatar({ imageUrl, audioUrl, aspectRatio: '9:16', quality: input.quality });
     const charBuf = await pollHedraVideo(hedraJob, () => updateJob(jobId, { progress: 70, status: 'generating_video' }));
     fs.writeFileSync(charVideoPath, charBuf);
 
@@ -196,6 +206,7 @@ export async function POST(req: NextRequest) {
   const azureRate = ((fd.get('azureRate') as string | null) ?? '0%').trim();
   const childLisp = ((fd.get('childLisp') as string | null) ?? '') === '1';
   const tone = (fd.get('tone') as string | null) ?? '친근한';
+  const quality = ((fd.get('quality') as string | null) ?? 'standard') === 'pro' ? 'pro' : 'standard';
   const preset = (fd.get('preset') as string | null) ?? '';
   const characterFile = fd.get('character') as File | null;
   const productFile = fd.get('product') as File | null;
@@ -254,7 +265,7 @@ export async function POST(req: NextRequest) {
     voice, characterBuf, characterType, productImagePath,
     overlayTitle: businessName, overlayCta: cta, // 빈 값이면 CTA 표시 안 함
     catchphrase, headerTheme, speed, pitch, characterName,
-    ttsEngine, azureVoice, azurePitch, azureRate, childLisp, sections, buyLink,
+    ttsEngine, azureVoice, azurePitch, azureRate, childLisp, sections, buyLink, quality,
   }).catch(console.error);
 
   return NextResponse.json({ jobId });

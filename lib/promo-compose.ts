@@ -353,6 +353,21 @@ export async function composePromoCharacter(opts: {
 }
 
 /** 파일 길이(초) — ffmpeg-static 엔 ffprobe 가 없어 `ffmpeg -i` stderr 의 Duration 파싱 */
+/**
+ * 캐릭터 이미지를 9:16(720x1280)로 정규화. **머리(위) 고정 cover-crop**:
+ * 가로폭을 채우고, 세로가 넘치면 위(y=0=머리)는 두고 아래만 잘라 채운다(가로는 중앙 크롭).
+ * Kling이 입력 비율을 따라가므로 9:16로 맞춰 보내면 출력도 9:16 → 합성 잘림/크래시 방지.
+ * 정상 9:16 프리셋(720x1280)엔 사실상 no-op.
+ */
+export async function fitCharTo916(srcPath: string, outPath: string): Promise<void> {
+  const ffmpeg = require('ffmpeg-static') as string;
+  await execAsync(
+    `"${ffmpeg}" -y -loglevel error -i "${srcPath}" ` +
+    `-vf "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280:(iw-ow)/2:0,setsar=1" ` +
+    `-frames:v 1 "${outPath}"`
+  );
+}
+
 export async function probeDuration(filePath: string): Promise<number> {
   const ffmpeg = require('ffmpeg-static') as string;
   try {
