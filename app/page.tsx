@@ -3,6 +3,7 @@ import './landing.css';
 import LandingNav from '@/components/LandingNav';
 import ShowcaseStrip from '@/components/ShowcaseStrip';
 import CreditChargeCard from '@/components/CreditChargeCard';
+import SubscribeButton from '@/components/SubscribeButton';
 
 const QUOTES = [
   { emoji: '☕', text: '업체 사진 몇 장 올렸더니 진짜 3분 만에 홍보 쇼츠가 나왔어요. 제작 업체에 맡기면 50만원인데, 이건 무료라니!', name: '김사장님', type: '카페' },
@@ -164,14 +165,14 @@ export default function Home() {
               <div className="amt">9,900<span>원/월</span></div>
               <div className="who">가끔 올리는 분</div>
               <ul><li>매달 55크레딧</li><li>안 쓰면 이월</li><li>모든 기능 사용</li></ul>
-              <Link className="sa-btn ghost" href="/studio/billing">구독하기</Link>
+              <SubscribeButton plan="lite" className="sa-btn ghost">구독하기</SubscribeButton>
             </div>
             <div className="sa-price feat">
               <h3>프로</h3>
               <div className="amt">19,900<span>원/월</span></div>
               <div className="who">꾸준히 홍보하는 분</div>
               <ul><li>매달 110크레딧</li><li>안 쓰면 이월</li><li>모든 기능 사용</li></ul>
-              <Link className="sa-btn grad" href="/studio/billing">구독하기</Link>
+              <SubscribeButton plan="pro" className="sa-btn grad">구독하기</SubscribeButton>
             </div>
           </div>
           <p style={{ textAlign: 'center', marginTop: 18, fontSize: 13, color: 'var(--text-faint)' }}>
