@@ -3,18 +3,18 @@ import type { Plan } from './usageStore';
 /**
  * PortOne V2 정기결제(빌링) — 구독 플랜별 월 청구 금액(원, VAT 포함) 및 주문명.
  */
-export const PORTONE_PLAN_AMOUNT: Record<string, { plan: Plan; amount: number; orderName: string }> = {
-  lite: { plan: 'lite', amount: 2000, orderName: 'ShortsAI Lite(10회) 월 정기결제' },
-  pro: { plan: 'pro', amount: 4000, orderName: 'ShortsAI Pro(30회) 월 정기결제' },
-  business: { plan: 'business', amount: 10000, orderName: 'ShortsAI Business(100회) 월 정기결제' },
+export const PORTONE_PLAN_AMOUNT: Record<string, { plan: Plan; amount: number; credits: number; orderName: string }> = {
+  lite: { plan: 'lite', amount: 9900, credits: 55, orderName: 'ShortsAI 라이트(월 55크레딧)' },
+  pro: { plan: 'pro', amount: 19900, credits: 110, orderName: 'ShortsAI 프로(월 110크레딧)' },
 };
 
 /**
- * 단건(크레딧) 팩 — 1회 결제로 영상 생성 횟수를 잔액으로 충전. 금액은 VAT 포함 실청구가.
+ * 단건(크레딧) 팩 — 1회 결제로 크레딧 잔액 충전(안 만료). 금액은 VAT 포함 실청구가. 크레딧당 200원.
  */
 export const CREDIT_PACKS: Record<string, { credits: number; amount: number; orderName: string }> = {
-  credit10: { credits: 10, amount: 3000, orderName: 'ShortsAI 10회 이용권' },
-  credit30: { credits: 30, amount: 5000, orderName: 'ShortsAI 30회 이용권' },
+  credit10: { credits: 10, amount: 2000, orderName: 'ShortsAI 10크레딧' },
+  credit25: { credits: 25, amount: 5000, orderName: 'ShortsAI 25크레딧' },
+  credit60: { credits: 60, amount: 12000, orderName: 'ShortsAI 60크레딧' },
 };
 
 /** 서버에 PortOne 시크릿이 설정돼 있는지 (없으면 결제 비활성) */

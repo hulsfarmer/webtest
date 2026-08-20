@@ -2,13 +2,22 @@ import { supabase } from './supabase';
 
 export type Plan = 'free' | 'lite' | 'pro' | 'business' | 'admin';
 
-// 구독 플랜별 월 영상 한도
+// 구독 플랜별 월 영상 한도 (레거시 — 순수 크레딧 모델에선 미사용, getUsage 표시 호환용)
 export const PLAN_LIMITS: Record<Plan, number> = {
   free: 0,
   lite: 10,
   pro: 30,
   business: 100,
   admin: Infinity,
+};
+
+// 구독 플랜이 매달 지급하는 크레딧 (이월 누적). 첫 결제·갱신 시 잔액에 addCredits.
+export const PLAN_CREDITS: Record<Plan, number> = {
+  free: 0,
+  lite: 55,
+  pro: 110,
+  business: 0,
+  admin: 0,
 };
 
 // 테스트 계정 개별 한도 (이메일 기준, 소문자 비교). 실사용자 미영향.
@@ -93,33 +102,36 @@ export async function getUsage(userId: string): Promise<UsageResult> {
 }
 
 /**
- * Check if user can generate another video.
- * 구독/무료 월 한도가 남았거나, 크레딧 잔액이 있으면 생성 가능.
+ * 크레딧이 n개 이상 있는지 (관리자는 항상 true).
  */
-export async function canGenerate(userId: string): Promise<boolean> {
+export async function hasCredits(userId: string, n = 1): Promise<boolean> {
   const usage = await getUsage(userId);
-  return usage.remaining > 0 || usage.credits > 0;
+  if (usage.plan === 'admin') return true;
+  return usage.credits >= n;
 }
 
 /**
- * Increment usage.
- * 구독/무료 월 한도가 남으면 월 사용량 +1, 소진됐으면 크레딧 -1.
+ * 크레딧 n개 차감 (관리자는 미차감). 0 밑으로는 안 내려감.
  */
-export async function incrementUsage(userId: string): Promise<void> {
-  const currentMonth = getCurrentMonth();
+export async function chargeCredits(userId: string, n = 1): Promise<void> {
   const usage = await getUsage(userId);
+  if (usage.plan === 'admin' || n <= 0) return;
+  const next = Math.max(0, usage.credits - n);
+  await supabase.from('users').update({ credits: next }).eq('id', userId);
+}
 
-  if (usage.remaining > 0) {
-    await supabase.rpc('increment_usage', { user_id_param: userId, current_month: currentMonth });
-    return;
-  }
+/**
+ * (호환) 생성 가능 여부 = 크레딧 n개 이상. 슬라이드쇼 등 1크레딧 상품용.
+ */
+export async function canGenerate(userId: string, n = 1): Promise<boolean> {
+  return hasCredits(userId, n);
+}
 
-  // 월 한도 소진 → 크레딧 1 차감 (남아있을 때만)
-  const { data } = await supabase.from('users').select('credits').eq('id', userId).single();
-  const credits = (data?.credits as number) || 0;
-  if (credits > 0) {
-    await supabase.from('users').update({ credits: credits - 1 }).eq('id', userId);
-  }
+/**
+ * (호환) 사용 차감 = 크레딧 n개 차감. 슬라이드쇼 등 1크레딧 상품용.
+ */
+export async function incrementUsage(userId: string, n = 1): Promise<void> {
+  await chargeCredits(userId, n);
 }
 
 /**
@@ -158,13 +170,15 @@ export async function startSubscription(userId: string, plan: Plan, billingKey: 
       usage_reset_month: getCurrentMonth(),
     })
     .eq('id', userId);
+  // 첫 결제 시 이번 달 크레딧 지급 (이월 누적)
+  if (PLAN_CREDITS[plan]) await addCredits(userId, PLAN_CREDITS[plan]);
 }
 
 /**
  * 정기결제 갱신 — 월 자동청구 크론에서 청구 성공 후 호출.
  * 만료일을 (현재 만료일 또는 지금 중 큰 값)에서 +1개월 연장.
  */
-export async function renewSubscription(userId: string, currentExpiresAt: string | null): Promise<void> {
+export async function renewSubscription(userId: string, currentExpiresAt: string | null, plan?: Plan): Promise<void> {
   const base = currentExpiresAt && new Date(currentExpiresAt) > new Date()
     ? new Date(currentExpiresAt)
     : new Date();
@@ -173,6 +187,8 @@ export async function renewSubscription(userId: string, currentExpiresAt: string
     .from('users')
     .update({ plan_expires_at: base.toISOString() })
     .eq('id', userId);
+  // 갱신 청구 성공 시 이번 달 크레딧 지급 (이월 누적)
+  if (plan && PLAN_CREDITS[plan]) await addCredits(userId, PLAN_CREDITS[plan]);
 }
 
 /**

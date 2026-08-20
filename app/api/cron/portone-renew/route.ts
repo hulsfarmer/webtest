@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     const paymentId = `sar-${String(u.id).slice(0, 8)}-${now.toString(36)}`;
     const result = await chargeBillingKey(paymentId, u.portone_billing_key, u.plan, u.id);
     if (result.ok) {
-      await renewSubscription(u.id, u.plan_expires_at);
+      await renewSubscription(u.id, u.plan_expires_at, u.plan);
       renewed++;
       console.log(`[Cron] 갱신 성공 user=${u.id} plan=${u.plan}`);
     } else {

@@ -284,6 +284,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
       fd.append('introChar', introChar ? '1' : '0');
       fd.append('productChar', productChar ? '1' : '0');
       fd.append('outroChar', outroChar ? '1' : '0');
+      fd.append('estCredits', String(estimateVs().total));
     } else {
       const v = VOICES.find((x) => x.id === voiceKey) ?? VOICES[0];
       fd.append('voice', v.google);

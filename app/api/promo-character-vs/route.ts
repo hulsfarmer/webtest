@@ -11,7 +11,7 @@ import { createVisionStoryAvatar, submitVisionStoryVideo, pollVisionStoryVideo }
 import { generateGeminiAudio } from '@/lib/gemini-tts';
 import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, buildSegmentClip, concatSegments, probeDuration, sanitizeScript } from '@/lib/promo-compose';
 import { buildAlignedSubtitles, applySpeed } from '@/lib/promo-subtitles';
-// import { canGenerate, incrementUsage } from '@/lib/usageStore'; // TODO(credits)
+import { hasCredits, chargeCredits } from '@/lib/usageStore';
 
 // 제품 홍보영상 (VisionStory 엔진) — Hedra판 /api/promo-character 의 자매 라우트.
 // 차이: 캐릭터 영상+한국어 음성을 VisionStory(V-Character, 내부 Gemini TTS)가 생성.
@@ -32,6 +32,7 @@ interface CharVsJobInput extends PromoInput {
   introChar?: boolean;   // 구간별 캐릭터 on/off (기본 on)
   productChar?: boolean;
   outroChar?: boolean;
+  userId: string;        // 크레딧 차감 대상
 }
 
 async function processPromoCharacterVsJob(jobId: string, input: CharVsJobInput) {
@@ -99,6 +100,7 @@ async function processPromoCharacterVsJob(jobId: string, input: CharVsJobInput) 
     // 구간별 캐릭터 on/off (기본 전부 on)
     const introChar = input.introChar !== false, productChar = input.productChar !== false, outroChar = input.outroChar !== false;
     const allChar = introChar && productChar && outroChar;
+    let vsCreditsUsed = 0; // VisionStory 실제 소비 크레딧(=사용자 차감액). 캐릭터 켠 구간만 발생.
 
     const mkAudio = async (txt: string, suffix: string) => {
       const p = path.join(tmpDir, `${jobId}_${suffix}.mp3`); subPaths.push(p);
@@ -108,7 +110,7 @@ async function processPromoCharacterVsJob(jobId: string, input: CharVsJobInput) 
     const mkChar = async (audioP: string, suffix: string) => {
       const av = await createVisionStoryAvatar(input.characterBuf, 'image/png');
       const vid = await submitVisionStoryVideo({ avatarId: av, audioBuf: fs.readFileSync(audioP), model: 'vs_character_v4', aspectRatio: '9:16', resolution: '720p' });
-      const cb = await pollVisionStoryVideo(vid, () => updateJob(jobId, { progress: 60, status: 'generating_video' }));
+      const cb = await pollVisionStoryVideo(vid, (_st, cost) => { if (typeof cost === 'number') vsCreditsUsed += cost; updateJob(jobId, { progress: 60, status: 'generating_video' }); });
       const cp = path.join(tmpDir, `${jobId}_${suffix}.mp4`); fs.writeFileSync(cp, cb); subPaths.push(cp);
       return cp;
     };
@@ -168,6 +170,8 @@ async function processPromoCharacterVsJob(jobId: string, input: CharVsJobInput) 
       else await concatSegments(clips, outPath);
     }
 
+    // 생성 성공 → 실제 VisionStory 소비 크레딧만큼 차감 (실패 시엔 차감 안 함)
+    try { await chargeCredits(input.userId, vsCreditsUsed); } catch (e) { console.error(`[PromoCharVsJob ${jobId}] 크레딧 차감 실패:`, e); }
     cleanup();
     updateJob(jobId, { status: 'done', progress: 100, steps: { script: 'done', audio: 'done', video: 'done' }, videoUrl: `/api/video/${jobId}` });
   } catch (err) {
@@ -205,6 +209,8 @@ export async function POST(req: NextRequest) {
   const introChar = ((fd.get('introChar') as string | null) ?? '1') !== '0';
   const productChar = ((fd.get('productChar') as string | null) ?? '1') !== '0';
   const outroChar = ((fd.get('outroChar') as string | null) ?? '1') !== '0';
+  // 프론트가 계산한 예상 크레딧(부족 시 생성 차단용). 없으면 길이 기반 추정.
+  const estCredits = Math.max(4, parseInt((fd.get('estCredits') as string | null) ?? '', 10) || Math.ceil(duration / 15) * 4);
 
   let sections: ScriptSection[] | undefined;
   const sectionsRaw = fd.get('sections') as string | null;
@@ -231,6 +237,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '캐릭터를 선택하거나 업로드해주세요.' }, { status: 400 });
   }
 
+  // 크레딧 사전 확인 (부족하면 VisionStory 호출 전에 차단 → 돈 안 나감)
+  if (!(await hasCredits(userId, estCredits))) {
+    return NextResponse.json({ error: `크레딧이 부족해요 (약 ${estCredits}크레딧 필요). 충전 후 이용해주세요.`, needCredits: estCredits }, { status: 402 });
+  }
+
   const tmpDir = path.join(process.cwd(), 'data', 'tmp');
   if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
   const jobId = uuidv4();
@@ -255,7 +266,7 @@ export async function POST(req: NextRequest) {
     voiceId, emotion, characterBuf, productImagePath,
     overlayTitle: businessName, overlayCta: cta,
     catchphrase, headerTheme, speed, characterName, sections, buyLink,
-    introChar, productChar, outroChar,
+    introChar, productChar, outroChar, userId,
   }).catch(console.error);
 
   return NextResponse.json({ jobId });

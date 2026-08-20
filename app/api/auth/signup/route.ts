@@ -45,6 +45,7 @@ export async function POST(req: Request) {
       email,
       name,
       password_hash,
+      credits: 10, // 신규 무료 체험 크레딧
     });
     if (error) throw error;
 
