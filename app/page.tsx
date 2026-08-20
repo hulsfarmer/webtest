@@ -156,21 +156,21 @@ export default function Home() {
               <h3>무료</h3>
               <div className="amt">0<span>원</span></div>
               <div className="who">처음 써보는 분</div>
-              <ul><li>가입 시 10크레딧</li><li>캐릭터 영상 1편 체험</li></ul>
+              <ul><li>가입 시 10크레딧</li><li>모든 기능 사용</li></ul>
               <Link className="sa-btn ghost" href="/studio">무료로 시작</Link>
             </div>
             <div className="sa-price">
               <h3>라이트</h3>
               <div className="amt">9,900<span>원/월</span></div>
               <div className="who">가끔 올리는 분</div>
-              <ul><li>매달 55크레딧 (이월)</li><li>캐릭터 영상 ~6편</li><li>전체 톤·BGM</li></ul>
+              <ul><li>매달 55크레딧</li><li>안 쓰면 이월</li><li>모든 기능 사용</li></ul>
               <Link className="sa-btn ghost" href="/studio/billing">구독하기</Link>
             </div>
             <div className="sa-price feat">
               <h3>프로</h3>
               <div className="amt">19,900<span>원/월</span></div>
               <div className="who">꾸준히 홍보하는 분</div>
-              <ul><li>매달 110크레딧 (이월)</li><li>캐릭터 영상 ~13편</li><li>우선 처리 · SNS 자동 발행</li></ul>
+              <ul><li>매달 110크레딧</li><li>안 쓰면 이월</li><li>모든 기능 사용</li></ul>
               <Link className="sa-btn grad" href="/studio/billing">구독하기</Link>
             </div>
           </div>
