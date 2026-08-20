@@ -209,6 +209,58 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
   const [loadingScript, setLoadingScript]   = useState(false);
   const pollRef   = useRef<NodeJS.Timeout | null>(null);
   const [downloaded, setDownloaded] = useState(false);
+  // 유튜브 업로드 + 랜딩 소개
+  const [ytConnected, setYtConnected] = useState(false);
+  const [ytBusy, setYtBusy] = useState(false);
+  const [ytUrl, setYtUrl] = useState('');
+  const [ytMsg, setYtMsg] = useState('');
+  const [showcaseBusy, setShowcaseBusy] = useState(false);
+  const [showcaseDone, setShowcaseDone] = useState(false);
+
+  // YouTube 연결 상태 확인 + 콜백(?yt=) 처리
+  useEffect(() => {
+    fetch('/api/social/youtube/status').then((r) => r.json()).then((d) => setYtConnected(!!d.connected)).catch(() => {});
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('yt');
+    if (q === 'connected') { setYtMsg('YouTube 연결 완료'); setYtConnected(true); }
+    else if (q === 'error') setYtMsg('YouTube 연결 실패 — 다시 시도하세요.');
+    if (q) window.history.replaceState({}, '', window.location.pathname);
+  }, []);
+
+  async function publishYouTube() {
+    if (!jobId) return;
+    setYtBusy(true); setYtMsg(''); setYtUrl('');
+    try {
+      const title = (businessName || '홍보 영상').trim().slice(0, 90);
+      const narration = (scriptDraft?.sections || []).map((s) => s.text).join('  ').trim();
+      const desc = `${narration}\n\n▶ ${businessName || ''}\n\nshortsai.kr 로 만든 홍보 영상`.trim();
+      const r = await fetch('/api/social/youtube/upload', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId, title, description: desc, privacyStatus: 'private' }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '업로드 실패');
+      setYtUrl(d.url); setYtMsg('YouTube 업로드 완료 (비공개) — 검토 후 공개로 바꾸세요.');
+    } catch (e) {
+      setYtMsg(e instanceof Error ? e.message : String(e));
+    } finally { setYtBusy(false); }
+  }
+
+  async function submitShowcase() {
+    if (!jobId) return;
+    if (!window.confirm('이 영상을 shortsai 홈 화면에 소개용으로 올릴까요?\n관리자 승인 후 공개되며, 업체명·영상이 홈에 노출되는 것에 동의합니다.')) return;
+    setShowcaseBusy(true);
+    try {
+      const r = await fetch('/api/showcase/submit', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId, consent: true }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '신청 실패');
+      setShowcaseDone(true);
+    } catch (e) { alert(e instanceof Error ? e.message : String(e)); }
+    finally { setShowcaseBusy(false); }
+  }
 
   // Fake progress for video step
   const [fakeProgress, setFakeProgress] = useState(0);
@@ -1620,6 +1672,41 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
                 새 영상 만들기
               </button>
             </div>
+
+            {/* 완성 후 발행 옵션: 유튜브 업로드 + 랜딩 소개 */}
+            {jobStatus.videoUrl && (
+              <div className="glass-card p-4 space-y-3">
+                <div className="text-sm font-semibold text-white">발행하기 (내 채널 / 홈 소개)</div>
+                <div>
+                  {!ytConnected ? (
+                    <a href="/api/social/youtube/connect"
+                      className="inline-block text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2">
+                      ▶ YouTube 연결하기
+                    </a>
+                  ) : (
+                    <button onClick={publishYouTube} disabled={ytBusy}
+                      className="text-sm bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-lg px-3 py-2">
+                      {ytBusy ? '업로드 중...' : '▶ YouTube에 올리기 (비공개)'}
+                    </button>
+                  )}
+                  {ytMsg && <div className="text-xs text-gray-300 mt-2">{ytMsg}</div>}
+                  {ytUrl && <a href={ytUrl} target="_blank" rel="noreferrer" className="text-xs text-sky-400 underline mt-1 block break-all">{ytUrl}</a>}
+                  <div className="text-[11px] text-gray-500 mt-2">업로드는 비공개로 올라갑니다. 검토 후 YouTube 스튜디오에서 공개로 바꾸세요.</div>
+                </div>
+
+                <div className="pt-3 border-t border-white/10">
+                  {!showcaseDone ? (
+                    <button onClick={submitShowcase} disabled={showcaseBusy}
+                      className="text-sm bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-lg px-3 py-2">
+                      {showcaseBusy ? '신청 중...' : '📢 랜딩에 소개하기'}
+                    </button>
+                  ) : (
+                    <div className="text-xs text-green-300">✅ 소개 신청 완료 — 관리자 승인 후 홈에 노출돼요.</div>
+                  )}
+                  <div className="text-[11px] text-gray-500 mt-2">승인되면 shortsai 홈 화면에 소개됩니다 (업체명·영상 노출 동의).</div>
+                </div>
+              </div>
+            )}
 
             {jobStatus.script && (
               <div className="glass-card">
