@@ -138,9 +138,13 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
       if (meta.eventDate) params.set('eventDate', meta.eventDate);
       if (meta.location) params.set('location', meta.location);
     }
-    const base = embedded
-      ? (meta?.mode === 'event' ? '/studio/event' : '/studio/promo')
-      : '/promo';
+    // 제품홍보영상(topic '제품홍보:…')은 제품 홍보 툴로, 행사는 행사, 그 외 업체 홍보로
+    const isProduct = (job.topic || '').startsWith('제품홍보:');
+    const base = isProduct
+      ? (embedded ? '/studio/product-vs' : '/promo-character')
+      : embedded
+        ? (meta?.mode === 'event' ? '/studio/event' : '/studio/promo')
+        : '/promo';
     router.push(`${base}?${params.toString()}`);
   };
 
