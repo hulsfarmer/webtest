@@ -3,7 +3,7 @@ import PricingSection from '@/components/PricingSection';
 
 export const metadata: Metadata = {
   title: '요금제 - 영상 제작사보다 100배 저렴한',
-  description: '무료부터 시작! 구독 Lite ₩2,000·Pro ₩4,000·Business ₩10,000 (월, 부가세 포함) 또는 단건 이용권 10회 ₩3,000·30회 ₩5,000(유효기간 3개월). 영상 제작 의뢰(50~100만원) 대비 저렴하게 매달 새 홍보영상을 만드세요.',
+  description: '무료 10크레딧으로 시작! 크레딧 팩 10개 ₩2,000·25개 ₩5,000·60개 ₩12,000(안 만료) 또는 구독 라이트 ₩9,900(55크레딧)·프로 ₩19,900(110크레딧, 월·부가세 포함). 슬라이드쇼 1크레딧·캐릭터 홍보영상 8크레딧부터.',
   openGraph: {
     title: 'ShortsAI 요금제 - 영상 제작사보다 100배 저렴한',
     description: '무료부터 시작! 영상 제작 의뢰 대비 100배 저렴한 AI 홍보영상 솔루션.',

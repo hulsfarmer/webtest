@@ -22,9 +22,9 @@ const TOOLS = [
 
 const PRICES = [
   { name: '무료', amt: '0', unit: '원', who: '처음 써보는 분', feats: ['가입 시 3회 제공', '기본 음성·BGM', '워터마크 포함'], cta: '무료로 시작', href: '/promo', style: 'ghost' as const },
-  { name: 'Lite', amt: '2,000', unit: '원/월', who: '가끔 올리는 분', feats: ['월 10회 생성', '워터마크 제거', '전체 톤·BGM'], cta: '선택', href: '/pricing', style: 'ghost' as const },
-  { name: 'Pro', amt: '4,000', unit: '원/월', who: '꾸준히 홍보하는 분', feats: ['월 30회 생성', '말하는 캐릭터', 'SNS 자동 발행'], cta: '구독하기', href: '/pricing', style: 'grad' as const, feat: true },
-  { name: '크레딧 30회', amt: '5,000', unit: '원', who: '몰아서 쓰는 분', feats: ['30회 단건 충전', '자동 갱신 없음', '3개월 유효'], cta: '충전', href: '/pricing', style: 'ghost' as const },
+  { name: '라이트', amt: '9,900', unit: '원/월', who: '가끔 올리는 분', feats: ['매달 55크레딧 (이월)', '캐릭터 영상 ~6편', '워터마크 제거·전체 톤·BGM'], cta: '선택', href: '/pricing', style: 'ghost' as const },
+  { name: '프로', amt: '19,900', unit: '원/월', who: '꾸준히 홍보하는 분', feats: ['매달 110크레딧 (이월)', '캐릭터 영상 ~13편', '우선 처리·SNS 자동 발행'], cta: '구독하기', href: '/pricing', style: 'grad' as const, feat: true },
+  { name: '크레딧 팩', amt: '2,000', unit: '원~', who: '필요한 만큼', feats: ['10크레딧 2,000원', '25·60크레딧 팩', '자동 갱신 없음·안 만료'], cta: '충전', href: '/pricing', style: 'ghost' as const },
 ];
 
 const Arrow = (
