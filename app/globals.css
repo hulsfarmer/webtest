@@ -119,3 +119,8 @@ h1, h2, h3, h4, h5, h6 {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+
+/* 요금 블록 그리드 (랜딩·스튜디오 공용) */
+.pricing-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: stretch; }
+@media (max-width: 860px) { .pricing-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .pricing-grid { grid-template-columns: 1fr; } }

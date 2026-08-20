@@ -3,6 +3,7 @@
 import { useState, CSSProperties } from 'react';
 import { useSession } from 'next-auth/react';
 import PortOne from '@portone/browser-sdk/v2';
+import { cardStyle, btnGrad } from '@/components/SubscribeButton';
 
 const ONETIME_CHANNEL_KEY = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_ONETIME;
 
@@ -49,9 +50,9 @@ export default function CreditChargeCard() {
   const quick: CSSProperties = { flex: 1, padding: '8px 0', borderRadius: 9, fontFamily: 'inherit', fontWeight: 700, fontSize: 13, cursor: 'pointer' };
 
   return (
-    <div className="sa-price" style={{ display: 'flex', flexDirection: 'column' }}>
-      <h3>크레딧 충전</h3>
-      <div className="who" style={{ marginBottom: 12 }}>필요한 만큼 · 200원/크레딧</div>
+    <div style={cardStyle}>
+      <h3 style={{ margin: '0 0 2px', fontSize: 15, color: 'var(--text)' }}>크레딧 충전</h3>
+      <div style={{ fontSize: 13, color: 'var(--text-faint)', marginBottom: 14 }}>필요한 만큼 · 200원/크레딧</div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
         {[10, 20, 30].map((n) => (
           <button key={n} onClick={() => setQty(n)} style={{ ...quick, border: `1px solid ${qty === n ? 'var(--purple)' : 'var(--border)'}`, background: qty === n ? 'var(--purple)' : 'var(--surface-2)', color: qty === n ? '#fff' : 'var(--text-dim)' }}>{n}</button>
@@ -63,7 +64,7 @@ export default function CreditChargeCard() {
       <div style={{ margin: '12px 0 16px', display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
         <span style={{ fontWeight: 800, fontSize: 26, letterSpacing: '-.02em', color: 'var(--text)' }}>₩{amount.toLocaleString()}</span>
       </div>
-      <button onClick={charge} disabled={loading || q < 10} className="sa-btn grad" style={{ marginTop: 'auto', width: '100%', justifyContent: 'center', opacity: loading ? 0.6 : 1 }}>
+      <button onClick={charge} disabled={loading || q < 10} style={{ ...btnGrad, marginTop: 'auto', opacity: loading ? 0.6 : 1 }}>
         {loading ? '처리 중...' : '충전하기'}
       </button>
     </div>

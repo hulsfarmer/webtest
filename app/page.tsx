@@ -2,8 +2,7 @@ import Link from 'next/link';
 import './landing.css';
 import LandingNav from '@/components/LandingNav';
 import ShowcaseStrip from '@/components/ShowcaseStrip';
-import CreditChargeCard from '@/components/CreditChargeCard';
-import SubscribeButton from '@/components/SubscribeButton';
+import PricingBlock from '@/components/PricingBlock';
 
 const QUOTES = [
   { emoji: '☕', text: '업체 사진 몇 장 올렸더니 진짜 3분 만에 홍보 쇼츠가 나왔어요. 제작 업체에 맡기면 50만원인데, 이건 무료라니!', name: '김사장님', type: '카페' },
@@ -151,33 +150,7 @@ export default function Home() {
             <h2>필요한 만큼만, 부담 없이</h2>
             <p>가입하면 10크레딧 무료. 표시 가격은 VAT 포함 실청구가입니다.</p>
           </div>
-          <div className="sa-prices">
-            <CreditChargeCard />
-            <div className="sa-price">
-              <h3>무료</h3>
-              <div className="amt">0<span>원</span></div>
-              <div className="who">처음 써보는 분</div>
-              <ul><li>가입 시 10크레딧</li><li>모든 기능 사용</li></ul>
-              <Link className="sa-btn ghost" href="/studio">무료로 시작</Link>
-            </div>
-            <div className="sa-price">
-              <h3>라이트</h3>
-              <div className="amt">9,900<span>원/월</span></div>
-              <div className="who">가끔 올리는 분</div>
-              <ul><li>매달 55크레딧</li><li>안 쓰면 이월</li><li>모든 기능 사용</li></ul>
-              <SubscribeButton plan="lite" className="sa-btn ghost">구독하기</SubscribeButton>
-            </div>
-            <div className="sa-price feat">
-              <h3>프로</h3>
-              <div className="amt">19,900<span>원/월</span></div>
-              <div className="who">꾸준히 홍보하는 분</div>
-              <ul><li>매달 110크레딧</li><li>안 쓰면 이월</li><li>모든 기능 사용</li></ul>
-              <SubscribeButton plan="pro" className="sa-btn grad">구독하기</SubscribeButton>
-            </div>
-          </div>
-          <p style={{ textAlign: 'center', marginTop: 18, fontSize: 13, color: 'var(--text-faint)' }}>
-            크레딧 사용 — 사진 홍보영상 · 로고 <b style={{ color: 'var(--text-dim)' }}>1크레딧</b> · 캐릭터 홍보영상 <b style={{ color: 'var(--text-dim)' }}>8크레딧부터</b> (길이·구간에 따라)
-          </p>
+          <PricingBlock />
         </div>
       </section>
 

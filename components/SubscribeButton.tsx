@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, ReactNode } from 'react';
+import { useState, ReactNode, CSSProperties } from 'react';
 import { useSession } from 'next-auth/react';
 import PortOne from '@portone/browser-sdk/v2';
 
@@ -10,8 +10,15 @@ const PLAN: Record<string, { amount: number; orderName: string }> = {
   pro: { amount: 19900, orderName: 'ShortsAI 프로(월 110크레딧)' },
 };
 
-// 랜딩 플랜 카드용 — 누르면 바로 PortOne 카드 정기결제(빌링키 발급) 창.
-export default function SubscribeButton({ plan, className, children }: { plan: 'lite' | 'pro'; className?: string; children: ReactNode }) {
+// 공용 버튼 스타일 (landing/studio 둘 다 정의된 CSS 변수 사용 → 어디서든 톤 일치)
+export const btnBase: CSSProperties = { width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit', fontWeight: 700, fontSize: 14.5, cursor: 'pointer', borderRadius: 11, padding: '11px 18px', border: '1px solid transparent' };
+export const btnGrad: CSSProperties = { ...btnBase, background: 'var(--grad)', color: '#fff' };
+export const btnGhost: CSSProperties = { ...btnBase, background: 'var(--surface)', color: 'var(--text)', borderColor: 'var(--border-strong)' };
+export const cardStyle: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 22, display: 'flex', flexDirection: 'column' };
+export const featCardStyle: CSSProperties = { ...cardStyle, borderColor: 'var(--purple)', boxShadow: '0 20px 44px -24px rgba(124,58,237,.45)', position: 'relative' };
+
+// 플랜 카드용 — 누르면 폰번호 입력 후 바로 PortOne 카드 정기결제(빌링키) 창.
+export default function SubscribeButton({ plan, variant, children }: { plan: 'lite' | 'pro'; variant: 'ghost' | 'grad'; children: ReactNode }) {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
 
@@ -46,5 +53,5 @@ export default function SubscribeButton({ plan, className, children }: { plan: '
     setLoading(false);
   };
 
-  return <button onClick={go} disabled={loading} className={className}>{loading ? '처리 중...' : children}</button>;
+  return <button onClick={go} disabled={loading} style={{ ...(variant === 'grad' ? btnGrad : btnGhost), opacity: loading ? 0.6 : 1 }}>{loading ? '처리 중...' : children}</button>;
 }
