@@ -22,13 +22,15 @@ export default function SubscribeButton({ plan, className, children }: { plan: '
     const target = PLAN[plan];
     if (!storeId || !target) { alert('결제가 아직 준비 중입니다.'); return; }
     const u = session.user as { id?: string; name?: string; email?: string };
+    const phone = (window.prompt('결제 진행을 위해 휴대폰 번호를 입력해주세요.\n(예: 01012345678)') || '').replace(/[^0-9]/g, '');
+    if (phone.length < 10) { alert('휴대폰 번호를 정확히 입력해주세요.'); return; }
     setLoading(true);
     try {
       const issue = await PortOne.requestIssueBillingKey({
         storeId, channelKey: CARD_CHANNEL_KEY, billingKeyMethod: 'CARD',
         issueId: `sa-${String(u.id).slice(0, 8)}-${Date.now().toString(36)}`,
         issueName: target.orderName,
-        customer: { customerId: u.id, fullName: u.name || '고객', email: u.email || undefined },
+        customer: { customerId: u.id, fullName: u.name || '고객', phoneNumber: phone, email: u.email || undefined },
       });
       if (!issue || issue.code != null) { if (issue?.message) alert(issue.message); setLoading(false); return; }
       const res = await fetch('/api/payment/portone/subscribe', {

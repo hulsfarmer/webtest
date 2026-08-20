@@ -21,13 +21,15 @@ export default function CreditChargeCard() {
     const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
     if (!storeId) { alert('결제가 아직 준비 중입니다.'); return; }
     const u = session.user as { id?: string; name?: string; email?: string };
+    const phone = (window.prompt('결제 진행을 위해 휴대폰 번호를 입력해주세요.\n(예: 01012345678)') || '').replace(/[^0-9]/g, '');
+    if (phone.length < 10) { alert('휴대폰 번호를 정확히 입력해주세요.'); return; }
     setLoading(true);
     try {
       const paymentId = `sao-${String(u.id).slice(0, 8)}-${Date.now().toString(36)}`;
       const payment = await PortOne.requestPayment({
         storeId, channelKey: ONETIME_CHANNEL_KEY, paymentId,
         orderName: `ShortsAI ${q}크레딧`, totalAmount: amount, currency: 'KRW', payMethod: 'CARD',
-        customer: { customerId: u.id, fullName: u.name || '고객', email: u.email || undefined },
+        customer: { customerId: u.id, fullName: u.name || '고객', phoneNumber: phone, email: u.email || undefined },
       });
       if (!payment || payment.code != null) { if (payment?.message) alert(payment.message); setLoading(false); return; }
       const res = await fetch('/api/payment/portone/pay-once', {
