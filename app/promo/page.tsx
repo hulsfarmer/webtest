@@ -1258,7 +1258,7 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
               <button
                 type="button"
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                className="flex items-center gap-2 text-sm text-gray-400 hover:text-neutral-200 transition-colors"
               >
                 <ChevronDown className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
                 고급 설정
@@ -1336,7 +1336,7 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
                               {v.badge}
                             </span>
                           )}
-                          <p className={`font-semibold text-sm ${voice === v.id ? 'text-emerald-200' : 'text-gray-200'}`}>{v.label}</p>
+                          <p className={`font-semibold text-sm ${voice === v.id ? 'text-emerald-200' : 'text-neutral-200'}`}>{v.label}</p>
                           <p className="text-[11px] text-gray-500 mt-0.5">{v.desc}</p>
                         </button>
                       ))}
@@ -1509,7 +1509,7 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
                         setScriptDraft({ ...scriptDraft, sections: newSections });
                       }}
                       rows={4}
-                      className="flex-1 bg-transparent border border-white/10 rounded-lg px-3 py-2 text-gray-200 text-sm focus:outline-none focus:border-emerald-500/40 transition-all resize-none"
+                      className="flex-1 bg-transparent border border-white/10 rounded-lg px-3 py-2 text-neutral-200 text-sm focus:outline-none focus:border-emerald-500/40 transition-all resize-none"
                     />
                   </div>
                 </div>
@@ -1675,12 +1675,12 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
               <div className="glass-card p-4 space-y-3">
                 <div className="text-sm font-semibold text-white">이 영상, 어디에 올릴까요?</div>
 
-                <label className="flex items-center gap-2.5 text-sm text-gray-200 cursor-pointer">
+                <label className="flex items-center gap-2.5 text-sm text-neutral-200 cursor-pointer">
                   <input type="checkbox" className="w-4 h-4 accent-emerald-500" checked={optDl} onChange={(e) => setOptDl(e.target.checked)} />
                   <span>⬇ 다운로드 <span className="text-gray-500">(내 기기에 저장)</span></span>
                 </label>
 
-                <label className={`flex items-center gap-2.5 text-sm cursor-pointer ${ytUrl ? 'text-gray-500' : 'text-gray-200'}`}>
+                <label className={`flex items-center gap-2.5 text-sm cursor-pointer ${ytUrl ? 'text-gray-500' : 'text-neutral-200'}`}>
                   <input type="checkbox" className="w-4 h-4 accent-red-500" checked={optYt} disabled={!!ytUrl} onChange={(e) => setOptYt(e.target.checked)} />
                   <span>▶ 유튜브에 올리기 <span className="text-gray-500">(바로 공개)</span>{ytUrl && ' — 완료'}</span>
                 </label>
@@ -1689,7 +1689,7 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
                 )}
                 {ytUrl && <a href={ytUrl} target="_blank" rel="noreferrer" className="block text-xs text-sky-400 underline ml-6 break-all">{ytUrl}</a>}
 
-                <label className={`flex items-center gap-2.5 text-sm cursor-pointer ${showcaseDone ? 'text-gray-500' : 'text-gray-200'}`}>
+                <label className={`flex items-center gap-2.5 text-sm cursor-pointer ${showcaseDone ? 'text-gray-500' : 'text-neutral-200'}`}>
                   <input type="checkbox" className="w-4 h-4 accent-purple-500" checked={optHome} disabled={showcaseDone} onChange={(e) => setOptHome(e.target.checked)} />
                   <span>📢 홈페이지에 소개하기 <span className="text-gray-500">(승인 후 노출)</span>{showcaseDone && ' — 신청됨'}</span>
                 </label>

@@ -18,6 +18,8 @@ import {
   Plus,
   X,
   ImageIcon,
+  Youtube,
+  Link2,
 } from 'lucide-react';
 import Header from '@/components/Header';
 
@@ -62,6 +64,43 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [assets, setAssets] = useState<{ id: string; type: string; title: string | null; image: string; created_at: string }[]>([]);
   const [tab, setTab] = useState<'all' | 'video' | 'logo' | 'banner'>('all');
+  // 유튜브 업로드 → 공유 링크
+  const [ytConnected, setYtConnected] = useState(false);
+  const [ytBusyId, setYtBusyId] = useState<string | null>(null);
+  const [ytMsg, setYtMsg] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetch('/api/social/youtube/status').then((r) => r.json()).then((d) => setYtConnected(!!d.connected)).catch(() => {});
+  }, []);
+
+  const ytUrlOf = (job: HistoryJob) => (job.script as { youtubeUrl?: string } | null)?.youtubeUrl || '';
+
+  async function publishYouTube(job: HistoryJob) {
+    setYtBusyId(job.id); setYtMsg((p) => ({ ...p, [job.id]: '' }));
+    try {
+      const title = (job.businessName || job.topic?.replace(/^제품홍보:/, '') || '홍보 영상').trim().slice(0, 90);
+      const meta = (job.script || {}) as { narration?: string; catchphrase?: string };
+      const desc = `${meta.narration || meta.catchphrase || ''}\n\nshortsai.kr 로 만든 홍보 영상`.trim();
+      const r = await fetch('/api/social/youtube/upload', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: job.id, title, description: desc, privacyStatus: 'public' }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '업로드 실패');
+      // 반환된 링크를 job.script.youtubeUrl 에 반영 → 버튼이 '링크 복사'로 전환
+      setData((prev) => prev ? {
+        ...prev,
+        jobs: prev.jobs.map((j) => j.id === job.id ? { ...j, script: { ...(j.script || {}), youtubeUrl: d.url } } : j),
+      } : prev);
+      setYtMsg((p) => ({ ...p, [job.id]: '유튜브에 올렸어요! 링크를 복사해 공유하세요.' }));
+    } catch (e) { setYtMsg((p) => ({ ...p, [job.id]: e instanceof Error ? e.message : String(e) })); }
+    finally { setYtBusyId(null); }
+  }
+
+  async function copyLink(url: string, id: string) {
+    try { await navigator.clipboard.writeText(url); setYtMsg((p) => ({ ...p, [id]: '링크 복사됨!' })); }
+    catch { setYtMsg((p) => ({ ...p, [id]: '복사 실패 — 링크를 길게 눌러 직접 복사하세요' })); }
+  }
 
   useEffect(() => {
     if (authStatus === 'unauthenticated') {
@@ -341,10 +380,21 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
                             <Download className="w-4 h-4" />
                           </a>
                         )}
+                        {job.videoUrl && job.status === 'done' && ytUrlOf(job) && (
+                          <button onClick={() => copyLink(ytUrlOf(job), job.id)} title="유튜브 링크 복사" className="p-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10">
+                            <Link2 className="w-4 h-4" />
+                          </button>
+                        )}
+                        {job.videoUrl && job.status === 'done' && !ytUrlOf(job) && ytConnected && (
+                          <button onClick={() => publishYouTube(job)} disabled={ytBusyId === job.id} title="유튜브에 올려 링크 받기 (바로 공개)" className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10">
+                            {ytBusyId === job.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Youtube className="w-4 h-4" />}
+                          </button>
+                        )}
                         <button onClick={() => handleDelete(job.id)} disabled={deleting === job.id} title="삭제" className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10">
                           {deleting === job.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                         </button>
                       </div>
+                      {ytMsg[job.id] && <div className="text-[11px] text-gray-400 mt-1 px-1 break-all">{ytMsg[job.id]}</div>}
                     </div>
                   </div>
                 </div>
