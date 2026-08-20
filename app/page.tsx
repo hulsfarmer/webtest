@@ -2,7 +2,7 @@ import Link from 'next/link';
 import './landing.css';
 import LandingNav from '@/components/LandingNav';
 import ShowcaseStrip from '@/components/ShowcaseStrip';
-import PricingSection from '@/components/PricingSection';
+import CreditChargeCard from '@/components/CreditChargeCard';
 
 const QUOTES = [
   { emoji: '☕', text: '업체 사진 몇 장 올렸더니 진짜 3분 만에 홍보 쇼츠가 나왔어요. 제작 업체에 맡기면 50만원인데, 이건 무료라니!', name: '김사장님', type: '카페' },
@@ -143,9 +143,41 @@ export default function Home() {
       </section>
 
       {/* PRICING */}
-      <div id="pricing" style={{ background: 'var(--surface-2)' }}>
-        <PricingSection />
-      </div>
+      <section className="sa-block" id="pricing" style={{ background: 'var(--surface-2)' }}>
+        <div className="sa-wrap">
+          <div className="sa-sec-head">
+            <div className="sa-kick">요금</div>
+            <h2>필요한 만큼만, 부담 없이</h2>
+            <p>가입하면 10크레딧 무료. 표시 가격은 VAT 포함 실청구가입니다.</p>
+          </div>
+          <div className="sa-prices">
+            <div className="sa-price">
+              <h3>무료</h3>
+              <div className="amt">0<span>원</span></div>
+              <div className="who">처음 써보는 분</div>
+              <ul><li>가입 시 10크레딧</li><li>캐릭터 영상 1편 체험</li><li>워터마크 없음</li></ul>
+              <Link className="sa-btn ghost" href="/studio">무료로 시작</Link>
+            </div>
+            <div className="sa-price feat">
+              <h3>프로</h3>
+              <div className="amt">19,900<span>원/월</span></div>
+              <div className="who">꾸준히 홍보하는 분</div>
+              <ul><li>매달 110크레딧 (이월)</li><li>캐릭터 영상 ~13편</li><li>우선 처리 · SNS 자동 발행</li></ul>
+              <Link className="sa-btn grad" href="/studio/billing">구독하기</Link>
+            </div>
+            <div className="sa-price">
+              <h3>라이트</h3>
+              <div className="amt">9,900<span>원/월</span></div>
+              <div className="who">가끔 올리는 분</div>
+              <ul><li>매달 55크레딧 (이월)</li><li>캐릭터 영상 ~6편</li><li>워터마크 없음 · 전체 톤·BGM</li></ul>
+              <Link className="sa-btn ghost" href="/studio/billing">구독하기</Link>
+            </div>
+          </div>
+          <div style={{ marginTop: 40 }}>
+            <CreditChargeCard />
+          </div>
+        </div>
+      </section>
 
       {/* FINAL */}
       <section className="sa-block">
