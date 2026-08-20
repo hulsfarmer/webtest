@@ -24,7 +24,7 @@ const steps = [
     number: '04',
     icon: '⬇️',
     title: '영상 다운로드',
-    description: '1080x1920 쇼츠 포맷 MP4 완성! 인스타, 유튜브, 틱톡에 바로 업로드하세요',
+    description: '1080x1920 쇼츠 포맷 MP4 완성! 유튜브에 바로 올리거나 링크로 공유하세요',
     color: 'from-indigo-600 to-indigo-400',
   },
 ];

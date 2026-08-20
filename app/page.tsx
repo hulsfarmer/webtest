@@ -4,11 +4,6 @@ import LandingNav from '@/components/LandingNav';
 import ShowcaseStrip from '@/components/ShowcaseStrip';
 import PricingBlock from '@/components/PricingBlock';
 
-const QUOTES = [
-  { emoji: '☕', text: '업체 사진 몇 장 올렸더니 진짜 3분 만에 홍보 쇼츠가 나왔어요. 제작 업체에 맡기면 50만원인데, 이건 무료라니!', name: '김사장님', type: '카페' },
-  { emoji: '💪', text: '인스타 릴스용 영상이 필요했는데 딱이에요. 나레이션까지 자동이라 편하고, BGM도 분위기에 맞게 나와서 바로 올렸습니다.', name: '박대표님', type: '헬스장' },
-  { emoji: '✂️', text: '매장 리뉴얼하고 홍보영상 만들고 싶었는데 비용이 부담됐거든요. 여기서 만들어보니 퀄리티가 생각보다 좋아서 놀랐어요.', name: '이원장님', type: '미용실' },
-];
 
 const LOGO_MAKER_URL = 'https://logomaker-blush.vercel.app';
 
@@ -117,29 +112,6 @@ export default function Home() {
           <p>업체명과 사진만 입력해서 나온 결과물입니다.</p>
         </div>
         <ShowcaseStrip />
-      </section>
-
-      {/* TESTIMONIALS */}
-      <section className="sa-block" id="reviews" style={{ background: 'var(--surface-2)' }}>
-        <div className="sa-wrap">
-          <div className="sa-sec-head">
-            <div className="sa-kick">후기</div>
-            <h2>사장님들이 먼저 써봤습니다</h2>
-            <p>영상 제작 경험이 없어도, 3분이면 올릴 수 있는 결과물이 나옵니다.</p>
-          </div>
-          <div className="sa-quotes">
-            {QUOTES.map((q) => (
-              <div className="sa-quote" key={q.name}>
-                <div className="stars">★★★★★</div>
-                <p>&ldquo;{q.text}&rdquo;</p>
-                <div className="who">
-                  <span className="ava">{q.emoji}</span>
-                  <div><b>{q.name}</b><span>{q.type}</span></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* PRICING */}

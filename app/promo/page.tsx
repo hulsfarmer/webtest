@@ -4,8 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Calendar, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2, Settings2, Upload, Volume2, MessageSquarePlus, Play, Pause } from 'lucide-react';
-import ReviewModal from '@/components/ReviewModal';
+import { Megaphone, ArrowLeft, Download, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Calendar, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2, Settings2, Upload, Volume2, Play, Pause } from 'lucide-react';
 import { BGM_CATALOG, recommendBgm, type BgmId } from '@/lib/bgm-catalog';
 
 type VideoScript = {
@@ -210,8 +209,6 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
   const [loadingScript, setLoadingScript]   = useState(false);
   const pollRef   = useRef<NodeJS.Timeout | null>(null);
   const [downloaded, setDownloaded] = useState(false);
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   // Fake progress for video step
   const [fakeProgress, setFakeProgress] = useState(0);
@@ -1624,21 +1621,6 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
               </button>
             </div>
 
-            {/* 후기 남기기 */}
-            {!reviewSubmitted ? (
-              <button
-                onClick={() => setShowReviewModal(true)}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 font-medium hover:bg-yellow-500/20 transition-all text-sm"
-              >
-                <MessageSquarePlus className="w-4 h-4" />
-                후기 남기기 ⭐
-              </button>
-            ) : (
-              <div className="w-full text-center py-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-300 text-sm">
-                ✅ 후기를 남겨주셔서 감사합니다! 승인 후 홈페이지에 표시됩니다.
-              </div>
-            )}
-
             {jobStatus.script && (
               <div className="glass-card">
                 <button
@@ -1673,17 +1655,6 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
         )}
       </div>
 
-      {/* Review Modal */}
-      {showReviewModal && (
-        <ReviewModal
-          jobId={jobId ?? undefined}
-          onClose={() => setShowReviewModal(false)}
-          onSubmitted={() => {
-            setShowReviewModal(false);
-            setReviewSubmitted(true);
-          }}
-        />
-      )}
     </main>
   );
 }

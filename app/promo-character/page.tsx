@@ -90,10 +90,6 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
   const [ytBusy, setYtBusy] = useState(false);
   const [ytMsg, setYtMsg] = useState('');
   const [ytUrl, setYtUrl] = useState('');
-  // 자동 발행 (TikTok)
-  const [ttConnected, setTtConnected] = useState(false);
-  const [ttBusy, setTtBusy] = useState(false);
-  const [ttMsg, setTtMsg] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputCls = 'w-full bg-neutral-950 border border-neutral-700 rounded-lg p-2.5 text-sm';
 
@@ -149,18 +145,14 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
     return () => clearTimeout(id);
   }, [phase, businessName, catchphrase, headerTheme]);
 
-  // YouTube·TikTok 연결 상태 확인 + 콜백(?yt= / ?tt=) 처리
+  // YouTube 연결 상태 확인 + 콜백(?yt=) 처리
   useEffect(() => {
     fetch('/api/social/youtube/status').then((r) => r.json()).then((d) => setYtConnected(!!d.connected)).catch(() => {});
-    fetch('/api/social/tiktok/status').then((r) => r.json()).then((d) => setTtConnected(!!d.connected)).catch(() => {});
     const params = new URLSearchParams(window.location.search);
     const q = params.get('yt');
     if (q === 'connected') { setYtMsg('YouTube 연결 완료'); setYtConnected(true); }
     else if (q === 'error') setYtMsg('YouTube 연결 실패 — 다시 시도하세요.');
-    const t = params.get('tt');
-    if (t === 'connected') { setTtMsg('TikTok 연결 완료'); setTtConnected(true); }
-    else if (t === 'error') setTtMsg('TikTok 연결 실패 — 다시 시도하세요.');
-    if (q || t) window.history.replaceState({}, '', '/promo-character');
+    if (q) window.history.replaceState({}, '', '/promo-character');
   }, []);
 
   // 유튜브 설명란: 나레이션 원문 + 구매 링크 + 제작 크레딧
@@ -187,21 +179,6 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
     } finally { setYtBusy(false); }
   }
 
-  async function publishTikTok() {
-    if (!jobId) return;
-    setTtBusy(true); setTtMsg('');
-    try {
-      const r = await fetch('/api/social/tiktok/upload', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || '업로드 실패');
-      setTtMsg('TikTok 드래프트로 전송 완료 — 틱톡 앱 알림/드래프트에서 캡션 확인 후 게시하세요.');
-    } catch (e) {
-      setTtMsg(e instanceof Error ? e.message : String(e));
-    } finally { setTtBusy(false); }
-  }
 
   function onProduct(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null; setProductFile(f); setProductPreview(f ? URL.createObjectURL(f) : ''); if (f) setImportedImagePath('');
@@ -555,9 +532,6 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                 <span className={`text-[11px] rounded-full px-2 py-0.5 ${ytConnected ? 'bg-green-900/60 text-green-300' : 'bg-neutral-800 text-neutral-400'}`}>
                   YouTube {ytConnected ? '연결됨' : '미연결'}
                 </span>
-                <span className={`text-[11px] rounded-full px-2 py-0.5 ${ttConnected ? 'bg-green-900/60 text-green-300' : 'bg-neutral-800 text-neutral-400'}`}>
-                  TikTok {ttConnected ? '연결됨' : '미연결'}
-                </span>
               </div>
             </div>
             {ytMsg && !videoUrl && <div className="text-xs text-neutral-300 mb-3">{ytMsg}</div>}
@@ -588,22 +562,6 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                 {ytMsg && <div className="text-xs text-neutral-300 mt-2">{ytMsg}</div>}
                 {ytUrl && <a href={ytUrl} target="_blank" rel="noreferrer" className="text-xs text-sky-400 underline mt-1 block">{ytUrl}</a>}
                 <div className="text-[11px] text-neutral-500 mt-2">업로드는 비공개로 올라갑니다. 검토 후 YouTube 스튜디오에서 공개로 바꾸세요.</div>
-
-                {/* 틱톡 발행 */}
-                <div className="mt-3 pt-3 border-t border-neutral-800">
-                  {!ttConnected ? (
-                    <a href="/api/social/tiktok/connect" className="inline-block text-sm bg-black hover:bg-neutral-800 border border-neutral-700 text-white rounded-lg px-3 py-2">
-                      ♪ TikTok 연결하기
-                    </a>
-                  ) : (
-                    <button onClick={publishTikTok} disabled={ttBusy}
-                      className="text-sm bg-black hover:bg-neutral-800 border border-neutral-700 disabled:opacity-50 text-white rounded-lg px-3 py-2">
-                      {ttBusy ? '전송 중...' : '♪ TikTok 드래프트로 보내기'}
-                    </button>
-                  )}
-                  {ttMsg && <div className="text-xs text-neutral-300 mt-2">{ttMsg}</div>}
-                  <div className="text-[11px] text-neutral-500 mt-2">틱톡 앱의 드래프트/알림으로 전송됩니다. 앱에서 캡션·해시태그 확인 후 게시하세요.</div>
-                </div>
               </div>
             )}
           </div>
