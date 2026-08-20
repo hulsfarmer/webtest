@@ -69,9 +69,17 @@ async function processPromoCharacterVsJob(jobId: string, input: CharVsJobInput) 
       console.error(`[PromoCharVsJob ${jobId}] AI 태그 실패 → 휴리스틱:`, e instanceof Error ? e.message : e);
       ytTags = buildYouTubeTags(input.businessName || '', input.catchphrase || '', narration);
     }
+    // '수정' 복원용: 제품 이미지 영구 사본(public/imports)
+    let productImageUrl = '';
+    try {
+      const reuseImg = path.join(process.cwd(), 'public', 'imports', `reuse_${jobId}.png`);
+      fs.copyFileSync(input.productImagePath, reuseImg);
+      productImageUrl = `/imports/reuse_${jobId}.png`;
+    } catch { /* noop */ }
     updateJob(jobId, { script: JSON.stringify({
       narration, buyLink: input.buyLink || '', businessName: input.businessName, catchphrase: input.catchphrase, tags: ytTags,
-      // 라이브러리 '수정' 복원용 입력값
+      // 라이브러리 '수정' 복원용 (대본·입력값·제품이미지)
+      sections: sections.map((s) => ({ type: s.type, text: s.text })), productImageUrl,
       businessType: input.businessType || '', sellingPoints: input.sellingPoints || '', cta: input.cta || '',
       headerTheme: input.headerTheme || 'navy', voice: input.voiceId || '',
       introChar: input.introChar !== false, productChar: input.productChar !== false, outroChar: input.outroChar !== false,

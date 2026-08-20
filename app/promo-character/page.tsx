@@ -107,6 +107,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
     setBusinessName(bn);
     const bt = q.get('businessType'); if (bt) setBusinessType(bt);
     const dur = q.get('duration'); if (dur) setDuration(dur);
+    let hasImg = false, hasScript = false;
     try {
       const sc = JSON.parse(q.get('script') || '{}');
       if (sc.sellingPoints) setSellingPoints(sc.sellingPoints);
@@ -118,8 +119,17 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
       if (typeof sc.introChar === 'boolean') setIntroChar(sc.introChar);
       if (typeof sc.productChar === 'boolean') setProductChar(sc.productChar);
       if (typeof sc.outroChar === 'boolean') setOutroChar(sc.outroChar);
+      // 제품 이미지 복원 (영구 사본)
+      if (sc.productImageUrl) { setImportedImagePath(sc.productImageUrl); setProductPreview(sc.productImageUrl); hasImg = true; }
+      // 이전 대본 복원 → AI 대본 편집 화면으로
+      if (Array.isArray(sc.sections) && sc.sections.length) {
+        const LABELS: Record<string, string> = { hook: '인트로 (캐릭터)', main: '제품 소개 (제품+캐릭터)', cta: '마무리 (캐릭터)' };
+        setSections(sc.sections.map((s: { type: 'hook' | 'main' | 'cta'; text: string }) => ({ type: s.type, text: s.text, label: LABELS[s.type] || s.type })));
+        hasScript = true;
+      }
     } catch { /* noop */ }
-    setImportNote('불러온 설정을 채웠어요. 제품 이미지만 다시 올리거나 링크로 불러와 주세요.');
+    if (hasScript && hasImg) setPhase('script'); // 대본·이미지 다 있으면 바로 편집 화면
+    else setImportNote('이전 설정을 불러왔어요. 제품 이미지를 다시 올리거나 링크로 불러온 뒤 진행하세요.');
     window.history.replaceState({}, '', window.location.pathname);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
