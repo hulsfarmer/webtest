@@ -14,6 +14,7 @@ interface LibItem {
   description: string;
   tags: string[];
   error: string | null;
+  youtubeUrl: string;
   createdAt: string;
 }
 
@@ -26,7 +27,6 @@ export default function LibraryPage() {
   const [items, setItems] = useState<LibItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [ytConnected, setYtConnected] = useState(false);
-  const [ttConnected, setTtConnected] = useState(false);
   const [busyId, setBusyId] = useState('');
   const [msg, setMsg] = useState<Record<string, string>>({});
 
@@ -41,7 +41,6 @@ export default function LibraryPage() {
   useEffect(() => {
     load();
     fetch('/api/social/youtube/status').then((r) => r.json()).then((d) => setYtConnected(!!d.connected)).catch(() => {});
-    fetch('/api/social/tiktok/status').then((r) => r.json()).then((d) => setTtConnected(!!d.connected)).catch(() => {});
   }, []);
 
   const setItemMsg = (id: string, m: string) => setMsg((p) => ({ ...p, [id]: m }));
@@ -56,23 +55,16 @@ export default function LibraryPage() {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || '업로드 실패');
-      setItemMsg(it.id, `업로드 완료(비공개) → ${d.url}`);
+      // 링크를 아이템에 저장 → '링크 복사' 버튼 표시(새로고침 후에도 API가 반환)
+      setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, youtubeUrl: d.url } : x));
+      setItemMsg(it.id, '유튜브에 올렸어요! 링크를 복사해 공유하세요.');
     } catch (e) { setItemMsg(it.id, e instanceof Error ? e.message : String(e)); }
     finally { setBusyId(''); }
   };
 
-  const publishTikTok = async (it: LibItem) => {
-    setBusyId(it.id); setItemMsg(it.id, '');
-    try {
-      const r = await fetch('/api/social/tiktok/upload', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId: it.id }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || '업로드 실패');
-      setItemMsg(it.id, 'TikTok 드래프트로 전송 완료 — 틱톡 앱 알림에서 캡션 확인 후 게시하세요.');
-    } catch (e) { setItemMsg(it.id, e instanceof Error ? e.message : String(e)); }
-    finally { setBusyId(''); }
+  const copyLink = async (it: LibItem) => {
+    try { await navigator.clipboard.writeText(it.youtubeUrl); setItemMsg(it.id, '링크 복사됨!'); }
+    catch { setItemMsg(it.id, '복사 실패 — 링크를 길게 눌러 직접 복사하세요'); }
   };
 
   const copyDesc = async (it: LibItem) => {
@@ -108,10 +100,7 @@ export default function LibraryPage() {
           </div>
           <div className="flex items-center gap-1.5">
             <span className={`text-[11px] rounded-full px-2 py-0.5 ${ytConnected ? 'bg-green-900/60 text-green-300' : 'bg-neutral-800 text-neutral-400'}`}>
-              YouTube {ytConnected ? '연결됨' : '미연결'}
-            </span>
-            <span className={`text-[11px] rounded-full px-2 py-0.5 ${ttConnected ? 'bg-green-900/60 text-green-300' : 'bg-neutral-800 text-neutral-400'}`}>
-              TikTok {ttConnected ? '연결됨' : '미연결'}
+              유튜브 업로드 {ytConnected ? '가능' : '준비중'}
             </span>
           </div>
         </div>
@@ -152,23 +141,17 @@ export default function LibraryPage() {
                     <a href={it.videoUrl} download={`${it.title}_홍보영상.mp4`}
                       className="text-xs bg-neutral-800 hover:bg-neutral-700 rounded-lg px-3 py-2">⬇ 다운로드</a>
                   )}
-                  {it.videoUrl && ytConnected && (
+                  {it.videoUrl && it.youtubeUrl && (
+                    <>
+                      <button onClick={() => copyLink(it)} className="text-xs bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2">🔗 링크 복사</button>
+                      <a href={it.youtubeUrl} target="_blank" rel="noreferrer" className="text-xs text-sky-400 underline self-center">유튜브에서 보기</a>
+                    </>
+                  )}
+                  {it.videoUrl && !it.youtubeUrl && ytConnected && (
                     <button onClick={() => publish(it)} disabled={busyId === it.id}
                       className="text-xs bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-lg px-3 py-2">
-                      {busyId === it.id ? '업로드 중...' : '▶ YouTube 발행(비공개)'}
+                      {busyId === it.id ? '올리는 중...' : '▶ 유튜브에 올려 링크 받기'}
                     </button>
-                  )}
-                  {it.videoUrl && !ytConnected && (
-                    <a href="/api/social/youtube/connect" className="text-xs bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2">▶ YouTube 연결</a>
-                  )}
-                  {it.videoUrl && ttConnected && (
-                    <button onClick={() => publishTikTok(it)} disabled={busyId === it.id}
-                      className="text-xs bg-black hover:bg-neutral-800 border border-neutral-700 disabled:opacity-50 text-white rounded-lg px-3 py-2">
-                      {busyId === it.id ? '전송 중...' : '♪ TikTok 드래프트'}
-                    </button>
-                  )}
-                  {it.videoUrl && !ttConnected && (
-                    <a href="/api/social/tiktok/connect" className="text-xs bg-black hover:bg-neutral-800 border border-neutral-700 text-white rounded-lg px-3 py-2">♪ TikTok 연결</a>
                   )}
                   {it.description && (
                     <button onClick={() => copyDesc(it)} className="text-xs bg-neutral-800 hover:bg-neutral-700 rounded-lg px-3 py-2">📋 설명 복사</button>

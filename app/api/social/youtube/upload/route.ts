@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { uploadVideo, isConnected } from '@/lib/youtube';
-import { getJob } from '@/lib/jobStore';
+import { getJob, updateJob } from '@/lib/jobStore';
 import { buildYouTubeTags } from '@/lib/promo-description';
 import fs from 'fs';
 import path from 'path';
@@ -10,12 +10,10 @@ import path from 'path';
 /** 완성 영상(jobId)을 내 YouTube 채널에 업로드 */
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  const email = (session?.user?.email || '').toLowerCase();
-  const admins = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (!email || (admins.length && !admins.includes(email))) {
-    return NextResponse.json({ error: '관리자만 발행할 수 있습니다.' }, { status: 403 });
-  }
-  if (!isConnected()) return NextResponse.json({ error: 'YouTube 미연결' }, { status: 400 });
+  const userId = (session?.user as { id?: string })?.id ?? (process.env.NODE_ENV !== 'production' ? 'dev-local' : null);
+  if (!userId) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  // 업로드는 플랫폼(관리자) 채널로 올라감(중앙 호스팅). 미연결이면 관리자 연결 필요.
+  if (!isConnected()) return NextResponse.json({ error: '유튜브 업로드가 아직 준비 중입니다. 잠시 후 다시 시도해주세요.' }, { status: 400 });
 
   const body = await req.json().catch(() => ({}));
   const jobId = String(body.jobId || '').replace(/[^a-zA-Z0-9_-]/g, '');
@@ -40,7 +38,15 @@ export async function POST(req: NextRequest) {
 
   try {
     const videoId = await uploadVideo(filePath, { title, description, tags, privacyStatus });
-    return NextResponse.json({ ok: true, videoId, url: `https://youtu.be/${videoId}` });
+    const url = `https://youtu.be/${videoId}`;
+    // 링크를 job 에 저장 → 라이브러리에서 '링크 복사'가 새로고침 후에도 유지
+    try {
+      const job = await getJob(jobId);
+      const meta = job?.script ? JSON.parse(job.script) : {};
+      meta.youtubeUrl = url;
+      await updateJob(jobId, { script: JSON.stringify(meta) });
+    } catch { /* 저장 실패해도 업로드는 성공 */ }
+    return NextResponse.json({ ok: true, videoId, url });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('[youtube upload] 실패:', msg);
