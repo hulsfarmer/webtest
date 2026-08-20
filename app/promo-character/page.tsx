@@ -85,14 +85,16 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
   const [videoUrl, setVideoUrl] = useState('');
   const [jobId, setJobId] = useState('');
   const [error, setError] = useState('');
-  // 자동 발행 (YouTube)
+  // 발행 (YouTube / 홈 소개 / 다운로드)
   const [ytConnected, setYtConnected] = useState(false);
-  const [ytBusy, setYtBusy] = useState(false);
   const [ytMsg, setYtMsg] = useState('');
   const [ytUrl, setYtUrl] = useState('');
-  // 랜딩 소개 신청
-  const [showcaseBusy, setShowcaseBusy] = useState(false);
   const [showcaseDone, setShowcaseDone] = useState(false);
+  const [optYt, setOptYt] = useState(false);
+  const [optHome, setOptHome] = useState(false);
+  const [optDl, setOptDl] = useState(false);
+  const [pubRunning, setPubRunning] = useState(false);
+  const [pubMsg, setPubMsg] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputCls = 'w-full bg-neutral-950 border border-neutral-700 rounded-lg p-2.5 text-sm';
 
@@ -158,44 +160,48 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
     if (q) window.history.replaceState({}, '', '/promo-character');
   }, []);
 
-  async function submitShowcase() {
-    if (!jobId) return;
-    if (!window.confirm('이 영상을 shortsai 홈 화면에 소개용으로 올릴까요?\n관리자 승인 후 공개되며, 제품명·영상이 홈에 노출되는 것에 동의합니다.')) return;
-    setShowcaseBusy(true);
-    try {
-      const r = await fetch('/api/showcase/submit', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId, consent: true }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || '신청 실패');
-      setShowcaseDone(true);
-    } catch (e) { alert(e instanceof Error ? e.message : String(e)); }
-    finally { setShowcaseBusy(false); }
-  }
-
   // 유튜브 설명란: 나레이션 원문 + 구매 링크 + 제작 크레딧
   function buildDescription(): string {
     const narration = sections.map((s) => s.text).join('  ');
     return buildPromoDescription(narration, buyLink || importUrl);
   }
 
-  async function publishYouTube() {
-    if (!jobId) return;
-    setYtBusy(true); setYtMsg(''); setYtUrl('');
+  // 체크한 곳(유튜브·홈페이지·다운로드)으로 한 번에 발행
+  async function runPublish() {
+    if (!jobId || !videoUrl) return;
+    if (!optYt && !optHome && !optDl) { setPubMsg('올릴 곳을 하나 이상 선택하세요.'); return; }
+    if (optYt && !ytConnected) { setPubMsg('유튜브가 연결되지 않았어요. 먼저 “YouTube 연결하기”를 눌러주세요.'); return; }
+    setPubRunning(true); setPubMsg('');
+    const done: string[] = [];
     try {
-      const title = `${businessName} ${catchphrase}`.trim().slice(0, 90) || '제품 홍보';
-      const desc = buildDescription();
-      const r = await fetch('/api/social/youtube/upload', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId, title, description: desc, privacyStatus: 'private' }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || '업로드 실패');
-      setYtUrl(d.url); setYtMsg('YouTube 업로드 완료 (비공개) — 검토 후 공개로 바꾸세요.');
-    } catch (e) {
-      setYtMsg(e instanceof Error ? e.message : String(e));
-    } finally { setYtBusy(false); }
+      if (optDl) {
+        const a = document.createElement('a');
+        a.href = videoUrl; a.download = `${businessName || '홍보영상'}.mp4`;
+        document.body.appendChild(a); a.click(); a.remove();
+        done.push('다운로드');
+      }
+      if (optYt && !ytUrl) {
+        const title = `${businessName} ${catchphrase}`.trim().slice(0, 90) || '제품 홍보';
+        const r = await fetch('/api/social/youtube/upload', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobId, title, description: buildDescription(), privacyStatus: 'public' }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || '유튜브 업로드 실패');
+        setYtUrl(d.url); done.push('유튜브 공개');
+      }
+      if (optHome && !showcaseDone) {
+        const r = await fetch('/api/showcase/submit', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobId, consent: true }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || '홈 소개 신청 실패');
+        setShowcaseDone(true); done.push('홈 소개 신청');
+      }
+      setPubMsg(done.length ? `완료: ${done.join(', ')}` : '이미 처리된 항목이에요.');
+    } catch (e) { setPubMsg(e instanceof Error ? e.message : String(e)); }
+    finally { setPubRunning(false); }
   }
 
 
@@ -564,36 +570,37 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
             {videoUrl && <video src={videoUrl} controls autoPlay loop className="w-full max-w-[280px] rounded-xl mx-auto" />}
             {!videoUrl && !error && phase === 'form' && <div className="text-xs text-neutral-500">먼저 제품 정보를 넣고 &quot;AI 대본 생성&quot;을 누르세요.</div>}
 
-            {/* 완성 후 자동 발행 */}
+            {/* 완성 후 발행: 원하는 곳을 체크하고 한 번에 올리기 */}
             {videoUrl && (
-              <div className="mt-4 pt-4 border-t border-neutral-800">
-                <div className="text-sm font-semibold mb-2">자동 발행 (내 채널)</div>
-                {!ytConnected ? (
-                  <a href="/api/social/youtube/connect" className="inline-block text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2">
-                    ▶ YouTube 연결하기
-                  </a>
-                ) : (
-                  <button onClick={publishYouTube} disabled={ytBusy}
-                    className="text-sm bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-lg px-3 py-2">
-                    {ytBusy ? '업로드 중...' : '▶ YouTube에 올리기 (비공개)'}
-                  </button>
-                )}
-                {ytMsg && <div className="text-xs text-neutral-300 mt-2">{ytMsg}</div>}
-                {ytUrl && <a href={ytUrl} target="_blank" rel="noreferrer" className="text-xs text-sky-400 underline mt-1 block">{ytUrl}</a>}
-                <div className="text-[11px] text-neutral-500 mt-2">업로드는 비공개로 올라갑니다. 검토 후 YouTube 스튜디오에서 공개로 바꾸세요.</div>
+              <div className="mt-4 pt-4 border-t border-neutral-800 space-y-2.5">
+                <div className="text-sm font-semibold">이 영상, 어디에 올릴까요?</div>
 
-                {/* 랜딩 소개 신청 */}
-                <div className="mt-3 pt-3 border-t border-neutral-800">
-                  {!showcaseDone ? (
-                    <button onClick={submitShowcase} disabled={showcaseBusy}
-                      className="text-sm bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-lg px-3 py-2">
-                      {showcaseBusy ? '신청 중...' : '📢 랜딩에 소개하기'}
-                    </button>
-                  ) : (
-                    <div className="text-xs text-green-300">✅ 소개 신청 완료 — 관리자 승인 후 홈에 노출돼요.</div>
-                  )}
-                  <div className="text-[11px] text-neutral-500 mt-2">승인되면 shortsai 홈 화면에 소개됩니다 (제품명·영상 노출 동의).</div>
-                </div>
+                <label className="flex items-center gap-2.5 text-sm text-neutral-200 cursor-pointer">
+                  <input type="checkbox" className="w-4 h-4 accent-emerald-500" checked={optDl} onChange={(e) => setOptDl(e.target.checked)} />
+                  <span>⬇ 다운로드 <span className="text-neutral-500">(내 기기에 저장)</span></span>
+                </label>
+
+                <label className={`flex items-center gap-2.5 text-sm cursor-pointer ${ytUrl ? 'text-neutral-500' : 'text-neutral-200'}`}>
+                  <input type="checkbox" className="w-4 h-4 accent-red-500" checked={optYt} disabled={!!ytUrl} onChange={(e) => setOptYt(e.target.checked)} />
+                  <span>▶ 유튜브에 올리기 <span className="text-neutral-500">(바로 공개)</span>{ytUrl && ' — 완료'}</span>
+                </label>
+                {!ytConnected && (
+                  <a href="/api/social/youtube/connect" className="block text-xs text-sky-400 underline ml-6">먼저 YouTube 연결하기 →</a>
+                )}
+                {ytUrl && <a href={ytUrl} target="_blank" rel="noreferrer" className="block text-xs text-sky-400 underline ml-6 break-all">{ytUrl}</a>}
+
+                <label className={`flex items-center gap-2.5 text-sm cursor-pointer ${showcaseDone ? 'text-neutral-500' : 'text-neutral-200'}`}>
+                  <input type="checkbox" className="w-4 h-4 accent-purple-500" checked={optHome} disabled={showcaseDone} onChange={(e) => setOptHome(e.target.checked)} />
+                  <span>📢 홈페이지에 소개하기 <span className="text-neutral-500">(승인 후 노출)</span>{showcaseDone && ' — 신청됨'}</span>
+                </label>
+                <div className="text-[11px] text-neutral-500 ml-6 -mt-1">홈페이지 소개는 관리자 승인 후 노출되며, 체크 시 제품명·영상 노출에 동의합니다.</div>
+
+                <button onClick={runPublish} disabled={pubRunning}
+                  className="w-full mt-1 py-2.5 rounded-lg text-white font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50">
+                  {pubRunning ? '처리 중...' : '선택한 곳에 올리기'}
+                </button>
+                {pubMsg && <div className="text-xs text-neutral-300">{pubMsg}</div>}
+                {ytMsg && <div className="text-xs text-neutral-300">{ytMsg}</div>}
               </div>
             )}
           </div>
