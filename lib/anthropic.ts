@@ -122,6 +122,10 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
   const { businessName, businessType, sellingPoints, cta, duration, tone, mode, eventDate, location, characterName } = input;
   // 한국어 나레이션 속도 ≈ 초당 5.5자(공백 포함). 목표 길이에 맞춰 전체 글자 수 예산 산출.
   const charBudget = Math.max(60, Math.round(duration * 5.5));
+  // 구간별 목표 글자수 (인트로 22% / 제품소개 56% / 마무리 22%)
+  const hookChars = Math.round(charBudget * 0.22);
+  const mainChars = Math.round(charBudget * 0.56);
+  const ctaChars = Math.round(charBudget * 0.22);
   // 발표 캐릭터 이름이 있으면 인트로(hook)에서 이름을 각인. 자기소개형/훅녹임은 제품·톤에 맞춰 AI 판단.
   const nameRule = characterName
     ? `\n- **발표자(캐릭터) 이름은 "${characterName}"** — 첫 문장(hook)에서 이 이름으로 화자를 자연스럽게 소개해줘. 제품·톤에 맞게 '안녕하세요, ${characterName}입니다…' 자기소개형이든, 강한 훅 안에 이름을 녹이든 AI가 판단하되 **이름은 반드시 한 번, 어색하지 않게**`
@@ -180,7 +184,7 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
 - **이모지는 절대 사용하지 마** — 제목·문장·CTA 어디에도 이모지 금지 (텍스트만)
 - **각 문장에서 핵심 단어 2개 정도를 각각 별표(*)로 감싸** 강조 (각각 한 단어씩, 예: '매일 *직접* 구운 *빵*'). 조사 빼고 명사·형용사 위주로 짧게
 - bgKeyword는 업종(${businessType})에 어울리는 영어 스톡영상 검색어
-- **전체 나레이션(모든 구간 text 합)을 한국어 약 ${charBudget}자(±10%)로 맞춰줘** — 총 ${duration}초 길이 기준(초당 약 5.5자). 짧으면 내용을 늘리고 길면 줄여서 글자 수를 지켜줘${nameRule}`;
+- ⚠️ **길이 규칙(가장 중요, 반드시 준수)**: 총 ${duration}초 영상이야(초당 약 5.5자). **전체 나레이션(모든 구간 text 합)을 한국어 ${charBudget}자 이내로 반드시 맞춰줘.** 구간별 목표 — 인트로(hook) ~${hookChars}자, 제품소개(main 전체 합) ~${mainChars}자, 마무리(cta) ~${ctaChars}자. **초과 절대 금지** (초과하면 영상이 길어지고 비용이 올라감). 내용이 많으면 가장 강한 핵심만 남기고 과감히 쳐내서 글자 수를 지켜줘 — 길게 늘어놓지 말 것${nameRule}`;
 
   const eventPrompt = `행사(이벤트) 홍보 영상 스크립트를 한국어로 작성해주세요.
 
@@ -238,7 +242,7 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
 - **이모지는 절대 사용하지 마** — 제목·문장·CTA 어디에도 이모지 금지 (텍스트만)
 - **각 문장에서 핵심 단어 2개 정도를 각각 별표(*)로 감싸** 강조 (각각 한 단어씩, 예: '이번 *주말* *단이틀* 놓치지 마세요'). 조사 빼고 명사·형용사 위주로 짧게
 - bgKeyword는 행사 분위기(${businessType})에 어울리는 영어 스톡영상 검색어
-- **전체 나레이션(모든 구간 text 합)을 한국어 약 ${charBudget}자(±10%)로 맞춰줘** — 총 ${duration}초 길이 기준(초당 약 5.5자). 짧으면 내용을 늘리고 길면 줄여서 글자 수를 지켜줘${nameRule}`;
+- ⚠️ **길이 규칙(가장 중요, 반드시 준수)**: 총 ${duration}초 영상이야(초당 약 5.5자). **전체 나레이션(모든 구간 text 합)을 한국어 ${charBudget}자 이내로 반드시 맞춰줘.** 구간별 목표 — 인트로(hook) ~${hookChars}자, 제품소개(main 전체 합) ~${mainChars}자, 마무리(cta) ~${ctaChars}자. **초과 절대 금지** (초과하면 영상이 길어지고 비용이 올라감). 내용이 많으면 가장 강한 핵심만 남기고 과감히 쳐내서 글자 수를 지켜줘 — 길게 늘어놓지 말 것${nameRule}`;
 
   const message = await getClient().messages.create({
     model: 'claude-haiku-4-5',

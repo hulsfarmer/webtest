@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
 import { buildPromoDescription } from '@/lib/promo-description';
 
 // 목소리 = google 보이스 + 피치(반음). Azure 엔진이면 engine/azure* 로 네이티브 톤.
@@ -366,7 +365,6 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">제품 홍보 캐릭터 영상{isVS ? '' : ' (고급)'}</h1>
-          <Link href="/promo-character/library" className="text-sm text-sky-400 hover:text-sky-300 border border-sky-800/60 rounded-lg px-3 py-1.5">📁 내 영상</Link>
         </div>
         <p className="text-sm text-neutral-400 mt-1 mb-8">
           제품 정보 → AI 대본(검토·편집) → 캐릭터 홍보 쇼츠 (인트로 → 제품+코너 캐릭터 → 마무리, 상단 제품명 고정)
