@@ -62,31 +62,30 @@ export default function CreditChargeCard() {
     setLoading(false);
   };
 
-  const card: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 24, maxWidth: 420, margin: '0 auto' };
-  const input: CSSProperties = { width: '100%', padding: '11px 12px', borderRadius: 11, background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'inherit', fontSize: 14, boxSizing: 'border-box' };
+  const card: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, padding: 24, maxWidth: 360, margin: '0 auto' };
+  const input: CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, boxSizing: 'border-box', textAlign: 'center' };
+  const quick: CSSProperties = { flex: 1, padding: '8px 0', borderRadius: 9, fontFamily: 'inherit', fontWeight: 700, fontSize: 13, cursor: 'pointer' };
 
   return (
     <>
-      <div style={card}>
-        <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 4, color: 'var(--text)' }}>크레딧 충전</div>
-        <div style={{ color: 'var(--text-dim)', fontSize: 13.5, marginBottom: 16 }}>필요한 만큼 · 10크레딧당 2,000원 · 안 만료 · 자동결제 없음</div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+      {/* sa-prices 그리드 첫 칸 — 카드 톤을 plans(.sa-price)와 맞춤 */}
+      <div className="sa-price" style={{ display: 'flex', flexDirection: 'column' }}>
+        <h3>크레딧 충전</h3>
+        <div className="who" style={{ marginBottom: 12 }}>필요한 만큼 · 200원/크레딧</div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
           {[10, 20, 30].map((n) => (
-            <button key={n} onClick={() => setQty(n)} className={`sa-btn ${qty === n ? 'grad' : 'ghost'}`} style={{ flex: 1, justifyContent: 'center' }}>{n}크레딧</button>
+            <button key={n} onClick={() => setQty(n)} style={{ ...quick, border: `1px solid ${qty === n ? 'var(--purple)' : 'var(--border)'}`, background: qty === n ? 'var(--purple)' : 'var(--surface-2)', color: qty === n ? '#fff' : 'var(--text-dim)' }}>{n}</button>
           ))}
         </div>
-        <label style={{ display: 'block', color: 'var(--text-faint)', fontSize: 12.5, marginBottom: 6 }}>직접 입력 (10 이상)</label>
         <input type="number" min={10} max={2000} value={qty}
           onChange={(e) => setQty(Math.max(0, Math.min(2000, parseInt(e.target.value) || 0)))}
-          style={{ ...input, marginBottom: 16 }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <span style={{ color: 'var(--text-dim)', fontSize: 14 }}>결제 금액</span>
-          <span style={{ fontWeight: 800, fontSize: 26, color: 'var(--text)' }}>₩{amount.toLocaleString()}</span>
+          style={input} aria-label="크레딧 수 직접 입력 (10 이상)" />
+        <div style={{ margin: '12px 0 16px', display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 6 }}>
+          <span style={{ fontWeight: 800, fontSize: 26, letterSpacing: '-.02em', color: 'var(--text)' }}>₩{amount.toLocaleString()}</span>
         </div>
-        <button onClick={open} disabled={loading || q < 10} className="sa-btn grad lg" style={{ width: '100%', justifyContent: 'center', opacity: loading ? 0.6 : 1 }}>
-          {loading ? '처리 중...' : `${q}크레딧 충전하기`}
+        <button onClick={open} disabled={loading || q < 10} className="sa-btn grad" style={{ marginTop: 'auto', width: '100%', justifyContent: 'center', opacity: loading ? 0.6 : 1 }}>
+          {loading ? '처리 중...' : '충전하기'}
         </button>
-        <div style={{ color: 'var(--text-faint)', fontSize: 12, marginTop: 12, textAlign: 'center' }}>슬라이드쇼·로고 1크레딧 · 캐릭터 영상 8크레딧부터</div>
       </div>
 
       {modal && (

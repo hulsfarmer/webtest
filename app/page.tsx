@@ -151,6 +151,7 @@ export default function Home() {
             <p>가입하면 10크레딧 무료. 표시 가격은 VAT 포함 실청구가입니다.</p>
           </div>
           <div className="sa-prices">
+            <CreditChargeCard />
             <div className="sa-price">
               <h3>무료</h3>
               <div className="amt">0<span>원</span></div>
@@ -173,9 +174,9 @@ export default function Home() {
               <Link className="sa-btn ghost" href="/studio/billing">구독하기</Link>
             </div>
           </div>
-          <div style={{ marginTop: 40 }}>
-            <CreditChargeCard />
-          </div>
+          <p style={{ textAlign: 'center', marginTop: 18, fontSize: 13, color: 'var(--text-faint)' }}>
+            크레딧 사용 — 사진 홍보영상 · 로고 <b style={{ color: 'var(--text-dim)' }}>1크레딧</b> · 캐릭터 홍보영상 <b style={{ color: 'var(--text-dim)' }}>8크레딧부터</b> (길이·구간에 따라)
+          </p>
         </div>
       </section>
 
