@@ -352,6 +352,109 @@ export async function composePromoCharacter(opts: {
   try { fs.unlinkSync(baseOut); } catch { /* noop */ }
 }
 
+/**
+ * 구간별 캐릭터 on/off용 — 한 구간(인트로/제품/마무리) 독립 클립 생성(1080x1920).
+ * charVideoPath 있으면 캐릭터(인트로·아웃트로=풀샷, 제품=코너 PiP), 없으면 제품+헤더만.
+ * 구간별로 짧게 인코딩 → OOM 안전. 오디오=캐릭터영상 오디오(립싱크 동기) 또는 Gemini 오디오.
+ */
+export async function buildSegmentClip(opts: {
+  kind: 'intro' | 'product' | 'outro';
+  charVideoPath?: string;
+  audioPath: string;
+  productImagePath: string;
+  headerPath: string;
+  ctaPath?: string;
+  pipMaskPath: string;
+  ringPath: string;
+  durationSec: number;
+  subtitles?: { path: string; start: number; end: number }[];
+  outPath: string;
+}): Promise<void> {
+  const ffmpeg = require('ffmpeg-static') as string;
+  const { kind, charVideoPath, audioPath, productImagePath, headerPath, ctaPath, pipMaskPath, ringPath, durationSec, outPath } = opts;
+  const subs = opts.subtitles || [];
+  const charOn = !!charVideoPath;
+  const isProduct = kind === 'product';
+  const showCta = kind === 'outro' && !!ctaPath;
+
+  const inputs: string[] = [];
+  const idx: Record<string, number> = {};
+  const addInput = (arg: string, key: string) => { idx[key] = inputs.length; inputs.push(arg); };
+  addInput(`-loop 1 -i "${productImagePath}"`, 'prod');
+  if (charOn) addInput(`-i "${charVideoPath}"`, 'char');
+  addInput(`-loop 1 -i "${headerPath}"`, 'header');
+  if (showCta) addInput(`-loop 1 -i "${ctaPath}"`, 'cta');
+  if (charOn && isProduct) { addInput(`-loop 1 -i "${pipMaskPath}"`, 'mask'); addInput(`-loop 1 -i "${ringPath}"`, 'ring'); }
+
+  const parts: string[] = [];
+  const prodBg = () => parts.push(`[${idx.prod}:v]scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=white,setsar=1[prodbg]`);
+  let vlabel: string;
+  if (charOn && !isProduct) {
+    // 인트로/아웃트로 캐릭터 풀샷 (제품 배경 미사용)
+    parts.push(`[${idx.char}:v]scale=${W}:${H - HEADER_BAND_H}:force_original_aspect_ratio=increase,crop=${W}:${H - HEADER_BAND_H}:0:0,setsar=1,pad=${W}:${H}:0:${HEADER_BAND_H}:color=black[base0]`);
+    vlabel = 'base0';
+  } else if (charOn && isProduct) {
+    prodBg();
+    parts.push(`[${idx.char}:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,pad=900:1280:90:0:color=white,crop=900:900:0:${CROP_Y},scale=${PIP}:${PIP}[pipraw]`);
+    parts.push(`[pipraw][${idx.mask}:v]alphamerge[pipc]`);
+    parts.push(`[${idx.ring}:v][pipc]overlay=(W-w)/2:(H-h)/2[pipring]`);
+    parts.push(`[prodbg][pipring]overlay=${PIPX}:${PIPY}[base0]`);
+    vlabel = 'base0';
+  } else {
+    // 캐릭터 없음 = 제품 배경만
+    prodBg();
+    vlabel = 'prodbg';
+  }
+  parts.push(`[${vlabel}][${idx.header}:v]overlay=0:0[vh]`); vlabel = 'vh';
+  if (showCta) { parts.push(`[${vlabel}][${idx.cta}:v]overlay=0:0[vc]`); vlabel = 'vc'; }
+
+  let audioMap: string;
+  if (charOn) { audioMap = `${idx.char}:a?`; }
+  else { addInput(`-i "${audioPath}"`, 'audio'); audioMap = `${idx.audio}:a?`; }
+
+  const baseOut = subs.length ? `${outPath}.base.mp4` : outPath;
+  await execAsync([
+    `"${ffmpeg}" -y -loglevel error`, inputs.join(' '),
+    `-filter_complex "${parts.join(';')}"`,
+    `-map "[${vlabel}]" -map "${audioMap}" -r 30 -t ${durationSec.toFixed(2)}`,
+    `-c:v libx264 -pix_fmt yuv420p -preset ultrafast -threads 1 -g 60`,
+    `-c:a aac -ar 44100 -movflags +faststart`, `"${baseOut}"`,
+  ].join(' '), { maxBuffer: 1024 * 1024 * 64 });
+
+  if (!subs.length) return;
+  const subInputs = subs.map((s) => `-loop 1 -t ${durationSec.toFixed(2)} -i "${s.path}"`).join(' ');
+  const subParts: string[] = [];
+  let prev = '0:v';
+  subs.forEach((s, i) => {
+    const out = i === subs.length - 1 ? 'outv' : `sub${i}`;
+    subParts.push(`[${prev}][${1 + i}:v]overlay=0:${SUB_Y}:enable='between(t,${s.start.toFixed(2)},${s.end.toFixed(2)})'[${out}]`);
+    prev = out;
+  });
+  await execAsync([
+    `"${ffmpeg}" -y -loglevel error`, `-i "${baseOut}"`, subInputs,
+    `-filter_complex "${subParts.join(';')}"`,
+    `-map "[outv]" -map "0:a?" -r 30`,
+    `-c:v libx264 -pix_fmt yuv420p -preset ultrafast -threads 1 -g 60`,
+    `-c:a copy -movflags +faststart`, `"${outPath}"`,
+  ].join(' '), { maxBuffer: 1024 * 1024 * 64 });
+  try { fs.unlinkSync(baseOut); } catch { /* noop */ }
+}
+
+/** 여러 구간 클립을 하나로 이어붙임(재인코딩, 포맷 통일). */
+export async function concatSegments(paths: string[], outPath: string): Promise<void> {
+  const ffmpeg = require('ffmpeg-static') as string;
+  const inputs = paths.map((p) => `-i "${p}"`).join(' ');
+  const n = paths.length;
+  const chains = paths.map((_, i) => `[${i}:v][${i}:a]`).join('');
+  await execAsync([
+    `"${ffmpeg}" -y -loglevel error`, inputs,
+    `-filter_complex "${chains}concat=n=${n}:v=1:a=1[outv][outa]"`,
+    `-map "[outv]" -map "[outa]" -r 30`,
+    `-c:v libx264 -pix_fmt yuv420p -preset ultrafast -threads 1 -g 60`,
+    `-c:a aac -ar 44100 -movflags +faststart`, `"${outPath}"`,
+  ].join(' '), { maxBuffer: 1024 * 1024 * 64 });
+}
+
 /** 파일 길이(초) — ffmpeg-static 엔 ffprobe 가 없어 `ffmpeg -i` stderr 의 Duration 파싱 */
 /**
  * 캐릭터 이미지를 9:16(720x1280)로 정규화. **머리(위) 고정 cover-crop**:

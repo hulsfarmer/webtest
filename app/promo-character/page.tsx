@@ -62,6 +62,10 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
   const [voiceKey, setVoiceKey] = useState(engine === 'visionstory' ? 'aoede' : 'minji');
   const [duration, setDuration] = useState('20');
   const [speed, setSpeed] = useState('1.1');
+  // 구간별 캐릭터 on/off (VisionStory 전용). 끄면 그 구간은 캐릭터 없이 제품+내레이션만 → 저렴.
+  const [introChar, setIntroChar] = useState(true);
+  const [productChar, setProductChar] = useState(true);
+  const [outroChar, setOutroChar] = useState(true);
   const [preset, setPreset] = useState('preset-jieun');
   const [charFile, setCharFile] = useState<File | null>(null);
   const [charPreview, setCharPreview] = useState('');
@@ -242,6 +246,9 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
       fd.append('emotion', 'cheerful');
       fd.append('duration', duration);
       fd.append('speed', '1.0'); // VisionStory는 자체 페이싱 자연스러움
+      fd.append('introChar', introChar ? '1' : '0');
+      fd.append('productChar', productChar ? '1' : '0');
+      fd.append('outroChar', outroChar ? '1' : '0');
     } else {
       const v = VOICES.find((x) => x.id === voiceKey) ?? VOICES[0];
       fd.append('voice', v.google);
@@ -299,6 +306,24 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
   }
 
   const dot = (s: StepState) => s === 'done' ? '완료' : s === 'running' ? '진행' : s === 'failed' ? '실패' : '대기';
+
+  // 구간별 캐릭터 on/off 크레딧 예상 (VisionStory). 텍스트 길이→예상 시간→크레딧.
+  function estimateVs() {
+    const txt = (t: Section['type']) => sections.filter((s) => s.type === t).map((s) => s.text).join(' ').trim();
+    const segs = [
+      { key: 'intro', label: '인트로', text: txt('hook'), on: introChar },
+      { key: 'product', label: '제품소개', text: txt('main'), on: productChar },
+      { key: 'outro', label: '마무리', text: txt('cta'), on: outroChar },
+    ].filter((s) => s.text.length);
+    const dur = (t: string) => t.length / 4.5;              // 한국어 ~4.5자/초
+    const blocks = (d: number) => Math.max(1, Math.ceil(d / 15)); // 15초 단위 올림
+    const lines = segs.map((s) => ({ ...s, d: dur(s.text), c: s.on ? blocks(dur(s.text)) * 4 : 0 }));
+    const allOn = segs.length > 0 && segs.every((s) => s.on);
+    const total = allOn
+      ? blocks(segs.reduce((a, s) => a + dur(s.text), 0)) * 4  // 전부 캐릭터=합쳐서 1영상
+      : lines.reduce((a, l) => a + l.c, 0);
+    return { lines, total, allOn, won: total * 115 };
+  }
 
   return (
     <div className={embedded ? 'st-toolskin rounded-2xl px-4 py-8' : 'min-h-screen bg-neutral-950 text-neutral-100 px-4 py-10'}>
@@ -449,6 +474,36 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                   </div>
                 )}
               </div>
+
+              {isVS && (() => {
+                const est = estimateVs();
+                const segState: Record<string, [boolean, (v: boolean) => void]> = {
+                  intro: [introChar, setIntroChar], product: [productChar, setProductChar], outro: [outroChar, setOutroChar],
+                };
+                return (
+                  <div className="pt-3 border-t border-neutral-800 space-y-2">
+                    <div className="text-sm font-semibold">구간별 캐릭터 · 예상 크레딧</div>
+                    <p className="text-xs text-neutral-500">캐릭터를 끄면 그 구간은 제품·자막·내레이션만 나와요 (더 저렴).</p>
+                    {est.lines.map((l) => {
+                      const [on, set] = segState[l.key];
+                      return (
+                        <div key={l.key} className="flex items-center justify-between text-sm">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" checked={on} onChange={(e) => set(e.target.checked)} className="accent-emerald-500" />
+                            <span>{l.label} <span className="text-neutral-500">~{Math.round(l.d)}초</span></span>
+                          </label>
+                          <span className={on ? 'text-emerald-300' : 'text-neutral-500'}>{on ? `${l.c}크레딧` : '캐릭터 없음 · 무료'}</span>
+                        </div>
+                      );
+                    })}
+                    <div className="flex items-center justify-between pt-2 border-t border-neutral-800 text-sm font-semibold">
+                      <span>예상 합계</span>
+                      <span className="text-emerald-300">{est.total}크레딧 <span className="text-neutral-400 font-normal">(약 ₩{est.won.toLocaleString()})</span></span>
+                    </div>
+                    {est.allOn && <p className="text-[11px] text-neutral-500">전부 캐릭터 → 한 영상으로 합쳐 가장 저렴하게 생성돼요.</p>}
+                  </div>
+                );
+              })()}
 
               <button onClick={onGenerateVideo} disabled={busy}
                 className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-neutral-950 font-semibold rounded-lg py-3">

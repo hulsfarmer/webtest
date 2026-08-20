@@ -9,7 +9,7 @@ import { generatePromoScript, generateYouTubeTags, PromoInput, ScriptSection } f
 import { buildYouTubeTags } from '@/lib/promo-description';
 import { createVisionStoryAvatar, submitVisionStoryVideo, pollVisionStoryVideo } from '@/lib/visionstory';
 import { generateGeminiAudio } from '@/lib/gemini-tts';
-import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, probeDuration, sanitizeScript } from '@/lib/promo-compose';
+import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, buildSegmentClip, concatSegments, probeDuration, sanitizeScript } from '@/lib/promo-compose';
 import { buildAlignedSubtitles, applySpeed } from '@/lib/promo-subtitles';
 // import { canGenerate, incrementUsage } from '@/lib/usageStore'; // TODO(credits)
 
@@ -29,6 +29,9 @@ interface CharVsJobInput extends PromoInput {
   speed?: number;
   sections?: ScriptSection[];
   buyLink?: string;
+  introChar?: boolean;   // 구간별 캐릭터 on/off (기본 on)
+  productChar?: boolean;
+  outroChar?: boolean;
 }
 
 async function processPromoCharacterVsJob(jobId: string, input: CharVsJobInput) {
@@ -72,59 +75,84 @@ async function processPromoCharacterVsJob(jobId: string, input: CharVsJobInput) 
     let f2 = L > 0 ? (hookT.length + mainT.length) / L : 0.72;
     if (!(f1 > 0.08 && f2 > f1 + 0.1 && f2 < 0.92)) { f1 = 0.28; f2 = 0.72; }
 
-    // 2) 나레이션 음성 — 우리가 Gemini(광고 톤)로 직접 생성 (페르소나별 음성+스타일)
-    updateJob(jobId, { status: 'generating_audio', progress: 30, steps: { script: 'done', audio: 'running', video: 'pending' } });
-    const speakText = narration.replace(/[A-Z]{2,}/g, (m) => m.toLowerCase()); // 전대문자 철자읽기 방지
-    const audioPath = path.join(tmpDir, `${jobId}.mp3`);
-    subPaths.push(audioPath);
-    await generateGeminiAudio(speakText, input.voiceId, audioPath);
-    const audioBuf = fs.readFileSync(audioPath);
-
-    // 3) VisionStory 캐릭터 영상 — 우리 오디오를 그대로 립싱크(voice_change off)
-    updateJob(jobId, { status: 'generating_video', progress: 45, steps: { script: 'done', audio: 'done', video: 'running' } });
-    const avatarId = await createVisionStoryAvatar(input.characterBuf, 'image/png');
-    const videoId = await submitVisionStoryVideo({
-      avatarId, audioBuf, model: 'vs_character_v4', aspectRatio: '9:16', resolution: '720p',
-    });
-    const charBuf = await pollVisionStoryVideo(videoId, () => updateJob(jobId, { progress: 70, status: 'generating_video' }));
-    fs.writeFileSync(charVideoPath, charBuf);
-
-    // 2.5) 배속 (기본 1.0 = 그대로). VisionStory는 자체 페이싱이 자연스러워 배속 불필요.
-    updateJob(jobId, { progress: 82, steps: { script: 'done', audio: 'done', video: 'running' } });
-    const speed = Math.min(2.0, Math.max(0.5, input.speed || 1.0));
-    let effCharPath = charVideoPath;
-    if (Math.abs(speed - 1.0) > 0.01) {
-      const spedPath = path.join(tmpDir, `${jobId}_char_sped.mp4`);
-      await applySpeed(charVideoPath, speed, spedPath);
-      effCharPath = spedPath;
-      subPaths.push(spedPath);
-    }
-
-    // 3) 인터컷 + PiP 합성 + 나레이션 자막 (STT는 VisionStory 영상 오디오에서 직접 추출·정렬)
-    updateJob(jobId, { progress: 88 });
-    let D = await probeDuration(effCharPath);
-    if (!(D > 1)) D = await probeDuration(charVideoPath);
-    const t1 = +(D * f1).toFixed(2), t2 = +(D * f2).toFixed(2);
-
-    const { cues, mode } = await buildAlignedSubtitles(effCharPath, narration, D, tmpDir, jobId, { sttSource: audioPath, timeScale: 1 / speed });
-    const subtitles: { path: string; start: number; end: number }[] = [];
-    for (let i = 0; i < cues.length; i++) {
-      const sp = path.join(tmpDir, `${jobId}_sub${i}.png`);
-      await renderSubtitle(cues[i].text, sp);
-      subtitles.push({ path: sp, start: +cues[i].start.toFixed(2), end: +cues[i].end.toFixed(2) });
-    }
-    subPaths.push(...subtitles.map((s) => s.path));
-    console.log(`[PromoCharVsJob ${jobId}] 자막 ${subtitles.length}개 (${mode}), speed ${speed}`);
-
+    // 2) 공통 에셋 (헤더·CTA·PiP) + 헬퍼
     await Promise.all([
       renderHeaderOverlay(input.overlayTitle, input.catchphrase, input.headerTheme, headerPath),
       renderCtaOverlay(input.overlayCta, ctaPath),
       renderPipAssets(maskPath, ringPath),
     ]);
-    await composePromoCharacter({
-      productImagePath: input.productImagePath, characterVideoPath: effCharPath,
-      headerPath, ctaPath, pipMaskPath: maskPath, ringPath, durationSec: +D.toFixed(2), t1, t2, outPath, subtitles,
-    });
+    const speed = Math.min(2.0, Math.max(0.5, input.speed || 1.0));
+    // 구간별 캐릭터 on/off (기본 전부 on)
+    const introChar = input.introChar !== false, productChar = input.productChar !== false, outroChar = input.outroChar !== false;
+    const allChar = introChar && productChar && outroChar;
+
+    const mkAudio = async (txt: string, suffix: string) => {
+      const p = path.join(tmpDir, `${jobId}_${suffix}.mp3`); subPaths.push(p);
+      await generateGeminiAudio(txt.replace(/[A-Z]{2,}/g, (m) => m.toLowerCase()), input.voiceId, p);
+      return p;
+    };
+    const mkChar = async (audioP: string, suffix: string) => {
+      const av = await createVisionStoryAvatar(input.characterBuf, 'image/png');
+      const vid = await submitVisionStoryVideo({ avatarId: av, audioBuf: fs.readFileSync(audioP), model: 'vs_character_v4', aspectRatio: '9:16', resolution: '720p' });
+      const cb = await pollVisionStoryVideo(vid, () => updateJob(jobId, { progress: 60, status: 'generating_video' }));
+      const cp = path.join(tmpDir, `${jobId}_${suffix}.mp4`); fs.writeFileSync(cp, cb); subPaths.push(cp);
+      return cp;
+    };
+    const mkSubs = async (refPath: string, text: string, dur: number, suffix: string, sttSrc: string, timeScale = 1) => {
+      const { cues } = await buildAlignedSubtitles(refPath, text, dur, tmpDir, `${jobId}_${suffix}`, { sttSource: sttSrc, timeScale });
+      const arr: { path: string; start: number; end: number }[] = [];
+      for (let i = 0; i < cues.length; i++) {
+        const sp = path.join(tmpDir, `${jobId}_${suffix}_sub${i}.png`);
+        await renderSubtitle(cues[i].text, sp); subPaths.push(sp);
+        arr.push({ path: sp, start: +cues[i].start.toFixed(2), end: +cues[i].end.toFixed(2) });
+      }
+      return arr;
+    };
+
+    if (allChar) {
+      // 전부 캐릭터 → 단일 영상 (15초 올림 오버헤드 없음 = 제일 저렴)
+      updateJob(jobId, { status: 'generating_audio', progress: 30, steps: { script: 'done', audio: 'running', video: 'pending' } });
+      const audioP = await mkAudio(narration, 'a');
+      updateJob(jobId, { status: 'generating_video', progress: 45, steps: { script: 'done', audio: 'done', video: 'running' } });
+      let charP = await mkChar(audioP, 'char');
+      if (Math.abs(speed - 1.0) > 0.01) { const sp = path.join(tmpDir, `${jobId}_sped.mp4`); await applySpeed(charP, speed, sp); subPaths.push(sp); charP = sp; }
+      updateJob(jobId, { progress: 88 });
+      let D = await probeDuration(charP); if (!(D > 1)) D = await probeDuration(audioP);
+      const t1 = +(D * f1).toFixed(2), t2 = +(D * f2).toFixed(2);
+      const subs = await mkSubs(charP, narration, D, 'a', audioP, 1 / speed);
+      await composePromoCharacter({
+        productImagePath: input.productImagePath, characterVideoPath: charP,
+        headerPath, ctaPath, pipMaskPath: maskPath, ringPath, durationSec: +D.toFixed(2), t1, t2, outPath, subtitles: subs,
+      });
+    } else {
+      // 구간별 — 켠 구간만 VisionStory(유료), 끈 구간은 Gemini 오디오만(거의 무료)
+      const segDefs = ([
+        { kind: 'intro' as const, text: hookT, on: introChar },
+        { kind: 'product' as const, text: mainT, on: productChar },
+        { kind: 'outro' as const, text: ctaT, on: outroChar },
+      ]).filter((s) => s.text && s.text.trim().length);
+      const clips: string[] = [];
+      let pi = 35;
+      for (const seg of segDefs) {
+        updateJob(jobId, { status: 'generating_video', progress: pi, steps: { script: 'done', audio: 'running', video: 'running' } });
+        pi = Math.min(85, pi + 18);
+        const aP = await mkAudio(seg.text, seg.kind);
+        const charP = seg.on ? await mkChar(aP, `${seg.kind}_char`) : undefined;
+        const D = await probeDuration(seg.on ? (charP as string) : aP);
+        const subs = await mkSubs(seg.on ? (charP as string) : aP, seg.text, D, seg.kind, aP);
+        const clipP = path.join(tmpDir, `${jobId}_clip_${seg.kind}.mp4`); subPaths.push(clipP);
+        await buildSegmentClip({
+          kind: seg.kind, charVideoPath: charP, audioPath: aP,
+          productImagePath: input.productImagePath, headerPath,
+          ctaPath: seg.kind === 'outro' ? ctaPath : undefined,
+          pipMaskPath: maskPath, ringPath, durationSec: +D.toFixed(2), subtitles: subs, outPath: clipP,
+        });
+        clips.push(clipP);
+      }
+      updateJob(jobId, { progress: 90 });
+      if (clips.length === 1) fs.copyFileSync(clips[0], outPath);
+      else await concatSegments(clips, outPath);
+    }
 
     cleanup();
     updateJob(jobId, { status: 'done', progress: 100, steps: { script: 'done', audio: 'done', video: 'done' }, videoUrl: `/api/video/${jobId}` });
@@ -160,6 +188,9 @@ export async function POST(req: NextRequest) {
   const productFile = fd.get('product') as File | null;
   const productPath = ((fd.get('productPath') as string | null) ?? '').trim();
   const buyLink = ((fd.get('buyLink') as string | null) ?? '').trim();
+  const introChar = ((fd.get('introChar') as string | null) ?? '1') !== '0';
+  const productChar = ((fd.get('productChar') as string | null) ?? '1') !== '0';
+  const outroChar = ((fd.get('outroChar') as string | null) ?? '1') !== '0';
 
   let sections: ScriptSection[] | undefined;
   const sectionsRaw = fd.get('sections') as string | null;
@@ -210,6 +241,7 @@ export async function POST(req: NextRequest) {
     voiceId, emotion, characterBuf, productImagePath,
     overlayTitle: businessName, overlayCta: cta,
     catchphrase, headerTheme, speed, characterName, sections, buyLink,
+    introChar, productChar, outroChar,
   }).catch(console.error);
 
   return NextResponse.json({ jobId });
