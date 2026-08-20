@@ -76,7 +76,10 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
       ytTags = buildYouTubeTags(input.businessName || '', input.catchphrase || '', narration);
     }
     // 라이브러리·유튜브 설명용 메타 저장 (나레이션 + 구매 링크 + 태그)
-    updateJob(jobId, { script: JSON.stringify({ narration, buyLink: input.buyLink || '', businessName: input.businessName, catchphrase: input.catchphrase, tags: ytTags }) });
+    updateJob(jobId, { script: JSON.stringify({
+      narration, buyLink: input.buyLink || '', businessName: input.businessName, catchphrase: input.catchphrase, tags: ytTags,
+      businessType: input.businessType || '', sellingPoints: input.sellingPoints || '', cta: input.cta || '', headerTheme: input.headerTheme || 'navy',
+    }) });
     // 구간 비율(텍스트 길이 기반)
     const L = hookT.length + mainT.length + ctaT.length;
     let f1 = L > 0 ? hookT.length / L : 0.28;

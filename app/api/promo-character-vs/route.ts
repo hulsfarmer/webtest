@@ -69,7 +69,13 @@ async function processPromoCharacterVsJob(jobId: string, input: CharVsJobInput) 
       console.error(`[PromoCharVsJob ${jobId}] AI 태그 실패 → 휴리스틱:`, e instanceof Error ? e.message : e);
       ytTags = buildYouTubeTags(input.businessName || '', input.catchphrase || '', narration);
     }
-    updateJob(jobId, { script: JSON.stringify({ narration, buyLink: input.buyLink || '', businessName: input.businessName, catchphrase: input.catchphrase, tags: ytTags }) });
+    updateJob(jobId, { script: JSON.stringify({
+      narration, buyLink: input.buyLink || '', businessName: input.businessName, catchphrase: input.catchphrase, tags: ytTags,
+      // 라이브러리 '수정' 복원용 입력값
+      businessType: input.businessType || '', sellingPoints: input.sellingPoints || '', cta: input.cta || '',
+      headerTheme: input.headerTheme || 'navy', voice: input.voiceId || '',
+      introChar: input.introChar !== false, productChar: input.productChar !== false, outroChar: input.outroChar !== false,
+    }) });
     const L = hookT.length + mainT.length + ctaT.length;
     let f1 = L > 0 ? hookT.length / L : 0.28;
     let f2 = L > 0 ? (hookT.length + mainT.length) / L : 0.72;

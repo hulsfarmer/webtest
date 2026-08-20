@@ -98,6 +98,32 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputCls = 'w-full bg-neutral-950 border border-neutral-700 rounded-lg p-2.5 text-sm';
 
+  // 라이브러리 '수정' → 쿼리로 넘어온 입력값 복원 (마운트 1회). 제품 이미지는 임시파일이라 재업로드 필요.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const q = new URLSearchParams(window.location.search);
+    const bn = q.get('businessName');
+    if (!bn) return; // 수정 진입이 아니면 아무것도 안 함
+    setBusinessName(bn);
+    const bt = q.get('businessType'); if (bt) setBusinessType(bt);
+    const dur = q.get('duration'); if (dur) setDuration(dur);
+    try {
+      const sc = JSON.parse(q.get('script') || '{}');
+      if (sc.sellingPoints) setSellingPoints(sc.sellingPoints);
+      if (sc.cta) setCta(sc.cta);
+      if (sc.catchphrase) setCatchphrase(sc.catchphrase);
+      if (sc.buyLink) setBuyLink(sc.buyLink);
+      if (sc.headerTheme) setHeaderTheme(sc.headerTheme);
+      if (sc.voice && voiceOptions.some((v) => v.id === sc.voice)) setVoiceKey(sc.voice);
+      if (typeof sc.introChar === 'boolean') setIntroChar(sc.introChar);
+      if (typeof sc.productChar === 'boolean') setProductChar(sc.productChar);
+      if (typeof sc.outroChar === 'boolean') setOutroChar(sc.outroChar);
+    } catch { /* noop */ }
+    setImportNote('불러온 설정을 채웠어요. 제품 이미지만 다시 올리거나 링크로 불러와 주세요.');
+    window.history.replaceState({}, '', window.location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 헤더 실시간 미리보기 (테마·문구 바뀔 때 디바운스 후 렌더)
   useEffect(() => {
     if (phase !== 'script' || !businessName.trim()) { setHeaderPreview(''); return; }
