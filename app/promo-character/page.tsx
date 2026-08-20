@@ -90,6 +90,9 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
   const [ytBusy, setYtBusy] = useState(false);
   const [ytMsg, setYtMsg] = useState('');
   const [ytUrl, setYtUrl] = useState('');
+  // 랜딩 소개 신청
+  const [showcaseBusy, setShowcaseBusy] = useState(false);
+  const [showcaseDone, setShowcaseDone] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputCls = 'w-full bg-neutral-950 border border-neutral-700 rounded-lg p-2.5 text-sm';
 
@@ -154,6 +157,22 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
     else if (q === 'error') setYtMsg('YouTube 연결 실패 — 다시 시도하세요.');
     if (q) window.history.replaceState({}, '', '/promo-character');
   }, []);
+
+  async function submitShowcase() {
+    if (!jobId) return;
+    if (!window.confirm('이 영상을 shortsai 홈 화면에 소개용으로 올릴까요?\n관리자 승인 후 공개되며, 제품명·영상이 홈에 노출되는 것에 동의합니다.')) return;
+    setShowcaseBusy(true);
+    try {
+      const r = await fetch('/api/showcase/submit', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId, consent: true }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '신청 실패');
+      setShowcaseDone(true);
+    } catch (e) { alert(e instanceof Error ? e.message : String(e)); }
+    finally { setShowcaseBusy(false); }
+  }
 
   // 유튜브 설명란: 나레이션 원문 + 구매 링크 + 제작 크레딧
   function buildDescription(): string {
@@ -562,6 +581,19 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                 {ytMsg && <div className="text-xs text-neutral-300 mt-2">{ytMsg}</div>}
                 {ytUrl && <a href={ytUrl} target="_blank" rel="noreferrer" className="text-xs text-sky-400 underline mt-1 block">{ytUrl}</a>}
                 <div className="text-[11px] text-neutral-500 mt-2">업로드는 비공개로 올라갑니다. 검토 후 YouTube 스튜디오에서 공개로 바꾸세요.</div>
+
+                {/* 랜딩 소개 신청 */}
+                <div className="mt-3 pt-3 border-t border-neutral-800">
+                  {!showcaseDone ? (
+                    <button onClick={submitShowcase} disabled={showcaseBusy}
+                      className="text-sm bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-lg px-3 py-2">
+                      {showcaseBusy ? '신청 중...' : '📢 랜딩에 소개하기'}
+                    </button>
+                  ) : (
+                    <div className="text-xs text-green-300">✅ 소개 신청 완료 — 관리자 승인 후 홈에 노출돼요.</div>
+                  )}
+                  <div className="text-[11px] text-neutral-500 mt-2">승인되면 shortsai 홈 화면에 소개됩니다 (제품명·영상 노출 동의).</div>
+                </div>
               </div>
             )}
           </div>
