@@ -32,6 +32,24 @@ const CREDIT_PACKS = [
 
 const plans = [
   {
+    name: '무료',
+    nameEn: 'Free',
+    price: 0,
+    priceDisplay: '₩0',
+    period: '월',
+    description: '가볍게 체험',
+    features: [
+      '가입 시 10크레딧 무료',
+      '캐릭터 영상 1편 체험',
+      '워터마크 없음 · MP4 다운로드',
+    ],
+    cta: '무료로 시작',
+    planId: 'free',
+    variantId: null as number | null,
+    highlighted: false,
+    badge: null as string | null,
+  },
+  {
     name: '라이트',
     nameEn: 'Lite',
     price: 9900,
@@ -85,6 +103,7 @@ export default function PricingSection() {
   const [buyerName, setBuyerName] = useState('');
   const [buyerEmail, setBuyerEmail] = useState('');
   const [pendingCredit, setPendingCredit] = useState<string | null>(null);
+  const [creditQty, setCreditQty] = useState(10); // 충전할 크레딧 수(≥10, 10크레딧=2,000원)
   useEffect(() => {
     const u = session?.user as { name?: string; email?: string } | undefined;
     if (u?.name) setBuyerName((v) => v || (u.name as string));
@@ -208,13 +227,12 @@ export default function PricingSection() {
     setLoading(null);
   };
 
-  // 단건(크레딧) 결제 — PortOne 일반결제(requestPayment) → 서버 검증 → 크레딧 충전
+  // 단건(크레딧) 결제 — 커스텀 크레딧(≥10, 10크레딧=2,000원). PortOne 일반결제 → 서버 검증 → 충전
   const payOnce = async () => {
-    const packId = pendingCredit;
-    if (!packId) return;
-    const pack = CREDIT_PACKS.find((p) => p.id === packId);
+    const qty = Math.max(10, Math.min(2000, Math.floor(creditQty) || 0));
+    const amount = qty * 200;
     const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
-    if (!pack || !storeId || !ONETIME_CHANNEL_KEY) {
+    if (!storeId || !ONETIME_CHANNEL_KEY) {
       alert('결제가 아직 준비 중입니다. 잠시 후 다시 시도해주세요.');
       return;
     }
@@ -224,7 +242,7 @@ export default function PricingSection() {
     if (phoneDigits.length < 10) { alert('휴대폰 번호를 정확히 입력해주세요.'); return; }
 
     setPendingCredit(null);
-    flushSync(() => setLoading(packId));
+    flushSync(() => setLoading('credit'));
     try {
       const userId = (session!.user as { id?: string }).id;
       const paymentId = `sao-${String(userId).slice(0, 8)}-${Date.now().toString(36)}`;
@@ -232,8 +250,8 @@ export default function PricingSection() {
         storeId,
         channelKey: ONETIME_CHANNEL_KEY,
         paymentId,
-        orderName: pack.label,
-        totalAmount: pack.amount,
+        orderName: `ShortsAI ${qty}크레딧`,
+        totalAmount: amount,
         currency: 'KRW',
         payMethod: 'CARD',
         customer: {
@@ -251,12 +269,12 @@ export default function PricingSection() {
       const res = await fetch('/api/payment/portone/pay-once', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentId, pack: packId }),
+        body: JSON.stringify({ paymentId, credits: qty }),
       });
       const data = await res.json();
       if (data.success) {
-        alert(`${pack.credits}회 이용권이 충전되었습니다!`);
-        window.location.href = '/promo';
+        alert(`${qty}크레딧이 충전되었습니다!`);
+        window.location.reload();
         return;
       }
       alert(data.error || '결제 검증에 실패했습니다.');
@@ -267,10 +285,11 @@ export default function PricingSection() {
     setLoading(null);
   };
 
-  const handleBuyCredit = (packId: string) => {
+  const handleCharge = () => {
     if (!session) { window.location.href = '/api/auth/signin'; return; }
     if (!ONETIME_CHANNEL_KEY) { alert('단건 결제가 곧 오픈됩니다. 잠시만 기다려주세요!'); return; }
-    setPendingCredit(packId);
+    if (creditQty < 10) { setCreditQty(10); }
+    setPendingCredit('credit');
   };
 
   return (
@@ -364,14 +383,13 @@ export default function PricingSection() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-1">
-              <h3 className="text-lg font-bold text-white">이용권 구매</h3>
+              <h3 className="text-lg font-bold text-white">크레딧 충전</h3>
               <button onClick={() => setPendingCredit(null)} className="text-gray-400 hover:text-white">
                 <X size={20} />
               </button>
             </div>
             <p className="text-gray-400 text-sm mb-5">
-              {CREDIT_PACKS.find((p) => p.id === pendingCredit)?.credits}회 이용권 · ₩
-              {CREDIT_PACKS.find((p) => p.id === pendingCredit)?.amount.toLocaleString()} · 구매일로부터 3개월 이내 사용 (1회 결제)
+              {creditQty}크레딧 · ₩{(creditQty * 200).toLocaleString()} · 안 만료 (1회 결제)
             </p>
             <div className="space-y-3 mb-4">
               <div>
@@ -410,58 +428,44 @@ export default function PricingSection() {
 
         </div>
 
-        {/* 필요한 만큼만 이용 (무료 + 단건 크레딧) */}
-        <div className="max-w-3xl mx-auto mb-12 sm:mb-16">
+        {/* 크레딧 충전 (필요한 만큼) */}
+        <div className="max-w-md mx-auto mb-12 sm:mb-16">
           <div className="text-center mb-6">
-            <h3 className="text-xl sm:text-2xl font-bold mb-2">필요한 만큼만 이용</h3>
-            <p className="text-gray-400 text-sm">구독 없이 횟수만. 자동결제 없음 · 카드/간편결제</p>
+            <h3 className="text-xl sm:text-2xl font-bold mb-2">크레딧 충전</h3>
+            <p className="text-gray-400 text-sm">필요한 만큼만 · 10크레딧당 2,000원 · 안 만료 · 자동결제 없음</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded-2xl p-5 border bg-brand-card border-white/10 text-center">
-              <div className="text-lg font-bold mb-1">무료</div>
-              <div className="text-2xl sm:text-3xl font-bold mb-1">3회</div>
-              <p className="text-gray-500 text-xs mb-4">가입 시 3회 무료 제공</p>
-              <button
-                onClick={() => handleUpgrade('free')}
-                className="w-full py-3 rounded-xl font-semibold text-sm bg-white/10 text-white hover:bg-white/15 border border-white/10 transition-all"
-              >
-                무료로 시작
-              </button>
-            </div>
-            {CREDIT_PACKS.map((p) => (
-              <div key={p.id} className={`relative rounded-2xl p-5 border transition-all text-center ${
-                p.badge
-                  ? 'bg-gradient-to-b from-purple-900/40 to-brand-card border-purple-500/50 glow-purple'
-                  : 'bg-brand-card border-white/10 hover:border-purple-500/30'
-              }`}>
-                {p.badge && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-brand text-white text-xs font-bold">
-                    {p.badge}
-                  </div>
-                )}
-                <div className="text-lg font-bold mb-1">{p.credits}회 이용권</div>
-                <div className="text-2xl sm:text-3xl font-bold mb-1">₩{p.amount.toLocaleString()}</div>
-                <p className="text-gray-500 text-xs mb-1">부가세(VAT) 포함 · 영상 {p.credits}개</p>
-                <p className="text-gray-500 text-xs mb-4">유효기간 3개월</p>
-                <button
-                  onClick={() => handleBuyCredit(p.id)}
-                  disabled={loading !== null}
-                  className="w-full py-3 rounded-xl font-semibold text-sm bg-white/10 text-white hover:bg-white/15 border border-white/10 transition-all disabled:opacity-50"
-                >
-                  {loading === p.id ? (
-                    <span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" />처리 중...</span>
-                  ) : '구매하기'}
+          <div className="rounded-2xl p-6 border bg-brand-card border-white/10">
+            <div className="flex gap-2 mb-3">
+              {[10, 20, 30].map((n) => (
+                <button key={n} onClick={() => setCreditQty(n)}
+                  className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${creditQty === n ? 'bg-gradient-brand text-white border-transparent' : 'bg-white/5 text-gray-300 border-white/10 hover:border-purple-500/40'}`}>
+                  {n}크레딧
                 </button>
-              </div>
-            ))}
+              ))}
+            </div>
+            <label className="block text-gray-400 text-xs mb-1.5">직접 입력 (10 이상)</label>
+            <input type="number" min={10} max={2000} value={creditQty}
+              onChange={(e) => setCreditQty(Math.max(0, Math.min(2000, parseInt(e.target.value) || 0)))}
+              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500 mb-4" />
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-gray-400 text-sm">결제 금액</span>
+              <span className="text-2xl font-bold text-white">₩{(Math.max(10, creditQty || 0) * 200).toLocaleString()}</span>
+            </div>
+            <button onClick={handleCharge} disabled={loading !== null || (creditQty || 0) < 10}
+              className="w-full py-3 rounded-xl font-semibold text-sm bg-gradient-brand text-white hover:opacity-90 transition-all disabled:opacity-50">
+              {loading === 'credit'
+                ? <span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" />처리 중...</span>
+                : `${Math.max(10, creditQty || 0)}크레딧 충전하기`}
+            </button>
+            <p className="text-gray-500 text-xs mt-3 text-center">슬라이드쇼·로고 1크레딧 · 캐릭터 영상 8크레딧부터</p>
           </div>
         </div>
 
         {/* 구독 (매달 자동, 더 저렴) */}
         <div className="max-w-3xl mx-auto mb-10 sm:mb-16">
           <div className="text-center mb-6">
-            <h3 className="text-xl sm:text-2xl font-bold mb-2">매달 자동, 더 저렴한 구독</h3>
-            <p className="text-gray-400 text-sm">자주 만든다면 구독이 영상당 훨씬 저렴합니다</p>
+            <h3 className="text-xl sm:text-2xl font-bold mb-2">플랜</h3>
+            <p className="text-gray-400 text-sm">무료로 시작 · 자주 만들면 구독이 크레딧당 더 저렴합니다</p>
           </div>
           {/* Pricing cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

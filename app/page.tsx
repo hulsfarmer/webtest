@@ -2,6 +2,7 @@ import Link from 'next/link';
 import './landing.css';
 import LandingNav from '@/components/LandingNav';
 import ShowcaseStrip from '@/components/ShowcaseStrip';
+import PricingSection from '@/components/PricingSection';
 
 const QUOTES = [
   { emoji: '☕', text: '업체 사진 몇 장 올렸더니 진짜 3분 만에 홍보 쇼츠가 나왔어요. 제작 업체에 맡기면 50만원인데, 이건 무료라니!', name: '김사장님', type: '카페' },
@@ -18,13 +19,6 @@ const TOOLS = [
   { icon: '✦', name: '로고 생성', desc: '브랜드 이름과 분위기만으로 로고 시안 제작·다운로드.', href: LOGO_MAKER_URL, external: true },
   { icon: '🔄', name: '파일 변환', desc: '영상·이미지·문서 포맷을 빠르게 변환합니다.', tag: 'soon' as const },
   { icon: '🎬', name: '유튜브 디자인', desc: '채널 배너·썸네일을 브랜드 톤에 맞춰 자동 디자인.', tag: 'soon' as const },
-];
-
-const PRICES = [
-  { name: '무료', amt: '0', unit: '원', who: '처음 써보는 분', feats: ['가입 시 3회 제공', '기본 음성·BGM', '워터마크 포함'], cta: '무료로 시작', href: '/promo', style: 'ghost' as const },
-  { name: '라이트', amt: '9,900', unit: '원/월', who: '가끔 올리는 분', feats: ['매달 55크레딧 (이월)', '캐릭터 영상 ~6편', '워터마크 제거·전체 톤·BGM'], cta: '선택', href: '/pricing', style: 'ghost' as const },
-  { name: '프로', amt: '19,900', unit: '원/월', who: '꾸준히 홍보하는 분', feats: ['매달 110크레딧 (이월)', '캐릭터 영상 ~13편', '우선 처리·SNS 자동 발행'], cta: '구독하기', href: '/pricing', style: 'grad' as const, feat: true },
-  { name: '크레딧 팩', amt: '2,000', unit: '원~', who: '필요한 만큼', feats: ['10크레딧 2,000원', '25·60크레딧 팩', '자동 갱신 없음·안 만료'], cta: '충전', href: '/pricing', style: 'ghost' as const },
 ];
 
 const Arrow = (
@@ -149,26 +143,9 @@ export default function Home() {
       </section>
 
       {/* PRICING */}
-      <section className="sa-block" id="pricing" style={{ background: 'var(--surface-2)' }}>
-        <div className="sa-wrap">
-          <div className="sa-sec-head">
-            <div className="sa-kick">요금</div>
-            <h2>필요한 만큼만, 부담 없이</h2>
-            <p>무료로 3개를 먼저 만들어 보세요. 표시 가격은 VAT 포함 실청구가입니다.</p>
-          </div>
-          <div className="sa-prices">
-            {PRICES.map((p) => (
-              <div className={`sa-price${p.feat ? ' feat' : ''}`} key={p.name}>
-                <h3>{p.name}</h3>
-                <div className="amt">{p.amt}<span>{p.unit}</span></div>
-                <div className="who">{p.who}</div>
-                <ul>{p.feats.map((f) => <li key={f}>{f}</li>)}</ul>
-                <Link className={`sa-btn ${p.style}`} href={p.href}>{p.cta}</Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <div id="pricing" style={{ background: 'var(--surface-2)' }}>
+        <PricingSection />
+      </div>
 
       {/* FINAL */}
       <section className="sa-block">
