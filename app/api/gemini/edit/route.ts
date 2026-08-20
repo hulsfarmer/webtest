@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminGuard } from "@/lib/admin-guard";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { geminiImage, toDataUrl, parseDataUrl, GeminiError } from "@/lib/logomaker/gemini";
 
 export const runtime = "nodejs";
@@ -12,8 +13,9 @@ type Body = {
 };
 
 export async function POST(req: NextRequest) {
-  const _denied = await adminGuard();
-  if (_denied) return _denied;
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id ?? (process.env.NODE_ENV !== "production" ? "dev-local" : null);
+  if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   let body: Body;
   try {
     body = await req.json();

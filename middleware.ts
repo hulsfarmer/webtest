@@ -6,8 +6,8 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
-// 관리자 전용 경로 (제품 홍보영상 단독 페이지 등). 업체/행사(/promo)는 로그인만.
-const ADMIN_ONLY = ['/promo-character'];
+// 관리자 전용 경로. 제품 홍보영상(신규)·로고는 공개(로그인만) → 여기 비움.
+const ADMIN_ONLY: string[] = [];
 
 export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });

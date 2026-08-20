@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminGuard } from "@/lib/admin-guard";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { hasCredits, chargeCredits } from "@/lib/usageStore";
 import { geminiImage, toDataUrl, parseDataUrl, GeminiError, GeminiPart } from "@/lib/logomaker/gemini";
 
 export const runtime = "nodejs";
@@ -52,8 +54,10 @@ function buildPrompt(b: Body, refCount: number): string {
 }
 
 export async function POST(req: NextRequest) {
-  const _denied = await adminGuard();
-  if (_denied) return _denied;
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id ?? (process.env.NODE_ENV !== "production" ? "dev-local" : null);
+  if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  if (!(await hasCredits(userId, 1))) return NextResponse.json({ error: "크레딧이 부족해요 (로고 1크레딧). 충전 후 이용해주세요." }, { status: 402 });
   let body: Body;
   try {
     body = await req.json();
@@ -78,6 +82,7 @@ export async function POST(req: NextRequest) {
     }
 
     const img = await geminiImage(parts);
+    await chargeCredits(userId, 1); // 로고 생성 1크레딧
     return NextResponse.json({ image: toDataUrl(img) });
   } catch (e) {
     const status = e instanceof GeminiError ? e.status : 500;

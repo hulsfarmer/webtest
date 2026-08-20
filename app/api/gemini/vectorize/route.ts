@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminGuard } from "@/lib/admin-guard";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { parseDataUrl, GeminiError } from "@/lib/logomaker/gemini";
 
 export const runtime = "nodejs";
@@ -10,8 +11,9 @@ const VECTORIZE_URL = "https://external.api.recraft.ai/v1/images/vectorize";
 type Body = { image?: string }; // 현재 로고 (data URL)
 
 export async function POST(req: NextRequest) {
-  const _denied = await adminGuard();
-  if (_denied) return _denied;
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id ?? (process.env.NODE_ENV !== "production" ? "dev-local" : null);
+  if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   const token = process.env.RECRAFT_API_TOKEN;
   if (!token || token.includes("여기에")) {
     return NextResponse.json(
