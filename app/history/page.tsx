@@ -83,7 +83,7 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
       const desc = `${meta.narration || meta.catchphrase || ''}\n\nshortsai.kr 로 만든 홍보 영상`.trim();
       const r = await fetch('/api/social/youtube/upload', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId: job.id, title, description: desc, privacyStatus: 'public' }),
+        body: JSON.stringify({ jobId: job.id, title, description: desc, privacyStatus: 'unlisted' }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || '업로드 실패');
@@ -365,7 +365,8 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
                     </div>
 
                     {/* 콤팩트 정보 + 아이콘 (로고 카드와 동일) */}
-                    <div className="p-3 flex items-center justify-between gap-2">
+                    <div className="p-3">
+                      <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium truncate flex-1" title={job.businessName || job.topic || ''}>
                         {job.businessName || job.topic || '홍보영상'}
                       </p>
@@ -386,7 +387,7 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
                           </button>
                         )}
                         {job.videoUrl && job.status === 'done' && !ytUrlOf(job) && ytConnected && (
-                          <button onClick={() => publishYouTube(job)} disabled={ytBusyId === job.id} title="유튜브에 올려 링크 받기 (바로 공개)" className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10">
+                          <button onClick={() => publishYouTube(job)} disabled={ytBusyId === job.id} title="유튜브에 올려 링크 받기 (일부공개)" className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10">
                             {ytBusyId === job.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Youtube className="w-4 h-4" />}
                           </button>
                         )}
@@ -394,7 +395,8 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
                           {deleting === job.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                         </button>
                       </div>
-                      {ytMsg[job.id] && <div className="text-[11px] text-gray-400 mt-1 px-1 break-all">{ytMsg[job.id]}</div>}
+                      </div>
+                      {ytMsg[job.id] && <div className="text-[11px] text-gray-400 mt-2 break-all">{ytMsg[job.id]}</div>}
                     </div>
                   </div>
                 </div>

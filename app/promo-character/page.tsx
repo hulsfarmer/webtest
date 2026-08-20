@@ -184,11 +184,11 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
         const title = `${businessName} ${catchphrase}`.trim().slice(0, 90) || '제품 홍보';
         const r = await fetch('/api/social/youtube/upload', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jobId, title, description: buildDescription(), privacyStatus: 'public' }),
+          body: JSON.stringify({ jobId, title, description: buildDescription(), privacyStatus: 'unlisted' }),
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || '유튜브 업로드 실패');
-        setYtUrl(d.url); done.push('유튜브 공개');
+        setYtUrl(d.url); done.push('유튜브 업로드(일부공개)');
       }
       if (optHome && !showcaseDone) {
         const r = await fetch('/api/showcase/submit', {
@@ -582,7 +582,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
 
                 <label className={`flex items-center gap-2.5 text-sm cursor-pointer ${ytUrl ? 'text-neutral-500' : 'text-neutral-200'}`}>
                   <input type="checkbox" className="w-4 h-4 accent-red-500" checked={optYt} disabled={!!ytUrl} onChange={(e) => setOptYt(e.target.checked)} />
-                  <span>▶ 유튜브에 올리기 <span className="text-neutral-500">(바로 공개)</span>{ytUrl && ' — 완료'}</span>
+                  <span>▶ 유튜브에 올리기 <span className="text-neutral-500">(일부공개)</span>{ytUrl && ' — 완료'}</span>
                 </label>
                 {!ytConnected && (
                   <a href="/api/social/youtube/connect" className="block text-xs text-sky-400 underline ml-6">먼저 YouTube 연결하기 →</a>
