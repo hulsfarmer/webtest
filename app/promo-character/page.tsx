@@ -259,11 +259,17 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
       const characterName = isAiActor ? '' : charFile ? '' : (PRESETS.find((p) => p.id === preset)?.name ?? '');
       const r = await fetch('/api/promo-character/script', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessName, businessType, sellingPoints, cta, duration, tone: '친근한', characterName }),
+        body: JSON.stringify({ businessName, businessType, sellingPoints, cta, duration: isAiActor ? '20' : duration, tone: '친근한', characterName }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || '대본 생성 실패');
-      setSections(d.sections);
+      if (isAiActor) {
+        // 인트로/제품소개/마무리 개념 없이 — 한 컷 연속 20초 대본 하나로 병합
+        const merged = ((d.sections || []) as { text: string }[]).map((s) => s.text).join(' ').replace(/\s+/g, ' ').trim();
+        setSections([{ type: 'main', label: '홍보 대본 (20초 · 한 컷 연속)', text: merged }]);
+      } else {
+        setSections(d.sections);
+      }
       if (d.title && !catchphrase.trim()) setCatchphrase(d.title); // 홍보문구 기본값 = AI 캐치 타이틀
       setPhase('script');
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
@@ -282,7 +288,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
       // VisionStory: 음성 = Gemini voice_id 그대로 전달, 내부 TTS가 처리
       fd.append('voice', voiceKey);
       fd.append('emotion', 'cheerful');
-      fd.append('duration', duration);
+      fd.append('duration', isAiActor ? '20' : duration);
       fd.append('speed', '1.0'); // VisionStory는 자체 페이싱 자연스러움
       fd.append('introChar', introChar ? '1' : '0');
       fd.append('productChar', productChar ? '1' : '0');
@@ -373,7 +379,9 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
           <h1 className="text-2xl font-bold">제품 홍보 캐릭터 영상{isAiActor ? ' (AI배우)' : isVS ? '' : ' (고급)'}</h1>
         </div>
         <p className="text-sm text-neutral-400 mt-1 mb-8">
-          제품 정보 → AI 대본(검토·편집) → 캐릭터 홍보 쇼츠 (인트로 → 제품+코너 캐릭터 → 마무리, 상단 제품명 고정)
+          {isAiActor
+            ? '제품 정보 → AI 대본(검토·편집) → 제품을 든/착용한 AI배우가 말하는 20초 홍보 쇼츠 (한 컷 연속)'
+            : '제품 정보 → AI 대본(검토·편집) → 캐릭터 홍보 쇼츠 (인트로 → 제품+코너 캐릭터 → 마무리, 상단 제품명 고정)'}
         </p>
 
         <div className="grid md:grid-cols-2 gap-6">
@@ -450,14 +458,19 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                 </div>
                 <div>
                   <label className="block text-sm text-neutral-300 mb-1.5">길이(초)</label>
+                  {isAiActor ? (
+                    <div className={`${inputCls} text-neutral-400`}>20초 고정</div>
+                  ) : (
                   <select className={inputCls} value={duration} onChange={(e) => setDuration(e.target.value)}>
                     <option value="20">20초</option>
                     <option value="30">30초</option>
                     <option value="45">45초</option>
                     <option value="60">60초</option>
                   </select>
+                  )}
                 </div>
               </div>
+              {!isAiActor && (
               <div>
                 <label className="block text-sm text-neutral-300 mb-1.5">영상 속도</label>
                 <select className={inputCls} value={speed} onChange={(e) => setSpeed(e.target.value)}>
@@ -467,6 +480,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                   <option value="1.3">1.3배</option>
                 </select>
               </div>
+              )}
               <button onClick={onGenerateScript} disabled={scriptBusy}
                 className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-neutral-950 font-semibold rounded-lg py-3">
                 {scriptBusy ? 'AI 대본 생성 중...' : '① AI 대본 생성'}
@@ -522,7 +536,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                 )}
               </div>
 
-              {isVS && (() => {
+              {isVS && !isAiActor && (() => {
                 const est = estimateVs();
                 const segState: Record<string, [boolean, (v: boolean) => void]> = {
                   intro: [introChar, setIntroChar], product: [productChar, setProductChar], outro: [outroChar, setOutroChar],
