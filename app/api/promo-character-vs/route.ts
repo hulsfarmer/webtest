@@ -264,7 +264,7 @@ export async function POST(req: NextRequest) {
   processPromoCharacterVsJob(jobId, {
     businessName, businessType, sellingPoints, cta, duration, tone,
     voiceId, emotion, characterBuf, productImagePath,
-    overlayTitle: businessName, overlayCta: cta,
+    overlayTitle: '', overlayCta: cta, // 헤더 복잡도↓ — 제품명 빼고 홍보문구만
     catchphrase, headerTheme, speed, characterName, sections, buyLink,
     introChar, productChar, outroChar, userId,
   }).catch(console.error);

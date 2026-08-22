@@ -142,7 +142,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
       try {
         const r = await fetch('/api/promo-character/header-preview', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ businessName: isAiActor ? '' : businessName, catchphrase, headerTheme }),
+          body: JSON.stringify({ businessName: isVS ? '' : businessName, catchphrase, headerTheme }),
         });
         const d = await r.json();
         if (r.ok && d.image) setHeaderPreview(d.image);
@@ -506,9 +506,9 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
               {/* 헤더 설정 */}
               <div className="pt-3 border-t border-neutral-800 space-y-3">
                 <div className="text-sm font-semibold">상단 헤더</div>
-                <div className="text-xs text-neutral-500">{isAiActor ? '헤더엔 홍보 문구만 표시돼요 (제품명 제외).' : <>윗줄=제품명 &quot;{businessName}&quot;, 아랫줄=홍보문구</>}</div>
+                <div className="text-xs text-neutral-500">{isVS ? '헤더엔 홍보 문구만 표시돼요 (제품명 제외).' : <>윗줄=제품명 &quot;{businessName}&quot;, 아랫줄=홍보문구</>}</div>
                 <div>
-                  <label className="block text-sm text-neutral-300 mb-1.5">{isAiActor ? '홍보 문구 (헤더)' : '홍보 문구 (헤더 아랫줄)'}</label>
+                  <label className="block text-sm text-neutral-300 mb-1.5">{isVS ? '홍보 문구 (헤더)' : '홍보 문구 (헤더 아랫줄)'}</label>
                   <input className={inputCls} value={catchphrase} onChange={(e) => setCatchphrase(e.target.value)} placeholder="예: 3주 만에 톤업 완성" />
                 </div>
                 <div>
