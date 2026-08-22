@@ -46,9 +46,10 @@ const HEADER_THEMES = [
 type StepState = 'pending' | 'running' | 'done' | 'failed';
 type Section = { type: 'hook' | 'main' | 'cta'; label: string; text: string };
 
-export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { embedded?: boolean; engine?: 'hedra' | 'visionstory' } = {}) {
-  const isVS = engine === 'visionstory';
-  const apiBase = isVS ? '/api/promo-character-vs' : '/api/promo-character';
+export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { embedded?: boolean; engine?: 'hedra' | 'visionstory' | 'visionstory-ai' } = {}) {
+  const isAiActor = engine === 'visionstory-ai';
+  const isVS = engine === 'visionstory' || isAiActor;
+  const apiBase = isAiActor ? '/api/promo-character-ai' : engine === 'visionstory' ? '/api/promo-character-vs' : '/api/promo-character';
   const voiceOptions = isVS ? VS_VOICES : VOICES;
   const [phase, setPhase] = useState<'form' | 'script'>('form');
   const [businessName, setBusinessName] = useState('');
@@ -58,7 +59,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
   const [catchphrase, setCatchphrase] = useState('');
   const [headerTheme, setHeaderTheme] = useState('navy');
   const [headerPreview, setHeaderPreview] = useState('');
-  const [voiceKey, setVoiceKey] = useState(engine === 'visionstory' ? 'aoede' : 'minji');
+  const [voiceKey, setVoiceKey] = useState(isVS ? 'aoede' : 'minji');
   const [duration, setDuration] = useState('20');
   const [speed, setSpeed] = useState('1.1');
   // 구간별 캐릭터 on/off (VisionStory 전용). 끄면 그 구간은 캐릭터 없이 제품+내레이션만 → 저렴.
@@ -245,7 +246,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
     if (!businessName.trim()) return '제품명을 입력하세요.';
     if (!sellingPoints.trim()) return '홍보 포인트를 입력하세요.';
     if (!productFile && !importedImagePath) return '제품 이미지를 업로드하거나 링크에서 불러오세요.';
-    if (!charFile && !preset) return '캐릭터를 선택하거나 업로드하세요.';
+    if (!isAiActor && !charFile && !preset) return '캐릭터를 선택하거나 업로드하세요.';
     return null;
   }
 
@@ -255,7 +256,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
     const v = validateForm(); if (v) { setError(v); return; }
     setScriptBusy(true);
     try {
-      const characterName = charFile ? '' : (PRESETS.find((p) => p.id === preset)?.name ?? '');
+      const characterName = isAiActor ? '' : charFile ? '' : (PRESETS.find((p) => p.id === preset)?.name ?? '');
       const r = await fetch('/api/promo-character/script', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ businessName, businessType, sellingPoints, cta, duration, tone: '친근한', characterName }),
@@ -300,8 +301,10 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
       fd.append('childLisp', !charFile && voiceKey === 'child' ? '1' : ''); // 하늘(아이)만 혀짧은소리
     }
     if (productFile) fd.append('product', productFile); else fd.append('productPath', importedImagePath);
-    if (charFile) fd.append('character', charFile); else fd.append('preset', preset);
-    fd.append('characterName', charFile ? '' : (PRESETS.find((p) => p.id === preset)?.name ?? ''));
+    if (!isAiActor) {
+      if (charFile) fd.append('character', charFile); else fd.append('preset', preset);
+      fd.append('characterName', charFile ? '' : (PRESETS.find((p) => p.id === preset)?.name ?? ''));
+    }
     fd.append('sections', JSON.stringify(sections.map((s) => ({ type: s.type, text: s.text }))));
     fd.append('catchphrase', catchphrase);
     fd.append('headerTheme', headerTheme);
@@ -367,7 +370,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
     <div className={embedded ? 'st-toolskin rounded-2xl px-4 py-8' : 'min-h-screen bg-neutral-950 text-neutral-100 px-4 py-10'}>
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">제품 홍보 캐릭터 영상{isVS ? '' : ' (고급)'}</h1>
+          <h1 className="text-2xl font-bold">제품 홍보 캐릭터 영상{isAiActor ? ' (AI배우)' : isVS ? '' : ' (고급)'}</h1>
         </div>
         <p className="text-sm text-neutral-400 mt-1 mb-8">
           제품 정보 → AI 대본(검토·편집) → 캐릭터 홍보 쇼츠 (인트로 → 제품+코너 캐릭터 → 마무리, 상단 제품명 고정)
@@ -415,6 +418,12 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                 <input type="file" accept="image/*" className={inputCls} onChange={onProduct} />
                 {productPreview && <img src={productPreview} alt="product" className="mt-2 w-24 rounded-lg" />}
               </div>
+              {isAiActor ? (
+                <div className="rounded-lg border border-emerald-800/60 bg-emerald-950/30 p-3">
+                  <div className="text-sm text-emerald-300 font-medium mb-0.5">AI배우 자동 생성</div>
+                  <p className="text-xs text-neutral-400">캐릭터를 고르지 않아도 돼요. 제품 이미지를 바탕으로 <b>제품을 든 프리젠터</b>를 AI가 자동 생성해 말하게 합니다.</p>
+                </div>
+              ) : (
               <div>
                 <label className="block text-sm text-neutral-300 mb-1.5">캐릭터(프레젠터)</label>
                 <div className="flex gap-3 flex-wrap">
@@ -431,6 +440,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                   </label>
                 </div>
               </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm text-neutral-300 mb-1.5">목소리</label>
