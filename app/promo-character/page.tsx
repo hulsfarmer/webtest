@@ -449,6 +449,11 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                 </div>
               </div>
               )}
+              {isAiActor ? (
+                <div className="rounded-lg border border-neutral-800 bg-neutral-950/40 p-3 text-xs text-neutral-400">
+                  배우·<b className="text-neutral-300">목소리</b>·길이(20초)는 <b className="text-neutral-300">제품에 맞춰 자동</b>으로 정해져요. (배우 성별에 맞는 목소리로 매칭)
+                </div>
+              ) : (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm text-neutral-300 mb-1.5">목소리</label>
@@ -458,18 +463,15 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                 </div>
                 <div>
                   <label className="block text-sm text-neutral-300 mb-1.5">길이(초)</label>
-                  {isAiActor ? (
-                    <div className={`${inputCls} text-neutral-400`}>20초 고정</div>
-                  ) : (
                   <select className={inputCls} value={duration} onChange={(e) => setDuration(e.target.value)}>
                     <option value="20">20초</option>
                     <option value="30">30초</option>
                     <option value="45">45초</option>
                     <option value="60">60초</option>
                   </select>
-                  )}
                 </div>
               </div>
+              )}
               {!isAiActor && (
               <div>
                 <label className="block text-sm text-neutral-300 mb-1.5">영상 속도</label>

@@ -18,10 +18,19 @@ import { adminGuard } from '@/lib/admin-guard';
 // 제품 홍보영상 (AI배우) — 관리자 전용.
 // promo-character-vs 의 자매 라우트. 차이: 사용자가 캐릭터를 고르지 않고,
 // Gemini가 "제품을 든 프리젠터 이미지"를 생성해 그걸 VisionStory 아바타로 발화시킨다.
+// 목소리도 안 고름 — 제품에 맞춰 배우 성별을 자동 결정하고, 그 성별의 목소리로 매칭한다.
+
+/** 제품 정보로 배우 성별 자동 추론 (남성용 상품이면 남성, 그 외 기본 여성). */
+function inferActorGender(...parts: (string | undefined)[]): 'female' | 'male' {
+  const t = parts.filter(Boolean).join(' ').toLowerCase();
+  if (/(남성|남자|맨즈|men['’]?s|\bmen\b|\bman\b|면도|쉐이빙|수염|남성용|아빠|신랑)/.test(t)) return 'male';
+  return 'female';
+}
 
 interface CharAiJobInput extends PromoInput {
   voiceId: string;
   emotion: string;
+  presenter: 'female' | 'male'; // 자동 결정된 배우 성별 (배우 이미지 + 목소리 매칭)
   productImagePath: string;
   overlayTitle: string;
   overlayCta: string;
@@ -56,6 +65,9 @@ async function processPromoCharacterAiJob(jobId: string, input: CharAiJobInput) 
     const productBuf = fs.readFileSync(input.productImagePath);
     const actorBuf = await generateActorHoldingProduct(productBuf, {
       businessName: input.businessName, businessType: input.businessType, sellingPoints: input.sellingPoints,
+      presenter: input.presenter === 'male'
+        ? 'a friendly Korean man in his late 20s to 30s'
+        : 'a friendly Korean woman in her late 20s to 30s',
     });
     fs.writeFileSync(actorPath, actorBuf);
     const avatarId = await createVisionStoryAvatar(actorBuf, 'image/png');
@@ -201,7 +213,6 @@ export async function POST(req: NextRequest) {
   const cta = ((fd.get('cta') as string | null) ?? '').trim();
   const catchphrase = ((fd.get('catchphrase') as string | null) ?? '').trim();
   const headerTheme = (fd.get('headerTheme') as string | null) ?? 'navy';
-  const voiceId = ((fd.get('voice') as string | null) ?? 'Aoede').trim();
   const emotion = ((fd.get('emotion') as string | null) ?? 'cheerful').trim();
   const duration = parseInt((fd.get('duration') as string | null) ?? '20', 10);
   const speed = Math.min(2.0, Math.max(0.5, parseFloat((fd.get('speed') as string | null) ?? '1.0') || 1.0));
@@ -251,9 +262,13 @@ export async function POST(req: NextRequest) {
   });
   updateJob(jobId, { status: 'queued', progress: 5, steps: { script: 'pending', audio: 'pending', video: 'pending' } });
 
+  // 목소리 자동: 제품에 맞춰 배우 성별 추론 → 그 성별 목소리로 매칭 (프론트 voice 값 무시)
+  const actorGender = inferActorGender(businessName, businessType, sellingPoints);
+  const autoVoice = actorGender === 'male' ? 'charon' : 'aoede';
+
   processPromoCharacterAiJob(jobId, {
     businessName, businessType, sellingPoints, cta, duration, tone,
-    voiceId, emotion, productImagePath,
+    voiceId: autoVoice, emotion, presenter: actorGender, productImagePath,
     overlayTitle: '', overlayCta: cta, // AI배우: 헤더 복잡도↓ — 제품명 빼고 홍보문구만
     catchphrase, headerTheme, speed, sections, buyLink,
     introChar, productChar, outroChar, userId,
