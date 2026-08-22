@@ -13,7 +13,9 @@ import { generateGeminiAudio } from '@/lib/gemini-tts';
 import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, buildSegmentClip, concatSegments, probeDuration, sanitizeScript } from '@/lib/promo-compose';
 import { buildAlignedSubtitles, applySpeed } from '@/lib/promo-subtitles';
 import { hasCredits, chargeCredits } from '@/lib/usageStore';
-import { adminGuard } from '@/lib/admin-guard';
+
+// 캐릭터2(AI배우) 고정 요금: 20초 1편당 15크레딧 (캐릭터 대비 프리미엄).
+const AI_ACTOR_CREDITS = 15;
 
 // 제품 홍보영상 (AI배우) — 관리자 전용.
 // promo-character-vs 의 자매 라우트. 차이: 사용자가 캐릭터를 고르지 않고,
@@ -187,7 +189,8 @@ async function processPromoCharacterAiJob(jobId: string, input: CharAiJobInput) 
       else await concatSegments(clips, outPath);
     }
 
-    try { await chargeCredits(input.userId, vsCreditsUsed); } catch (e) { console.error(`[PromoCharAiJob ${jobId}] 크레딧 차감 실패:`, e); }
+    // 고정 15크레딧 차감(성공 시). 실제 VisionStory 소비(vsCreditsUsed=~10)와 무관한 정액 프리미엄.
+    try { await chargeCredits(input.userId, AI_ACTOR_CREDITS); } catch (e) { console.error(`[PromoCharAiJob ${jobId}] 크레딧 차감 실패(소비 참고 ${vsCreditsUsed}):`, e); }
     cleanup();
     updateJob(jobId, { status: 'done', progress: 100, steps: { script: 'done', audio: 'done', video: 'done' }, videoUrl: `/api/video/${jobId}` });
   } catch (err) {
@@ -198,10 +201,6 @@ async function processPromoCharacterAiJob(jobId: string, input: CharAiJobInput) 
 }
 
 export async function POST(req: NextRequest) {
-  // 관리자 전용
-  const denied = await adminGuard();
-  if (denied) return denied;
-
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id ?? (process.env.NODE_ENV !== 'production' ? 'dev-local' : null);
   if (!userId) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
@@ -223,7 +222,7 @@ export async function POST(req: NextRequest) {
   const introChar = ((fd.get('introChar') as string | null) ?? '1') !== '0';
   const productChar = ((fd.get('productChar') as string | null) ?? '1') !== '0';
   const outroChar = ((fd.get('outroChar') as string | null) ?? '1') !== '0';
-  const estCredits = Math.max(4, parseInt((fd.get('estCredits') as string | null) ?? '', 10) || Math.ceil(duration / 15) * 4);
+  const estCredits = AI_ACTOR_CREDITS; // 고정 15크레딧
 
   let sections: ScriptSection[] | undefined;
   const sectionsRaw = fd.get('sections') as string | null;

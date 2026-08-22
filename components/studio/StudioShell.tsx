@@ -29,7 +29,7 @@ const CREATE: Item[] = [
   { id: 'promo', name: '업체 홍보영상', icon: 'store', href: '/studio/promo' },
   { id: 'event', name: '행사 홍보영상', icon: 'calendar', href: '/studio/event' },
   { id: 'product-vs', name: '제품 홍보영상 (캐릭터)', icon: 'box', href: '/studio/product-vs' },
-  { id: 'product-ai', name: '제품 홍보영상 (캐릭터2) ⭐', icon: 'box', href: '/studio/product-ai', adminOnly: true },
+  { id: 'product-ai', name: '제품 홍보영상 (캐릭터2) ⭐', icon: 'box', href: '/studio/product-ai' },
   { id: 'logo', name: '로고 생성', icon: 'sparkle', href: '/studio/logo' },
   { id: 'convert', name: '파일 변환', icon: 'file', href: '/studio/convert', badge: 'soon', adminOnly: true },
   { id: 'youtube', name: '유튜브 디자인', icon: 'youtube', href: '/studio/youtube', adminOnly: true },

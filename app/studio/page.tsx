@@ -7,7 +7,7 @@ const CARDS: { icon: string; name: string; desc: string; href: string; tag?: 'ne
   { icon: '🏪', name: '업체 홍보영상', desc: '가게·회사·농장·병원 등 사업장을 소개하는 세로 쇼츠.', href: '/studio/promo' },
   { icon: '📅', name: '행사 홍보영상', desc: '축제·마켓·세일·오픈 등 이벤트를 긴급성 있게 알립니다.', href: '/studio/event' },
   { icon: '🎭', name: '제품 홍보영상 (캐릭터)', desc: '말하는 캐릭터가 제품을 직접 소개하는 드라마형 쇼츠.', href: '/studio/product-vs' },
-  { icon: '⭐', name: '제품 홍보영상 (캐릭터2) ⭐', desc: '제품을 든 AI배우를 자동 생성해 20초로 말하게 하는 쇼츠. 제품 이미지·홍보문구만 넣으면 배우·목소리·길이 모두 자동.', href: '/studio/product-ai', adminOnly: true },
+  { icon: '⭐', name: '제품 홍보영상 (캐릭터2) ⭐', desc: '제품을 든 AI배우를 자동 생성해 20초로 말하게 하는 쇼츠. 제품 이미지·홍보문구만 넣으면 배우·목소리·길이 모두 자동. (1편 15크레딧)', href: '/studio/product-ai' },
   { icon: '✦', name: '로고 생성', desc: '브랜드 이름과 분위기만으로 로고 시안 제작·다운로드.', href: '/studio/logo' },
   { icon: '🔄', name: '파일 변환', desc: '영상·이미지·문서 포맷을 빠르게 변환합니다.', href: '/studio/convert', tag: 'soon' as const, adminOnly: true },
   { icon: '🎬', name: '유튜브 디자인', desc: '채널 배너·썸네일을 브랜드 톤에 맞춰 자동 디자인.', href: '/studio/youtube', adminOnly: true },

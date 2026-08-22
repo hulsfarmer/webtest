@@ -293,7 +293,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
       fd.append('introChar', introChar ? '1' : '0');
       fd.append('productChar', productChar ? '1' : '0');
       fd.append('outroChar', outroChar ? '1' : '0');
-      fd.append('estCredits', String(estimateVs().total));
+      fd.append('estCredits', String(isAiActor ? 15 : estimateVs().total));
     } else {
       const v = VOICES.find((x) => x.id === voiceKey) ?? VOICES[0];
       fd.append('voice', v.google);
@@ -451,7 +451,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
               )}
               {isAiActor ? (
                 <div className="rounded-lg border border-neutral-800 bg-neutral-950/40 p-3 text-xs text-neutral-400">
-                  배우·<b className="text-neutral-300">목소리</b>·길이(20초)는 <b className="text-neutral-300">제품에 맞춰 자동</b>으로 정해져요. (배우 성별에 맞는 목소리로 매칭)
+                  배우·<b className="text-neutral-300">목소리</b>·길이(20초)는 <b className="text-neutral-300">제품에 맞춰 자동</b>으로 정해져요. (배우 성별에 맞는 목소리로 매칭) · <b className="text-emerald-300">1편 15크레딧</b>
                 </div>
               ) : (
               <div className="grid grid-cols-2 gap-3">
