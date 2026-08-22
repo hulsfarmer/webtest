@@ -254,7 +254,7 @@ export async function POST(req: NextRequest) {
   processPromoCharacterAiJob(jobId, {
     businessName, businessType, sellingPoints, cta, duration, tone,
     voiceId, emotion, productImagePath,
-    overlayTitle: businessName, overlayCta: cta,
+    overlayTitle: '', overlayCta: cta, // AI배우: 헤더 복잡도↓ — 제품명 빼고 홍보문구만
     catchphrase, headerTheme, speed, sections, buyLink,
     introChar, productChar, outroChar, userId,
   }).catch(console.error);
