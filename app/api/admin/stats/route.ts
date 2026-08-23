@@ -21,7 +21,8 @@ export async function GET() {
     recentJobsRes,
     dailySignupsRes,
     dailyJobsRes,
-    topUsersRes,
+    allJobsRes,
+    allUsersRes,
   ] = await Promise.all([
     // 총 가입자 수
     supabase.from('users').select('*', { count: 'exact', head: true }),
@@ -41,8 +42,10 @@ export async function GET() {
     supabase.rpc('daily_signups_7d').then(r => r, () => ({ data: null })),
     // 최근 7일 일별 영상 생성
     supabase.rpc('daily_jobs_7d').then(r => r, () => ({ data: null })),
-    // 영상 많이 만든 유저 TOP 5
-    supabase.from('users').select('id, name, email, plan, monthly_usage').order('monthly_usage', { ascending: false }).limit(5),
+    // 유저별 누적 생성 수 집계용 전체 job의 user_id (monthly_usage는 크레딧 모델 전환 후 미집계 → jobs로 실집계)
+    supabase.from('jobs').select('user_id'),
+    // TOP 유저 메타데이터 조인용 전체 유저
+    supabase.from('users').select('id, name, email, plan'),
   ]);
 
   // 플랜별 집계
@@ -54,16 +57,45 @@ export async function GET() {
     }
   }
 
+  // 유저별 누적 생성 수 (jobs 테이블 실집계)
+  const genCount: Record<string, number> = {};
+  for (const row of allJobsRes.data ?? []) {
+    const uid = (row as { user_id: string | null }).user_id;
+    if (uid) genCount[uid] = (genCount[uid] || 0) + 1;
+  }
+
+  // 최근 가입자에 누적 생성 수 부착
+  const recentUsers = (recentUsersRes.data ?? []).map((u) => ({
+    ...u,
+    generatedCount: genCount[u.id] || 0,
+  }));
+
+  // 누적 생성 수 TOP 5 (jobs 실집계 기준)
+  const userMeta = new Map((allUsersRes.data ?? []).map((u) => [u.id, u]));
+  const topUsers = Object.entries(genCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([uid, count]) => {
+      const m = userMeta.get(uid);
+      return {
+        id: uid,
+        name: m?.name ?? null,
+        email: m?.email ?? '',
+        plan: m?.plan ?? 'free',
+        generatedCount: count,
+      };
+    });
+
   return NextResponse.json({
     totalUsers: usersRes.count ?? 0,
     totalJobs: jobsRes.count ?? 0,
     doneJobs: jobsDoneRes.count ?? 0,
     failedJobs: jobsFailedRes.count ?? 0,
     planCounts,
-    recentUsers: recentUsersRes.data ?? [],
+    recentUsers,
     recentJobs: recentJobsRes.data ?? [],
     dailySignups: dailySignupsRes.data ?? null,
     dailyJobs: dailyJobsRes.data ?? null,
-    topUsers: topUsersRes.data ?? [],
+    topUsers,
   });
 }

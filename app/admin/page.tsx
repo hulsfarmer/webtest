@@ -34,7 +34,7 @@ interface AdminStats {
     email: string;
     image: string | null;
     plan: string;
-    monthly_usage: number;
+    generatedCount: number;
     created_at: string;
   }>;
   recentJobs: Array<{
@@ -52,7 +52,7 @@ interface AdminStats {
     name: string | null;
     email: string;
     plan: string;
-    monthly_usage: number;
+    generatedCount: number;
   }>;
 }
 
@@ -337,7 +337,7 @@ export default function AdminPage() {
               {/* Top Users */}
               <div className="glass-card p-6 rounded-2xl">
                 <h3 className="text-gray-400 text-sm mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4" /> 이번 달 TOP 사용자
+                  <TrendingUp className="w-4 h-4" /> 누적 생성 TOP 사용자
                 </h3>
                 <div className="space-y-3">
                   {stats.topUsers.map((user, i) => (
@@ -350,7 +350,7 @@ export default function AdminPage() {
                       <span className={`text-xs px-2 py-0.5 rounded-full ${PLAN_LABELS[user.plan]?.color || 'bg-gray-600'} text-white`}>
                         {PLAN_LABELS[user.plan]?.label || user.plan}
                       </span>
-                      <span className="text-purple-400 text-sm font-medium">{user.monthly_usage}회</span>
+                      <span className="text-purple-400 text-sm font-medium">{user.generatedCount}회</span>
                     </div>
                   ))}
                   {stats.topUsers.length === 0 && (
@@ -371,7 +371,7 @@ export default function AdminPage() {
                     <tr className="text-gray-500 border-b border-white/5">
                       <th className="text-left pb-3 font-medium">사용자</th>
                       <th className="text-left pb-3 font-medium">플랜</th>
-                      <th className="text-left pb-3 font-medium">이번 달 사용</th>
+                      <th className="text-left pb-3 font-medium">누적 생성</th>
                       <th className="text-right pb-3 font-medium">가입일</th>
                     </tr>
                   </thead>
@@ -398,7 +398,7 @@ export default function AdminPage() {
                             {PLAN_LABELS[user.plan]?.label || user.plan}
                           </span>
                         </td>
-                        <td className="text-gray-300">{user.monthly_usage}회</td>
+                        <td className="text-gray-300">{user.generatedCount}회</td>
                         <td className="text-right text-gray-400">{timeAgo(user.created_at)}</td>
                       </tr>
                     ))}
