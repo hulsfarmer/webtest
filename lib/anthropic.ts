@@ -111,6 +111,9 @@ function stripNameFromTitle(title: string, name?: string): string {
     t = t.replace(/\s{2,}/g, ' ').trim();
     t = t.replace(/^[-–—~|:,\s]+|[-–—~|:,\s]+$/g, '').trim();
   }
+  // AI가 조사 "의" 앞에 공백을 넣는 오타 교정 (예: "하나 의 신념" → "하나의 신념")
+  // 홀로 선 "의"는 사실상 항상 앞 명사에 붙는 소유격 조사이므로 안전하게 병합
+  t = t.replace(/(\S)\s+의(\s|$)/g, '$1의$2').replace(/\s{2,}/g, ' ').trim();
   return t || original; // 전부 지워지면 원본 유지
 }
 
