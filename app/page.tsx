@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import './landing.css';
 import LandingNav from '@/components/LandingNav';
 import ShowcaseStrip from '@/components/ShowcaseStrip';
 import PricingBlock from '@/components/PricingBlock';
+import MaintenanceModal from '@/components/MaintenanceModal';
 
 
 const LOGO_MAKER_URL = 'https://logomaker-blush.vercel.app';
@@ -23,6 +25,9 @@ const Arrow = (
 export default function Home() {
   return (
     <div className="sa-root">
+      <Suspense fallback={null}>
+        <MaintenanceModal />
+      </Suspense>
       <LandingNav />
 
       {/* HERO */}
