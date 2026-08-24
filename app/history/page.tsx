@@ -22,6 +22,7 @@ import {
   Link2,
 } from 'lucide-react';
 import Header from '@/components/Header';
+import { buildPromoDescription } from '@/lib/promo-description';
 
 interface HistoryJob {
   id: string;
@@ -79,8 +80,9 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
     setYtBusyId(job.id); setYtMsg((p) => ({ ...p, [job.id]: '' }));
     try {
       const title = (job.businessName || job.topic?.replace(/^제품홍보:/, '') || '홍보 영상').trim().slice(0, 90);
-      const meta = (job.script || {}) as { narration?: string; catchphrase?: string };
-      const desc = `${meta.narration || meta.catchphrase || ''}\n\nshortsai.kr 로 만든 홍보 영상`.trim();
+      const meta = (job.script || {}) as { narration?: string; catchphrase?: string; buyLink?: string };
+      // 제품홍보영상(캐릭터) 도구와 동일한 설명란: 나레이션 + 구매링크 + 쿠팡 고지 + 제작 크레딧
+      const desc = buildPromoDescription(meta.narration || meta.catchphrase || '', meta.buyLink || '');
       const r = await fetch('/api/social/youtube/upload', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobId: job.id, title, description: desc, privacyStatus: 'unlisted' }),
