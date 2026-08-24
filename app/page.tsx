@@ -26,7 +26,7 @@ export default function Home() {
   return (
     <div className="sa-root">
       <Suspense fallback={null}>
-        <MaintenanceModal />
+        <MaintenanceModal active={process.env.MAINTENANCE_MODE === '1'} />
       </Suspense>
       <LandingNav />
 

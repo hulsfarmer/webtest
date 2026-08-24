@@ -5,15 +5,16 @@ import { useSearchParams } from 'next/navigation';
 
 /**
  * 서비스 점검(리모델링) 안내 팝업.
- * 미들웨어가 제작 도구 접근을 막고 `/?maintenance=1`로 돌려보내면 이 모달을 띄운다.
+ * - `active`(서버 플래그)가 켜지면 랜딩 진입만으로도 표시.
+ * - 미들웨어가 제작 도구 접근을 막고 `/?maintenance=1`로 돌려보낸 경우에도 표시.
  */
-export default function MaintenanceModal() {
+export default function MaintenanceModal({ active = false }: { active?: boolean }) {
   const sp = useSearchParams();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    if (sp.get('maintenance') === '1') setShow(true);
-  }, [sp]);
+    if (active || sp.get('maintenance') === '1') setShow(true);
+  }, [active, sp]);
 
   if (!show) return null;
 
