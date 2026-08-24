@@ -3,11 +3,10 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { User, CreditCard, ExternalLink, Loader2, ArrowLeft, Film } from 'lucide-react';
+import { User, CreditCard, Loader2, ArrowLeft, Film } from 'lucide-react';
 import Link from 'next/link';
 
 interface SubscriptionInfo {
-  portalUrl: string | null;
   plan: string;
   monthlyUsage: number;
   usageLimit: number;
@@ -45,20 +44,17 @@ export default function AccountPage() {
   useEffect(() => {
     if (!session?.user) return;
 
-    Promise.all([
-      fetch('/api/subscription').then(r => r.ok ? r.json() : { portalUrl: null }),
-      fetch('/api/usage').then(r => r.ok ? r.json() : { plan: 'free', used: 0, limit: 3 }),
-    ]).then(([sub, usage]) => {
-      const plan = usage.plan || 'free';
-      setInfo({
-        portalUrl: sub.portalUrl || null,
-        plan,
-        monthlyUsage: usage.used || 0,
-        usageLimit: usage.limit === null ? Infinity : (usage.limit ?? PLAN_LIMITS[plan] ?? 0),
-        credits: usage.credits || 0,
-      });
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    fetch('/api/usage').then(r => r.ok ? r.json() : { plan: 'free', used: 0, limit: 3 })
+      .then((usage) => {
+        const plan = usage.plan || 'free';
+        setInfo({
+          plan,
+          monthlyUsage: usage.used || 0,
+          usageLimit: usage.limit === null ? Infinity : (usage.limit ?? PLAN_LIMITS[plan] ?? 0),
+          credits: usage.credits || 0,
+        });
+        setLoading(false);
+      }).catch(() => setLoading(false));
   }, [session]);
 
   if (status === 'loading' || loading) {
@@ -162,23 +158,7 @@ export default function AccountPage() {
           </Link>
 
           <div className="pt-2 space-y-3">
-            {info?.portalUrl ? (
-              <>
-                <a
-                  href={info.portalUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors"
-                >
-                  <CreditCard className="w-4 h-4" />
-                  구독 관리 (결제 수단 변경 / 취소)
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-                <p className="text-xs text-gray-500 text-center">
-                  LemonSqueezy 포털에서 결제 수단 변경, 구독 취소, 영수증 확인이 가능합니다.
-                </p>
-              </>
-            ) : info?.plan === 'free' ? (
+            {info?.plan === 'free' ? (
               <Link
                 href="/#pricing"
                 className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:opacity-90 transition-opacity"
@@ -187,7 +167,7 @@ export default function AccountPage() {
               </Link>
             ) : (
               <p className="text-sm text-gray-500 text-center">
-                구독 정보를 불러오는 중 문제가 발생했습니다.
+                {PLAN_LABELS[info?.plan ?? ''] ?? info?.plan} 플랜 이용 중입니다.
               </p>
             )}
           </div>

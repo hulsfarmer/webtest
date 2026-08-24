@@ -34,12 +34,6 @@ export const PLAN_PRICES: Record<Plan, number> = {
   admin: 0,
 };
 
-// LemonSqueezy variant ID → Plan 매핑 (레거시, 미사용)
-export const VARIANT_TO_PLAN: Record<string, Plan> = {
-  '1409976': 'pro',
-  '1410086': 'business',
-};
-
 function getCurrentMonth(): string {
   return new Date().toISOString().slice(0, 7); // YYYY-MM
 }
