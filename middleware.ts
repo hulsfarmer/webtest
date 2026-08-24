@@ -20,25 +20,28 @@ const matchesPrefix = (path: string, prefixes: string[]) =>
 
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
+  const inMaint = process.env.MAINTENANCE_MODE === '1' && matchesPrefix(path, MAINT_PREFIXES);
+  const needsAuth = matchesPrefix(path, AUTH_PREFIXES);
 
-  // 1) 점검 게이트: 제작 도구 진입 시 홈으로 돌려보내고 안내 팝업(?maintenance=1) 표시.
-  if (process.env.MAINTENANCE_MODE === '1' && matchesPrefix(path, MAINT_PREFIXES)) {
+  // 토큰은 필요할 때만 1회 조회.
+  const token = inMaint || needsAuth ? await getToken({ req, secret: process.env.NEXTAUTH_SECRET }) : null;
+  const email = String(token?.email || '').toLowerCase();
+  const isAdmin = ADMIN_EMAILS.includes(email);
+
+  // 1) 점검 게이트: 제작 도구 진입 시 홈 팝업(?maintenance=1)으로. 단 관리자는 테스트 목적으로 통과.
+  if (inMaint && !isAdmin) {
     return NextResponse.redirect(new URL('/?maintenance=1', req.url));
   }
 
   // 2) 로그인/관리자 게이트 (기존 동작). 점검이 꺼졌을 때만 실질 동작.
-  if (matchesPrefix(path, AUTH_PREFIXES)) {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  if (needsAuth) {
     if (!token) {
       const loginUrl = new URL('/login', req.url);
       loginUrl.searchParams.set('callbackUrl', req.url);
       return NextResponse.redirect(loginUrl);
     }
-    if (ADMIN_ONLY.some((p) => path === p || path.startsWith(p + '/'))) {
-      const email = String(token.email || '').toLowerCase();
-      if (!ADMIN_EMAILS.includes(email)) {
-        return NextResponse.redirect(new URL('/studio', req.url));
-      }
+    if (!isAdmin && ADMIN_ONLY.some((p) => path === p || path.startsWith(p + '/'))) {
+      return NextResponse.redirect(new URL('/studio', req.url));
     }
   }
 
