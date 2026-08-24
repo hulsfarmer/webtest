@@ -3,20 +3,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { buildPromoDescription } from '@/lib/promo-description';
 
-// 목소리 = google 보이스 + 피치(반음). Azure 엔진이면 engine/azure* 로 네이티브 톤.
-type VoiceCfg = { id: string; label: string; google: string; pitch: number; engine?: string; azureVoice?: string; azurePitch?: string; azureRate?: string };
+// 목소리 = Gemini 페르소나(VS_VOICE_MAP). google/pitch는 하위호환용 잔존 필드.
+type VoiceCfg = { id: string; label: string; google: string; pitch: number; gemini: string };
 const VOICES: VoiceCfg[] = [
-  { id: 'minji',  label: '민지 (여·자연)',    google: 'ko-KR-Chirp3-HD-Aoede',  pitch: 0 },
-  { id: 'sua',    label: '수아 (여·활기)',    google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 0 },
-  { id: 'minjun', label: '민준 (남·자연)',    google: 'ko-KR-Chirp3-HD-Charon', pitch: 0 },
-  { id: 'teen',   label: '민서 (청소년·남)',  google: 'ko-KR-Chirp3-HD-Charon', pitch: 2 },
-  // 하늘 = Azure 아이 톤(YuJin). Aoede+피치로는 어른 목소리라 Azure 네이티브로 교체. 실패 시 Google Aoede+5 폴백.
-  { id: 'child',  label: '하늘 (아이 톤)',    google: 'ko-KR-Chirp3-HD-Aoede',  pitch: 5,
-    engine: 'azure', azureVoice: 'ko-KR-YuJinNeural', azurePitch: '+30%', azureRate: '+5%' },
-  { id: 'dog',    label: '코코 (강아지 톤)',  google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 4 },
-  // 뭉치 = Azure 네이티브(귀여운 아이 톤). 실패 시 Google Zephyr+5 폴백.
-  { id: 'puppy',  label: '뭉치 (귀여운 강아지)', google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 5,
-    engine: 'azure', azureVoice: 'ko-KR-YuJinNeural', azurePitch: '+45%', azureRate: '+8%' },
+  { id: 'minji',  label: '민지 (여·자연)',    google: 'ko-KR-Chirp3-HD-Aoede',  pitch: 0, gemini: 'aoede' },
+  { id: 'sua',    label: '수아 (여·활기)',    google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 0, gemini: 'leda' },
+  { id: 'minjun', label: '민준 (남·자연)',    google: 'ko-KR-Chirp3-HD-Charon', pitch: 0, gemini: 'charon' },
+  { id: 'teen',   label: '민서 (청소년·남)',  google: 'ko-KR-Chirp3-HD-Charon', pitch: 2, gemini: 'teen' },
+  { id: 'child',  label: '하늘 (아이 톤)',    google: 'ko-KR-Chirp3-HD-Aoede',  pitch: 5, gemini: 'child' },
+  { id: 'dog',    label: '코코 (강아지 톤)',  google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 4, gemini: 'puppy' },
+  { id: 'puppy',  label: '뭉치 (귀여운 강아지)', google: 'ko-KR-Chirp3-HD-Zephyr', pitch: 5, gemini: 'puppy' },
 ];
 const PRESETS = [
   { id: 'preset-jieun', label: '민지·여성',   name: '민지', src: '/characters/preset-jieun.png', voiceKey: 'minji',  vsVoice: 'aoede' },
@@ -296,11 +292,8 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
       fd.append('estCredits', String(isAiActor ? 15 : estimateVs().total));
     } else {
       const v = VOICES.find((x) => x.id === voiceKey) ?? VOICES[0];
-      fd.append('voice', v.google);
-      fd.append('ttsEngine', v.engine ?? 'google');
-      fd.append('azureVoice', v.azureVoice ?? '');
-      fd.append('azurePitch', v.azurePitch ?? '0%');
-      fd.append('azureRate', v.azureRate ?? '0%');
+      fd.append('voice', v.google); // 하위호환(현재 미사용)
+      fd.append('geminiVoice', v.gemini);
       fd.append('duration', duration);
       fd.append('speed', speed);
       fd.append('pitch', charFile ? '0' : String(v.pitch)); // 업로드 캐릭터는 피치 0

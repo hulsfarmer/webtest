@@ -8,7 +8,7 @@ import { createJob, updateJob } from '@/lib/jobStore';
 import { generatePromoScript, generateYouTubeTags, PromoInput, ScriptSection } from '@/lib/anthropic';
 import { buildYouTubeTags } from '@/lib/promo-description';
 import { generateAudio } from '@/lib/tts';
-import { generateAzureTTS } from '@/lib/azure-tts';
+import { generateGeminiAudio } from '@/lib/gemini-tts';
 import { applyChildLisp } from '@/lib/child-voice';
 import { uploadToHedra, submitKlingAvatar, pollHedraVideo } from '@/lib/hedra';
 import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, probeDuration, sanitizeScript, fitCharTo916 } from '@/lib/promo-compose';
@@ -26,10 +26,7 @@ interface CharJobInput extends PromoInput {
   headerTheme: string;
   speed?: number; // 영상 배속 (기본 1.1)
   pitch?: number; // 목소리 피치 반음 (rubberband, Google 폴백용)
-  ttsEngine?: string; // 'azure' | 'google'(기본)
-  azureVoice?: string; // Azure 음성 (예 ko-KR-YuJinNeural)
-  azurePitch?: string; // Azure 네이티브 피치 (예 '+45%')
-  azureRate?: string; // Azure 속도 (예 '+8%')
+  geminiVoice?: string; // Gemini 페르소나 id (VS_VOICE_MAP: aoede/leda/charon/puck/teen/child/puppy)
   childLisp?: boolean; // 하늘(아이) 음성: 혀짧은소리 변환을 TTS에만 적용
   sections?: ScriptSection[]; // 사용자가 편집한 대본(있으면 AI 생성 생략)
   buyLink?: string; // 쿠팡 구매 링크 (라이브러리 유튜브 설명)
@@ -99,22 +96,15 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
     let ttsText = narration.replace(/[A-Z]{2,}/g, (m) => m.toLowerCase());
     // 하늘(아이) 음성이면 혀짧은소리로 읽기 — 자막/설명은 원문 narration 유지
     if (input.childLisp) ttsText = applyChildLisp(ttsText);
-    // TTS 엔진: Azure(네이티브 캐릭터 톤) 우선, 실패/미지정 시 Google
-    let azureDone = false;
-    if (input.ttsEngine === 'azure' && input.azureVoice) {
-      try {
-        await generateAzureTTS(ttsText, audioPath, input.azureVoice, input.azurePitch || '0%', input.azureRate || '0%');
-        azureDone = true;
-        console.log(`[PromoCharacterJob ${jobId}] Azure TTS (${input.azureVoice} ${input.azurePitch}/${input.azureRate})`);
-      } catch (e) { console.error(`[PromoCharacterJob ${jobId}] Azure TTS 실패 → Google 폴백:`, e instanceof Error ? e.message : e); }
-    }
-    if (!azureDone) await generateAudio(ttsText, audioPath, input.duration || 30, input.voice, 1.0);
+    // TTS: Gemini 음성(페르소나 스타일 기반)으로 나레이션 생성
+    await generateGeminiAudio(ttsText, input.geminiVoice || 'aoede', audioPath);
+    console.log(`[PromoCharacterJob ${jobId}] Gemini TTS (${input.geminiVoice || 'aoede'})`);
     // STT용 깨끗한 원본 오디오(피치·배속 전) 보관 — 피치 오디오는 STT 인식률이 급락
     const cleanAudioPath = path.join(tmpDir, `${jobId}_clean.mp3`);
     fs.copyFileSync(audioPath, cleanAudioPath);
     subPaths.push(cleanAudioPath);
-    // 목소리 피치(rubberband): Azure는 네이티브 피치라 스킵. Google 경로만 적용.
-    const pitch = azureDone ? 0 : Math.max(-6, Math.min(6, input.pitch || 0));
+    // Gemini 음성은 페르소나 스타일로 톤이 정해져 별도 피치 시프트 불필요.
+    const pitch = 0;
     if (Math.abs(pitch) > 0.01) {
       const pitchedPath = path.join(tmpDir, `${jobId}_pitched.mp3`);
       await applyPitch(audioPath, pitch, pitchedPath);
@@ -210,10 +200,7 @@ export async function POST(req: NextRequest) {
   const speed = Math.min(2.0, Math.max(0.5, parseFloat((fd.get('speed') as string | null) ?? "1.1") || 1.1));
   const pitch = Math.max(-6, Math.min(6, parseFloat((fd.get('pitch') as string | null) ?? '0') || 0));
   const characterName = ((fd.get('characterName') as string | null) ?? '').trim();
-  const ttsEngine = ((fd.get('ttsEngine') as string | null) ?? 'google').trim();
-  const azureVoice = ((fd.get('azureVoice') as string | null) ?? '').trim();
-  const azurePitch = ((fd.get('azurePitch') as string | null) ?? '0%').trim();
-  const azureRate = ((fd.get('azureRate') as string | null) ?? '0%').trim();
+  const geminiVoice = ((fd.get('geminiVoice') as string | null) ?? 'aoede').trim();
   const childLisp = ((fd.get('childLisp') as string | null) ?? '') === '1';
   const tone = (fd.get('tone') as string | null) ?? '친근한';
   const quality = ((fd.get('quality') as string | null) ?? 'standard') === 'pro' ? 'pro' : 'standard';
@@ -275,7 +262,7 @@ export async function POST(req: NextRequest) {
     voice, characterBuf, characterType, productImagePath,
     overlayTitle: businessName, overlayCta: cta, // 빈 값이면 CTA 표시 안 함
     catchphrase, headerTheme, speed, pitch, characterName,
-    ttsEngine, azureVoice, azurePitch, azureRate, childLisp, sections, buyLink, quality,
+    geminiVoice, childLisp, sections, buyLink, quality,
   }).catch(console.error);
 
   return NextResponse.json({ jobId });
