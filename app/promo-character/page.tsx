@@ -90,6 +90,12 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
   const [optYt, setOptYt] = useState(false);
   const [optHome, setOptHome] = useState(false);
   const [optDl, setOptDl] = useState(false);
+  // 인스타
+  const [igConnected, setIgConnected] = useState(false);
+  const [igAccount, setIgAccount] = useState('');
+  const [igMsg, setIgMsg] = useState('');
+  const [igUrl, setIgUrl] = useState('');
+  const [optIg, setOptIg] = useState(false);
   const [pubRunning, setPubRunning] = useState(false);
   const [pubMsg, setPubMsg] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -150,11 +156,15 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
   // YouTube 연결 상태 확인 + 콜백(?yt=) 처리
   useEffect(() => {
     fetch('/api/social/youtube/status').then((r) => r.json()).then((d) => setYtConnected(!!d.connected)).catch(() => {});
+    fetch('/api/social/instagram/status').then((r) => r.json()).then((d) => { setIgConnected(!!d.connected); if (d.account?.username) setIgAccount(d.account.username); }).catch(() => {});
     const params = new URLSearchParams(window.location.search);
     const q = params.get('yt');
     if (q === 'connected') { setYtMsg('YouTube 연결 완료'); setYtConnected(true); }
     else if (q === 'error') setYtMsg('YouTube 연결 실패 — 다시 시도하세요.');
-    if (q) window.history.replaceState({}, '', '/promo-character');
+    const ig = params.get('ig');
+    if (ig === 'connected') { setIgMsg('인스타 연결 완료'); setIgConnected(true); }
+    else if (ig === 'error') setIgMsg('인스타 연결 실패 — 비즈니스 계정·페이지 연결을 확인하세요.');
+    if (q || ig) window.history.replaceState({}, '', '/promo-character');
   }, []);
 
   // 유튜브 설명란: 나레이션 원문 + 구매 링크 + 제작 크레딧
@@ -166,8 +176,9 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
   // 체크한 곳(유튜브·홈페이지·다운로드)으로 한 번에 발행
   async function runPublish() {
     if (!jobId || !videoUrl) return;
-    if (!optYt && !optHome && !optDl) { setPubMsg('올릴 곳을 하나 이상 선택하세요.'); return; }
+    if (!optYt && !optHome && !optDl && !optIg) { setPubMsg('올릴 곳을 하나 이상 선택하세요.'); return; }
     if (optYt && !ytConnected) { setPubMsg('유튜브가 연결되지 않았어요. 먼저 “YouTube 연결하기”를 눌러주세요.'); return; }
+    if (optIg && !igConnected) { setPubMsg('인스타가 연결되지 않았어요. 먼저 “인스타 연결하기”를 눌러주세요.'); return; }
     setPubRunning(true); setPubMsg('');
     const done: string[] = [];
     try {
@@ -186,6 +197,15 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || '유튜브 업로드 실패');
         setYtUrl(d.url); done.push('유튜브 업로드(일부공개)');
+      }
+      if (optIg && !igUrl) {
+        const r = await fetch('/api/social/instagram/upload', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobId, caption: buildDescription() }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || '인스타 발행 실패');
+        setIgUrl(d.url); done.push('인스타 릴스 발행');
       }
       if (optHome && !showcaseDone) {
         const r = await fetch('/api/showcase/submit', {
@@ -576,6 +596,9 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                 <span className={`text-[11px] rounded-full px-2 py-0.5 ${ytConnected ? 'bg-green-900/60 text-green-300' : 'bg-neutral-800 text-neutral-400'}`}>
                   YouTube {ytConnected ? '연결됨' : '미연결'}
                 </span>
+                <span className={`text-[11px] rounded-full px-2 py-0.5 ${igConnected ? 'bg-pink-900/50 text-pink-300' : 'bg-neutral-800 text-neutral-400'}`}>
+                  Instagram {igConnected ? (igAccount ? `@${igAccount}` : '연결됨') : '미연결'}
+                </span>
               </div>
             </div>
             {ytMsg && !videoUrl && <div className="text-xs text-neutral-300 mb-3">{ytMsg}</div>}
@@ -608,6 +631,15 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                 )}
                 {ytUrl && <a href={ytUrl} target="_blank" rel="noreferrer" className="block text-xs text-sky-400 underline ml-6 break-all">{ytUrl}</a>}
 
+                <label className={`flex items-center gap-2.5 text-sm cursor-pointer ${igUrl ? 'text-neutral-500' : 'text-neutral-200'}`}>
+                  <input type="checkbox" className="w-4 h-4 accent-pink-500" checked={optIg} disabled={!!igUrl} onChange={(e) => setOptIg(e.target.checked)} />
+                  <span>📸 인스타 릴스로 올리기{igUrl && ' — 완료'}</span>
+                </label>
+                {!igConnected && (
+                  <a href="/api/social/instagram/connect" className="block text-xs text-pink-400 underline ml-6">먼저 인스타 연결하기 →</a>
+                )}
+                {igUrl && <a href={igUrl} target="_blank" rel="noreferrer" className="block text-xs text-pink-400 underline ml-6 break-all">{igUrl}</a>}
+
                 <label className={`flex items-center gap-2.5 text-sm cursor-pointer ${showcaseDone ? 'text-neutral-500' : 'text-neutral-200'}`}>
                   <input type="checkbox" className="w-4 h-4 accent-purple-500" checked={optHome} disabled={showcaseDone} onChange={(e) => setOptHome(e.target.checked)} />
                   <span>📢 홈페이지에 소개하기 <span className="text-neutral-500">(승인 후 노출)</span>{showcaseDone && ' — 신청됨'}</span>
@@ -620,6 +652,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                 </button>
                 {pubMsg && <div className="text-xs text-neutral-300">{pubMsg}</div>}
                 {ytMsg && <div className="text-xs text-neutral-300">{ytMsg}</div>}
+                {igMsg && <div className="text-xs text-neutral-300">{igMsg}</div>}
               </div>
             )}
           </div>
