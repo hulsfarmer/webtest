@@ -106,12 +106,12 @@ export default function LandingTools() {
   return (
     <div className="sa-tool-groups">
       <div className="sa-tool-group">
-        <div className="sa-group-label"><span className="ic">🎬</span> 홍보영상 · 쇼츠</div>
-        <div className="sa-tools">{videoCards.map(renderCard)}</div>
-      </div>
-      <div className="sa-tool-group">
         <div className="sa-group-label"><span className="ic">🎨</span> 디자인</div>
         <div className="sa-tools">{designCards.map(renderCard)}</div>
+      </div>
+      <div className="sa-tool-group">
+        <div className="sa-group-label"><span className="ic">🎬</span> 홍보영상 · 쇼츠</div>
+        <div className="sa-tools">{videoCards.map(renderCard)}</div>
       </div>
     </div>
   );

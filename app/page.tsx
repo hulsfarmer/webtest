@@ -24,7 +24,7 @@ export default function Home() {
             <h1 className="sa-hl">사진 몇 장이면,<br /><span className="g">홍보 쇼츠</span>가 <u>3분</u> 만에<br />완성됩니다.</h1>
             <p className="sa-lead">업체명과 사진만 넣으면 대본·AI 음성·BGM·자막까지 자동으로. 영상 제작사 없이, 오늘 바로 SNS에 올리세요.</p>
             <div className="sa-cta-row">
-              <Link className="sa-btn grad lg" href="/promo">무료로 시작하기 →</Link>
+              <Link className="sa-btn grad lg" href="/studio">무료로 시작하기 →</Link>
               <a className="sa-btn ghost lg" href="#tools">샘플 영상 보기</a>
             </div>
             <div className="sa-trust">
@@ -76,7 +76,7 @@ export default function Home() {
             <h2>오늘, 첫 홍보 쇼츠를 만들어 보세요</h2>
             <p>신용카드 없이 무료 3회. 3분이면 SNS에 올릴 영상이 나옵니다.</p>
             <div className="sa-cta-row" style={{ justifyContent: 'center' }}>
-              <Link className="sa-btn ghost lg" href="/promo">무료로 시작하기 →</Link>
+              <Link className="sa-btn ghost lg" href="/studio">무료로 시작하기 →</Link>
             </div>
           </div>
         </div>
