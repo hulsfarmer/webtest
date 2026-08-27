@@ -109,7 +109,7 @@ export default function LandingTools() {
         <div className="sa-group-label"><span className="ic">🎨</span> 디자인</div>
         <div className="sa-tools">{designCards.map(renderCard)}</div>
       </div>
-      <div className="sa-tool-group">
+      <div className="sa-tool-group" id="video-samples" style={{ scrollMarginTop: '80px' }}>
         <div className="sa-group-label"><span className="ic">🎬</span> 홍보영상 · 쇼츠</div>
         <div className="sa-tools">{videoCards.map(renderCard)}</div>
       </div>

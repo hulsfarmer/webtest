@@ -25,7 +25,7 @@ export default function Home() {
             <p className="sa-lead">업체명과 사진만 넣으면 대본·AI 음성·BGM·자막까지 자동으로. 영상 제작사 없이, 오늘 바로 SNS에 올리세요.</p>
             <div className="sa-cta-row">
               <Link className="sa-btn grad lg" href="/studio">무료로 시작하기 →</Link>
-              <a className="sa-btn ghost lg" href="#tools">샘플 영상 보기</a>
+              <a className="sa-btn ghost lg" href="#video-samples">샘플 영상 보기</a>
             </div>
             <div className="sa-trust">
               <span><span className="ck">✓</span> <b>무료 3회</b> 제공</span>
