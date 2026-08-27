@@ -41,16 +41,16 @@ export async function exchangeCode(code: string): Promise<void> {
   const appId = process.env.INSTAGRAM_APP_ID || '';
   const appSecret = process.env.INSTAGRAM_APP_SECRET || '';
 
-  // 1) code → 단수명 토큰 (+ user_id)
-  console.log('[ig exchange] redirect_uri=%s app_id=%s app_id_len=%d secret_len=%d code_len=%d code_head=%s',
-    IG_REDIRECT_URI, appId, appId.length, appSecret.length, code.length, code.slice(0, 6));
-  const t1raw = await fetch('https://api.instagram.com/oauth/access_token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: appId, client_secret: appSecret, grant_type: 'authorization_code', redirect_uri: IG_REDIRECT_URI, code,
-    }).toString(),
-  }).then((r) => r.json()) as { access_token?: string; user_id?: number | string; data?: Array<{ access_token: string; user_id: number | string }>; error_message?: string };
+  // 1) code → 단수명 토큰 (+ user_id).
+  // 인스타 공식 예시가 -F(multipart) 라서 form-data 로 전송 (urlencoded 시 redirect_uri 검증 오류 사례 있음)
+  const fd = new FormData();
+  fd.append('client_id', appId);
+  fd.append('client_secret', appSecret);
+  fd.append('grant_type', 'authorization_code');
+  fd.append('redirect_uri', IG_REDIRECT_URI);
+  fd.append('code', code);
+  const t1raw = await fetch('https://api.instagram.com/oauth/access_token', { method: 'POST', body: fd })
+    .then((r) => r.json()) as { access_token?: string; user_id?: number | string; data?: Array<{ access_token: string; user_id: number | string }>; error_message?: string };
   const short = t1raw.access_token || t1raw.data?.[0]?.access_token;
   if (!short) throw new Error(`token exchange 실패: ${JSON.stringify(t1raw).slice(0, 200)}`);
 
