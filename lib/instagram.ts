@@ -42,6 +42,8 @@ export async function exchangeCode(code: string): Promise<void> {
   const appSecret = process.env.INSTAGRAM_APP_SECRET || '';
 
   // 1) code → 단수명 토큰 (+ user_id)
+  console.log('[ig exchange] redirect_uri=%s app_id=%s app_id_len=%d secret_len=%d code_len=%d code_head=%s',
+    IG_REDIRECT_URI, appId, appId.length, appSecret.length, code.length, code.slice(0, 6));
   const t1raw = await fetch('https://api.instagram.com/oauth/access_token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
