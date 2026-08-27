@@ -98,7 +98,18 @@
 .sa-btn.text { background: transparent; color: var(--text-dim); padding: 10px 8px; }
 .sa-btn.text:hover { color: var(--text); }
 .sa-btn.lg { padding: 14px 24px; font-size: 16px; border-radius: 13px; }
-@media (max-width: 780px) { .sa-links, .sa-hide-sm { display: none; } }
+@media (max-width: 780px) {
+  .sa-links, .sa-hide-sm { display: none; }
+  /* 로그인 버튼 자리를 확보하려 모바일 상단바에선 테마토글 숨김 (시스템 테마 자동 적용) */
+  .sa-nav-right .sa-seg { display: none; }
+  .sa-nav-row { gap: 12px; }
+  .sa-nav-right { gap: 6px; }
+  .sa-btn.grad { padding: 10px 14px; font-size: 14px; }
+  .sa-btn.text { padding: 10px 6px; }
+}
+@media (max-width: 360px) {
+  .sa-btn.grad { padding: 9px 12px; font-size: 13.5px; }
+}
 
 /* ── Hero ── */
 .sa-hero { position: relative; overflow: hidden; padding: 66px 0 40px; }

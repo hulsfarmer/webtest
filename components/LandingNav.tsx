@@ -31,7 +31,7 @@ export default function LandingNav() {
             </>
           )}
           {status === 'unauthenticated' && (
-            <Link className="sa-btn text sa-hide-sm" href="/login">로그인</Link>
+            <Link className="sa-btn text" href="/login">로그인</Link>
           )}
           <Link className="sa-btn grad" href="/studio" prefetch>{loggedIn ? '스튜디오 →' : '스튜디오 시작'}</Link>
         </div>
