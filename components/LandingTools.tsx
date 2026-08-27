@@ -27,8 +27,6 @@ const CARDS: Card[] = [
   { key: 'product-vs', icon: '🎭', name: '제품 홍보영상 (캐릭터)', desc: '캐릭터가 제품을 직접 소개하는 세로 쇼츠.', href: '/studio/product-vs', kind: 'video' },
   { key: 'product-ai', icon: '⭐', name: '제품 홍보영상 (캐릭터2)', desc: '제품을 든 AI배우를 자동 생성해 20초로 말하게 하는 쇼츠.', href: '/studio/product-ai', kind: 'video', tag: 'new' },
   { key: 'logo', icon: '✦', name: '로고 생성', desc: '브랜드 이름과 분위기만으로 로고 시안 제작·다운로드. 5가지 스타일.', href: '/studio/logo', kind: 'logo' },
-  { icon: '🔄', name: '파일 변환', desc: '영상·이미지·문서 포맷을 빠르게 변환합니다.', tag: 'soon' },
-  { icon: '🎬', name: '유튜브 디자인', desc: '채널 배너·썸네일을 브랜드 톤에 맞춰 자동 디자인.', tag: 'soon' },
 ];
 
 export default function LandingTools() {

@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     try { for (const f of fs.readdirSync(LOGO_DIR)) if (f.startsWith(`${style}-`) || f === `${style}.${ext}`) fs.unlinkSync(path.join(LOGO_DIR, f)); } catch { /* 무시 */ }
     const fname = `${style}-${Date.now()}.${ext}`;
     fs.writeFileSync(path.join(LOGO_DIR, fname), Buffer.from(await file.arrayBuffer()));
-    const url = `/logo-samples/${fname}`;
+    const url = `/api/logo-sample/${fname}`;
     const s = setLogoStyle(style, url);
     return NextResponse.json({ ok: true, samples: s });
   }

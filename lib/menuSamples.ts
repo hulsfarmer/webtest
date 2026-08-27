@@ -5,14 +5,16 @@
  * - 로고: 5개 스타일별 샘플 이미지 지정(관리자 업로드)
  *
  * 이 매핑은 ① 각 스튜디오 메뉴 페이지 상단, ② 랜딩 기능 카드 에서 재사용된다.
- * 저장: data/menu_samples.json (git 미추적 → 배포 보존). 로고 이미지는 public/logo-samples/.
+ * 저장: data/menu_samples.json (git 미추적 → 배포 보존).
+ * 로고 이미지도 data/logo-samples/ 에 저장하고 /api/logo-sample/{file} 로 서빙한다
+ * (Next 프로덕션은 빌드 후 런타임에 추가된 public 파일을 서빙하지 않으므로 API 경유 필수).
  */
 import fs from 'fs';
 import path from 'path';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const FILE = path.join(DATA_DIR, 'menu_samples.json');
-export const LOGO_DIR = path.join(process.cwd(), 'public', 'logo-samples');
+export const LOGO_DIR = path.join(DATA_DIR, 'logo-samples');
 
 export const VIDEO_MENUS = [
   { key: 'promo', name: '업체 홍보영상', href: '/studio/promo' },
