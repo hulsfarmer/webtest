@@ -255,6 +255,11 @@
 .sa-tool-logos figure { margin: 0; }
 .sa-tool-logos img { width: 100%; aspect-ratio: 1/1; object-fit: contain; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 5px; }
 .sa-tool-logos figcaption { margin-top: 4px; font-size: 10px; color: var(--text-dim); text-align: center; }
+/* 로고 카드는 전체폭으로 펴서 5스타일을 크게(약 2배) */
+.sa-tool.is-logo { grid-column: 1 / -1; }
+.sa-tool.is-logo .sa-tool-logos { grid-template-columns: repeat(5, minmax(0, 150px)); justify-content: center; gap: 18px; }
+.sa-tool.is-logo .sa-tool-logos img { padding: 10px; border-radius: 14px; }
+.sa-tool.is-logo .sa-tool-logos figcaption { font-size: 12.5px; margin-top: 7px; }
 .sa-tool-cta { margin-top: 14px; align-self: flex-start; font-weight: 700; font-size: 14px; color: var(--purple); }
 .sa-tool-cta:hover { text-decoration: underline; }
 @media (max-width: 900px) { .sa-tools { grid-template-columns: repeat(2, 1fr); } }

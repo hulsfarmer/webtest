@@ -74,7 +74,7 @@ export default function LandingTools() {
         // 샘플이 있으면: 카드=div(미디어 재생 가능) + 하단 CTA 링크
         if (media) {
           return (
-            <div key={t.name} className="sa-tool has-media">
+            <div key={t.name} className={`sa-tool has-media${t.kind === 'logo' ? ' is-logo' : ''}`}>
               {head}
               {media}
               {t.href && <Link className="sa-tool-cta" href={t.href}>만들어 보기 →</Link>}
