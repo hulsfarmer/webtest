@@ -17,7 +17,7 @@ const LOGO_STYLES = [
 // 스튜디오 메뉴 페이지 상단의 접이식 '예시 보기' 바 (기본 접힘).
 export default function MenuSample({ menuKey }: { menuKey: string }) {
   const [s, setS] = useState<Samples | null>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(menuKey === 'logo'); // 로고는 기본 펼침, 영상 메뉴는 접힘
 
   useEffect(() => {
     let alive = true;
@@ -39,7 +39,7 @@ export default function MenuSample({ menuKey }: { menuKey: string }) {
   return (
     <div className={`msample${open ? ' open' : ''}`}>
       <button className="msample-toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        <span>🎬 {label}</span>
+        <span>{isLogo ? '🎨' : '🎬'} {label}</span>
         <span className="chev">{open ? '▲' : '▼'}</span>
       </button>
       {open && (
