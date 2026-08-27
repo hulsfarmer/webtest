@@ -67,10 +67,11 @@ export function buildYouTubeTags(businessName: string, catchphrase: string, narr
   const ranked = [...freq.entries()]
     .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)
     .map((e) => e[0]);
-  for (const w of ranked.slice(0, 7)) add(w);
-
+  // 브랜드·핵심 태그 먼저(15개 상한에 잘리지 않게) — businessName 다음, 키워드보다 우선
+  ['shortsai', '이지온', '쇼츠제작', '홍보영상'].forEach(add);
   for (const e of extra) add(e);
-  // 기본 홍보/쇼츠 태그
-  ['쇼츠', 'shorts', '홍보영상', '광고', '브랜드홍보', 'AI영상'].forEach(add);
+  for (const w of ranked.slice(0, 5)) add(w);
+  // 나머지 기본 홍보/쇼츠 태그
+  ['쇼츠', 'shorts', '광고', '브랜드홍보', 'AI영상'].forEach(add);
   return out.slice(0, 15);
 }
