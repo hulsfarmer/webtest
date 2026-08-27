@@ -26,11 +26,14 @@ export const CUSTOM_LIMITS: Record<string, number> = {
 };
 
 // 구독 플랜 월 결제금액 (VAT 포함 실청구가)
+// ⚠️ 실제 과금·표시의 진실은 lib/portone.ts(PORTONE_PLAN_AMOUNT)·components/PricingSection.tsx.
+//    여기 값은 그와 일치시켜 둔 것(라이트 9,900/프로 19,900, 크레딧당 ~180원).
+//    business 는 현재 미판매(portone 결제항목·크레딧 없음).
 export const PLAN_PRICES: Record<Plan, number> = {
   free: 0,
-  lite: 2000,
-  pro: 4000,
-  business: 10000,
+  lite: 9900,
+  pro: 19900,
+  business: 0,
   admin: 0,
 };
 
