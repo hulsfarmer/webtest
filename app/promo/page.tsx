@@ -214,7 +214,6 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
   const [ytConnected, setYtConnected] = useState(false);
   const [ytUrl, setYtUrl] = useState('');
   const [ytMsg, setYtMsg] = useState('');
-  const [showcaseDone, setShowcaseDone] = useState(false);
   // 인스타
   const [igConnected, setIgConnected] = useState(false);
   const [igAccount, setIgAccount] = useState('');
@@ -223,7 +222,6 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
   // 발행 옵션 체크박스
   const [optYt, setOptYt] = useState(false);
   const [optIg, setOptIg] = useState(false);
-  const [optHome, setOptHome] = useState(false);
   const [optDl, setOptDl] = useState(false);
   const [pubRunning, setPubRunning] = useState(false);
   const [pubMsg, setPubMsg] = useState('');
@@ -245,7 +243,7 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
   // 체크한 곳(유튜브·홈페이지·다운로드)으로 한 번에 발행
   async function runPublish() {
     if (!jobId || !jobStatus?.videoUrl) return;
-    if (!optYt && !optIg && !optHome && !optDl) { setPubMsg('올릴 곳을 하나 이상 선택하세요.'); return; }
+    if (!optYt && !optIg && !optDl) { setPubMsg('올릴 곳을 하나 이상 선택하세요.'); return; }
     if (optYt && !ytConnected) { setPubMsg('유튜브가 연결되지 않았어요. 먼저 “YouTube 연결하기”를 눌러주세요.'); return; }
     if (optIg && !igConnected) { setPubMsg('인스타가 연결되지 않았어요. 먼저 “인스타 연결하기”를 눌러주세요.'); return; }
     setPubRunning(true); setPubMsg('');
@@ -281,15 +279,6 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || '인스타 발행 실패');
         setIgUrl(d.url); done.push('인스타 릴스 발행');
-      }
-      if (optHome && !showcaseDone) {
-        const r = await fetch('/api/showcase/submit', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jobId, consent: true }),
-        });
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.error || '홈 소개 신청 실패');
-        setShowcaseDone(true); done.push('홈 소개 신청');
       }
       setPubMsg(done.length ? `완료: ${done.join(', ')}` : '이미 처리된 항목이에요.');
     } catch (e) { setPubMsg(e instanceof Error ? e.message : String(e)); }
@@ -1722,12 +1711,6 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
                   <a href="/api/social/instagram/connect" className="block text-xs text-pink-400 underline ml-6">먼저 인스타 연결하기 →</a>
                 )}
                 {igUrl && <a href={igUrl} target="_blank" rel="noreferrer" className="block text-xs text-pink-400 underline ml-6 break-all">{igUrl}</a>}
-
-                <label className={`flex items-center gap-2.5 text-sm cursor-pointer ${showcaseDone ? 'text-gray-500' : 'text-neutral-200'}`}>
-                  <input type="checkbox" className="w-4 h-4 accent-purple-500" checked={optHome} disabled={showcaseDone} onChange={(e) => setOptHome(e.target.checked)} />
-                  <span>📢 홈페이지에 소개하기 <span className="text-gray-500">(승인 후 노출)</span>{showcaseDone && ' — 신청됨'}</span>
-                </label>
-                <div className="text-[11px] text-gray-500 ml-6 -mt-1">홈페이지 소개는 관리자 승인 후 노출되며, 체크 시 업체명·영상 노출에 동의합니다.</div>
 
                 <button onClick={runPublish} disabled={pubRunning}
                   className="w-full py-3 rounded-xl text-white font-bold hover:opacity-90 disabled:opacity-50 transition-all"

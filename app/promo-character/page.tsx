@@ -86,9 +86,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
   const [ytConnected, setYtConnected] = useState(false);
   const [ytMsg, setYtMsg] = useState('');
   const [ytUrl, setYtUrl] = useState('');
-  const [showcaseDone, setShowcaseDone] = useState(false);
   const [optYt, setOptYt] = useState(false);
-  const [optHome, setOptHome] = useState(false);
   const [optDl, setOptDl] = useState(false);
   // 인스타
   const [igConnected, setIgConnected] = useState(false);
@@ -180,7 +178,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
   // 체크한 곳(유튜브·홈페이지·다운로드)으로 한 번에 발행
   async function runPublish() {
     if (!jobId || !videoUrl) return;
-    if (!optYt && !optHome && !optDl && !optIg) { setPubMsg('올릴 곳을 하나 이상 선택하세요.'); return; }
+    if (!optYt && !optDl && !optIg) { setPubMsg('올릴 곳을 하나 이상 선택하세요.'); return; }
     if (optYt && !ytConnected) { setPubMsg('유튜브가 연결되지 않았어요. 먼저 “YouTube 연결하기”를 눌러주세요.'); return; }
     if (optIg && !igConnected) { setPubMsg('인스타가 연결되지 않았어요. 먼저 “인스타 연결하기”를 눌러주세요.'); return; }
     setPubRunning(true); setPubMsg('');
@@ -210,15 +208,6 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || '인스타 발행 실패');
         setIgUrl(d.url); done.push('인스타 릴스 발행');
-      }
-      if (optHome && !showcaseDone) {
-        const r = await fetch('/api/showcase/submit', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jobId, consent: true }),
-        });
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.error || '홈 소개 신청 실패');
-        setShowcaseDone(true); done.push('홈 소개 신청');
       }
       setPubMsg(done.length ? `완료: ${done.join(', ')}` : '이미 처리된 항목이에요.');
     } catch (e) { setPubMsg(e instanceof Error ? e.message : String(e)); }
@@ -643,12 +632,6 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                   <a href="/api/social/instagram/connect" className="block text-xs text-pink-400 underline ml-6">먼저 인스타 연결하기 →</a>
                 )}
                 {igUrl && <a href={igUrl} target="_blank" rel="noreferrer" className="block text-xs text-pink-400 underline ml-6 break-all">{igUrl}</a>}
-
-                <label className={`flex items-center gap-2.5 text-sm cursor-pointer ${showcaseDone ? 'text-neutral-500' : 'text-neutral-200'}`}>
-                  <input type="checkbox" className="w-4 h-4 accent-purple-500" checked={optHome} disabled={showcaseDone} onChange={(e) => setOptHome(e.target.checked)} />
-                  <span>📢 홈페이지에 소개하기 <span className="text-neutral-500">(승인 후 노출)</span>{showcaseDone && ' — 신청됨'}</span>
-                </label>
-                <div className="text-[11px] text-neutral-500 ml-6 -mt-1">홈페이지 소개는 관리자 승인 후 노출되며, 체크 시 제품명·영상 노출에 동의합니다.</div>
 
                 <button onClick={runPublish} disabled={pubRunning}
                   className="w-full mt-1 py-2.5 rounded-lg text-white font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50">
