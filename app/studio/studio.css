@@ -135,6 +135,10 @@
 .st-topbar .spacer { flex: 1; }
 .st-pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font-size: 13px; font-weight: 600; color: var(--text-dim); }
 .st-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
+/* 미로그인 상태: pill 을 로그인 링크(버튼)로 */
+.st-pill-login { cursor: pointer; color: #fff; background: var(--grad); border-color: transparent; box-shadow: 0 6px 16px -8px rgba(124,58,237,.7); text-decoration: none; }
+.st-pill-login .dot { background: rgba(255,255,255,.9); }
+.st-pill-login:hover { filter: brightness(1.05); }
 .st-iconbtn { width: 36px; height: 36px; border-radius: 9px; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text-dim); display: grid; place-items: center; transition: background .15s, color .15s; }
 .st-iconbtn:hover { background: var(--surface-2); color: var(--text); }
 

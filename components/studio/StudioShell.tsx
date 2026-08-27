@@ -151,7 +151,13 @@ export default function StudioShell({ children }: { children: React.ReactNode })
             <button className="st-iconbtn st-hamburger" onClick={() => setDrawer(true)} aria-label="메뉴 열기">{Burger}</button>
             <div className="st-crumb"><Link href="/studio">Studio</Link> <span>›</span> <b>{crumbName}</b></div>
             <div className="spacer" />
-            <span className="st-pill"><span className="dot" />{pillText}</span>
+            {status === 'authenticated' ? (
+              <span className="st-pill"><span className="dot" />{pillText}</span>
+            ) : (
+              <Link className="st-pill st-pill-login" href={`/login?callbackUrl=${encodeURIComponent(pathname || '/studio')}`}>
+                <span className="dot" />로그인 →
+              </Link>
+            )}
             <ThemeToggle />
           </header>
 
