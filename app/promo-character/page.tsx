@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { buildPromoDescription } from '@/lib/promo-description';
+import { buildPromoDescription, buildInstagramCaption } from '@/lib/promo-description';
 
 // 목소리 = Gemini 페르소나(VS_VOICE_MAP). google/pitch는 하위호환용 잔존 필드.
 type VoiceCfg = { id: string; label: string; google: string; pitch: number; gemini: string };
@@ -172,6 +172,10 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
     const narration = sections.map((s) => s.text).join('  ');
     return buildPromoDescription(narration, buyLink || importUrl);
   }
+  function buildIgCaption(): string {
+    const narration = sections.map((s) => s.text).join('  ');
+    return buildInstagramCaption(narration, buyLink || importUrl, businessName, catchphrase);
+  }
 
   // 체크한 곳(유튜브·홈페이지·다운로드)으로 한 번에 발행
   async function runPublish() {
@@ -201,7 +205,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
       if (optIg && !igUrl) {
         const r = await fetch('/api/social/instagram/upload', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jobId, caption: buildDescription() }),
+          body: JSON.stringify({ jobId, caption: buildIgCaption() }),
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || '인스타 발행 실패');

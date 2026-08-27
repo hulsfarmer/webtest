@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Megaphone, ArrowLeft, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Calendar, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2, Settings2, Upload, Volume2, Play, Pause } from 'lucide-react';
 import { BGM_CATALOG, recommendBgm, type BgmId } from '@/lib/bgm-catalog';
+import { buildPromoDescription, buildInstagramCaption } from '@/lib/promo-description';
 
 type VideoScript = {
   title: string;
@@ -259,7 +260,7 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
       if (optYt && !ytUrl) {
         const title = (businessName || '홍보 영상').trim().slice(0, 90);
         const narration = (scriptDraft?.sections || []).map((s) => s.text).join('  ').trim();
-        const desc = `${narration}\n\n▶ ${businessName || ''}\n\nshortsai.kr 로 만든 홍보 영상`.trim();
+        const desc = buildPromoDescription(narration, ''); // 나레이션 + 이지온 제작·문의
         const r = await fetch('/api/social/youtube/upload', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ jobId, title, description: desc, privacyStatus: 'unlisted' }),
@@ -270,7 +271,7 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
       }
       if (optIg && !igUrl) {
         const narration = (scriptDraft?.sections || []).map((s) => s.text).join('  ').trim();
-        const caption = `${narration}\n\n${businessName || ''} · shortsai.kr`.trim();
+        const caption = buildInstagramCaption(narration, '', businessName || '', scriptDraft?.title || ''); // 이지온 제작·문의 + 해시태그
         const r = await fetch('/api/social/instagram/upload', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ jobId, caption }),

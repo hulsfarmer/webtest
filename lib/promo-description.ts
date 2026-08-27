@@ -11,8 +11,19 @@ export function buildPromoDescription(narration: string, buyLink: string): strin
     lines.push('', `👀 살펴보기 👉 ${link}`);
     lines.push('', '이 게시물은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.');
   }
-  lines.push('', '🎬 제작: 이지온', '📩 AI영상제작문의: huls_family@naver.com (이지온)');
+  lines.push('', '🎬 제작: 이지온 (EasyOn)', '📩 홍보영상 제작문의: huls_family@naver.com · shortsai.kr');
   return lines.join('\n');
+}
+
+/**
+ * 인스타 릴스 캡션 = 나레이션 + 이지온 제작·문의 + 해시태그.
+ * 유튜브 설명(buildPromoDescription)에 IG 발견용 해시태그 줄을 덧붙인다.
+ */
+export function buildInstagramCaption(narration: string, buyLink: string, businessName = '', catchphrase = ''): string {
+  const base = buildPromoDescription(narration, buyLink);
+  const tags = buildYouTubeTags(businessName, catchphrase, narration);
+  const hashtags = tags.slice(0, 12).map((t) => '#' + t.replace(/[#\s]/g, '')).filter((h) => h.length > 1);
+  return hashtags.length ? `${base}\n\n${hashtags.join(' ')}` : base;
 }
 
 // 흔한 조사/어미·의미 약한 단어 (태그 잡음 제거용)

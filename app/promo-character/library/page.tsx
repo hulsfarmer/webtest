@@ -69,9 +69,11 @@ export default function LibraryPage() {
   const publishInstagram = async (it: LibItem) => {
     setIgBusyId(it.id); setItemMsg(it.id, '');
     try {
+      const hashtags = (it.tags || []).slice(0, 12).map((t) => '#' + t.replace(/[#\s]/g, '')).filter((h) => h.length > 1).join(' ');
+      const caption = hashtags ? `${it.description}\n\n${hashtags}` : it.description;
       const r = await fetch('/api/social/instagram/upload', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId: it.id, caption: it.description }),
+        body: JSON.stringify({ jobId: it.id, caption }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || '인스타 발행 실패');
