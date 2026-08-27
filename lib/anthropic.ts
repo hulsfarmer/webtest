@@ -250,7 +250,7 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
 - ⚠️ **길이 규칙(가장 중요, 반드시 준수)**: 총 ${duration}초 영상이야(초당 약 5.5자). **전체 나레이션(모든 구간 text 합)을 한국어 ${charBudget}자 이내로 반드시 맞춰줘.** 구간별 목표 — 인트로(hook) ~${hookChars}자, 제품소개(main 전체 합) ~${mainChars}자, 마무리(cta) ~${ctaChars}자. **초과 절대 금지** (초과하면 영상이 길어지고 비용이 올라감). 내용이 많으면 가장 강한 핵심만 남기고 과감히 쳐내서 글자 수를 지켜줘 — 길게 늘어놓지 말 것${nameRule}`;
 
   const message = await getClient().messages.create({
-    model: 'claude-haiku-4-5',
+    model: 'claude-sonnet-5',
     max_tokens: 1024,
     messages: [
       {
@@ -313,7 +313,7 @@ export async function generatePromoScriptFromImages(
 - bgKeyword는 업종(${businessType})에 어울리는 영어 스톡영상 검색어`;
 
   const message = await getClient().messages.create({
-    model: 'claude-haiku-4-5',
+    model: 'claude-sonnet-5',
     max_tokens: 1024,
     messages: [
       {
@@ -426,7 +426,7 @@ export async function reviseScript(
   }
 
   const message = await getClient().messages.create({
-    model: 'claude-haiku-4-5',
+    model: 'claude-sonnet-5',
     max_tokens: 1024,
     messages: [
       {
