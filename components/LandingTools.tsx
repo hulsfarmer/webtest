@@ -22,10 +22,10 @@ type Card = {
 };
 
 const CARDS: Card[] = [
-  { key: 'promo', icon: '🏪', name: '업체 홍보영상', desc: '가게·회사·농장·병원 등 사업장을 소개하는 세로 쇼츠.', href: '/studio/promo', kind: 'video' },
-  { key: 'event', icon: '📅', name: '행사 홍보영상', desc: '축제·마켓·세일·오픈 등 이벤트를 긴급성 있게 알립니다.', href: '/studio/event', kind: 'video' },
-  { key: 'product-vs', icon: '🎭', name: '제품 홍보영상 (캐릭터)', desc: '캐릭터가 제품을 직접 소개하는 세로 쇼츠.', href: '/studio/product-vs', kind: 'video' },
-  { key: 'product-ai', icon: '⭐', name: '제품 홍보영상 (캐릭터2)', desc: '제품을 든 AI배우를 자동 생성해 20초로 말하게 하는 쇼츠.', href: '/studio/product-ai', kind: 'video', tag: 'new' },
+  { key: 'promo', icon: '🏪', name: '브랜드 소개 영상', desc: '가게·회사·농장·병원 등 사업장을 소개하는 세로 쇼츠.', href: '/studio/promo', kind: 'video' },
+  { key: 'event', icon: '📅', name: '이벤트 소개 영상', desc: '축제·마켓·세일·오픈 등 이벤트를 긴급성 있게 알립니다.', href: '/studio/event', kind: 'video' },
+  { key: 'product-vs', icon: '🎭', name: '제품 소개 영상 (캐릭터)', desc: '캐릭터가 제품을 직접 소개하는 세로 쇼츠.', href: '/studio/product-vs', kind: 'video' },
+  { key: 'product-ai', icon: '⭐', name: '제품 소개 영상 (AI배우)', desc: '제품을 든 AI배우를 자동 생성해 20초로 말하게 하는 쇼츠.', href: '/studio/product-ai', kind: 'video', tag: 'new' },
   { key: 'logo', icon: '✦', name: '로고 생성', desc: '브랜드 이름만 넣으면, 바로 쓸 수 있는 로고가 완성됩니다.', href: '/studio/logo', kind: 'logo' },
 ];
 

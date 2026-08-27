@@ -134,7 +134,7 @@ export async function GET() {
   const registry: Omit<ServiceStatus, 'keyConfigured' | 'status' | 'remaining' | 'limit' | 'detail' | 'error'>[] = [
     { id: 'recraft',     name: 'Recraft',        use: '로고 SVG/AI(.ai) 벡터 변환',                     envKey: 'RECRAFT_API_TOKEN', kind: 'balance', unit: '크레딧', dashboardUrl: 'https://www.recraft.ai/profile/api' },
     { id: 'scraperapi',  name: 'ScraperAPI',     use: '제품·업체 정보 링크 스크래핑(불러오기)',            envKey: 'SCRAPER_API_KEY',   kind: 'balance', unit: '요청',   dashboardUrl: 'https://dashboard.scraperapi.com/' },
-    { id: 'visionstory', name: 'VisionStory',    use: '제품 홍보영상 캐릭터(캐릭터·캐릭터2 ⭐)',           envKey: 'VISIONSTORY_API_KEY', kind: 'balance', unit: '크레딧', dashboardUrl: 'https://app.visionstory.ai/' },
+    { id: 'visionstory', name: 'VisionStory',    use: '제품 소개 영상(캐릭터·AI배우 ⭐)',           envKey: 'VISIONSTORY_API_KEY', kind: 'balance', unit: '크레딧', dashboardUrl: 'https://app.visionstory.ai/' },
     { id: 'hedra',       name: 'Hedra',          use: '말하는 캐릭터(구 엔진)',                          envKey: 'HEDRA_API_KEY',     kind: 'usage',   unit: 'USD',    dashboardUrl: 'https://www.hedra.com/' },
     { id: 'gemini',      name: 'Google Gemini',  use: '홍보 대본·로고/이미지 생성·유튜브 디자인·일부 TTS', envKey: 'GEMINI_API_KEY',    kind: 'none',    unit: '',       dashboardUrl: 'https://aistudio.google.com/app/apikey' },
     { id: 'anthropic',   name: 'Anthropic Claude', use: '홍보 대본/스크립트 생성',                        envKey: 'ANTHROPIC_API_KEY', kind: 'none',    unit: '',       dashboardUrl: 'https://console.anthropic.com/settings/billing' },

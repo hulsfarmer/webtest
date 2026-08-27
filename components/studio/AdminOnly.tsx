@@ -11,7 +11,7 @@ export default async function AdminOnly({ children }: { children: React.ReactNod
         <div>
           <span className="badge">관리자 전용</span>
           <h2>이 기능은 관리자만 사용할 수 있어요</h2>
-          <p>업체·행사 홍보영상은 자유롭게 이용하실 수 있습니다.</p>
+          <p>브랜드·이벤트 소개 영상은 자유롭게 이용하실 수 있습니다.</p>
         </div>
       </div>
     );

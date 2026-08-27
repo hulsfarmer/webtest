@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { PromoTool } from '@/app/promo/page';
 import MenuSample from '@/components/MenuSample';
 
-export const metadata = { title: '업체 홍보영상' };
+export const metadata = { title: '브랜드 소개 영상' };
 
 export default function Page() {
   return (
