@@ -389,7 +389,7 @@ export default function PricingSection() {
               </button>
             </div>
             <p className="text-gray-400 text-sm mb-5">
-              {creditQty}크레딧 · ₩{(creditQty * 200).toLocaleString()} · 안 만료 (1회 결제)
+              {creditQty}크레딧 · ₩{(creditQty * 200).toLocaleString()} · 유효기간 3개월 (1회 결제)
             </p>
             <div className="space-y-3 mb-4">
               <div>
@@ -432,7 +432,7 @@ export default function PricingSection() {
         <div className="max-w-md mx-auto mb-12 sm:mb-16">
           <div className="text-center mb-6">
             <h3 className="text-xl sm:text-2xl font-bold mb-2">크레딧 충전</h3>
-            <p className="text-gray-400 text-sm">필요한 만큼만 · 10크레딧당 2,000원 · 안 만료 · 자동결제 없음</p>
+            <p className="text-gray-400 text-sm">필요한 만큼만 · 10크레딧당 2,000원 · 유효기간 3개월 · 자동결제 없음</p>
           </div>
           <div className="rounded-2xl p-6 border bg-brand-card border-white/10">
             <div className="flex gap-2 mb-3">

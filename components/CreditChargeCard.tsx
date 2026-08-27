@@ -52,7 +52,7 @@ export default function CreditChargeCard() {
   return (
     <div style={cardStyle}>
       <h3 style={{ margin: '0 0 2px', fontSize: 15, color: 'var(--text)' }}>크레딧 충전</h3>
-      <div style={{ fontSize: 13, color: 'var(--text-faint)', marginBottom: 14 }}>필요한 만큼 · 200원/크레딧</div>
+      <div style={{ fontSize: 13, color: 'var(--text-faint)', marginBottom: 14 }}>필요한 만큼 · 200원/크레딧 · 유효기간 3개월</div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
         {[10, 20, 30].map((n) => (
           <button key={n} onClick={() => setQty(n)} style={{ ...quick, border: `1px solid ${qty === n ? 'var(--purple)' : 'var(--border)'}`, background: qty === n ? 'var(--purple)' : 'var(--surface-2)', color: qty === n ? '#fff' : 'var(--text-dim)' }}>{n}</button>
