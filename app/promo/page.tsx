@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Megaphone, ArrowLeft, Check, Loader2, AlertCircle, ChevronDown, Phone, MapPin, Calendar, Sparkles, ImagePlus, X, Edit3, RefreshCw, Music2, Settings2, Upload, Volume2, Play, Pause } from 'lucide-react';
 import { BGM_CATALOG, recommendBgm, type BgmId } from '@/lib/bgm-catalog';
-import { buildPromoDescription, buildInstagramCaption } from '@/lib/promo-description';
+import { buildPromoDescription, buildInstagramCaption, buildYouTubeTags } from '@/lib/promo-description';
 
 type VideoScript = {
   title: string;
@@ -261,9 +261,10 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
         const title = (businessName || '홍보 영상').trim().slice(0, 90);
         const narration = (scriptDraft?.sections || []).map((s) => s.text).join('  ').trim();
         const desc = buildPromoDescription(narration, ''); // 나레이션 + 이지온 제작·문의
+        const tags = buildYouTubeTags(businessName || '', scriptDraft?.title || '', narration); // 유튜브 태그 필드 자동
         const r = await fetch('/api/social/youtube/upload', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jobId, title, description: desc, privacyStatus: 'unlisted' }),
+          body: JSON.stringify({ jobId, title, description: desc, tags, privacyStatus: 'unlisted' }),
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || '유튜브 업로드 실패');
