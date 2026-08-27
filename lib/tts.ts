@@ -192,7 +192,40 @@ function escapeXml(text: string): string {
 }
 
 // 이모지·변형선택자·ZWJ 제거 (TTS가 이모지를 읽지 않게). 공백 정리.
+// ── 숫자+단위 한글 정규화 (TTS 입력 전용, 자막엔 미적용) ──────────────────────
+// TTS가 "9박"에서 숫자 9와 한글 박을 별개 토큰으로 읽어 사이에 어색한 쉼이 생김.
+// 숫자를 단위에 맞는 한글로 붙여 읽게 만든다. 단위별 한자어/고유어 규칙이 다름.
+const SINO_DIGITS = ['영', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+function sinoRead(n: number): string {
+  if (n < 10) return SINO_DIGITS[n];
+  const t = Math.floor(n / 10), o = n % 10;
+  return (t === 1 ? '' : SINO_DIGITS[t]) + '십' + (o ? SINO_DIGITS[o] : '');
+}
+const NATIVE_ONES = ['', '한', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉'];
+const NATIVE_TENS = ['', '열', '스물', '서른', '마흔', '쉰', '예순', '일흔', '여든', '아흔'];
+function nativeRead(n: number): string | null {
+  if (n < 1 || n > 99) return null;
+  const t = Math.floor(n / 10), o = n % 10;
+  if (t === 2 && o === 0) return '스무'; // 20 앞 관형사 (스무 개)
+  return NATIVE_TENS[t] + NATIVE_ONES[o];
+}
+// 한자어로 읽는 단위 (구박, 십일, 삼년, 오초 …)
+const SINO_UNITS = new Set(['박', '일', '년', '주년', '개월', '원', '초', '회', '층', '호', '번', '학년', '등', '시간']);
+// 고유어로 읽는 단위 (세 명, 두 개, 세 시 …)
+const NATIVE_UNITS = new Set(['개', '명', '시', '살', '마리', '장', '대', '잔', '병', '벌', '켤레', '그릇', '판', '곳', '가지', '달']);
+// 긴 단위 먼저(주년>년, 개월>개, 시간>시)로 매칭, 앞에 다른 숫자·소수점 없을 때만
+const UNIT_RE = /(?<![\d.])(\d{1,2})\s*(시간|주년|개월|학년|박|일|년|원|초|회|층|호|번|등|개|명|시|살|마리|장|대|잔|병|벌|켤레|그릇|판|곳|가지|달)/g;
+function koreanizeNumbers(text: string): string {
+  return text.replace(UNIT_RE, (m, num, unit) => {
+    const n = parseInt(num, 10);
+    if (SINO_UNITS.has(unit)) return sinoRead(n) + unit;
+    if (NATIVE_UNITS.has(unit)) { const r = nativeRead(n); return r ? r + unit : m; }
+    return m;
+  });
+}
+
 function stripEmoji(text: string): string {
+  text = koreanizeNumbers(text);
   return text
     // 이모지를 공백으로 치환(빈문자 X) → 앞뒤 단어가 붙어 읽히는 문제 방지
     .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}]/gu, ' ')
@@ -394,6 +427,9 @@ export async function generateAudio(
 ): Promise<void> {
   const dir = path.dirname(outputPath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+  // 숫자+단위 한글 정규화 (9박→구박) — 자막엔 미적용, TTS 입력만
+  text = koreanizeNumbers(text);
 
   // 1순위: Google Cloud TTS Neural2 (자연스러운 한국어)
   if (process.env.GOOGLE_TTS_API_KEY) {
