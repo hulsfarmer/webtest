@@ -20,7 +20,26 @@ import {
   Trash2,
   Eye,
   EyeOff,
+  Cpu,
+  ExternalLink,
+  AlertTriangle,
 } from 'lucide-react';
+
+interface AiService {
+  id: string;
+  name: string;
+  use: string;
+  envKey: string;
+  keyConfigured: boolean;
+  kind: 'balance' | 'usage' | 'none' | 'free';
+  status: 'ok' | 'warn' | 'critical' | 'na' | 'error' | 'missing';
+  remaining: number | null;
+  limit: number | null;
+  unit: string;
+  detail: string;
+  dashboardUrl: string;
+  error?: string;
+}
 
 interface AdminStats {
   totalUsers: number;
@@ -147,6 +166,10 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [ai, setAi] = useState<AiService[] | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiFetchedAt, setAiFetchedAt] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -186,6 +209,24 @@ export default function AdminPage() {
     setReviewsLoading(false);
   }, []);
 
+  const fetchAi = useCallback(async () => {
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const res = await fetch('/api/admin/ai-status');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setAi(data.services ?? []);
+      setAiFetchedAt(data.fetchedAt ?? null);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'AI 상태 로드 실패');
+    }
+    setAiLoading(false);
+  }, []);
+
   const handleReviewAction = async (id: string, action: 'approved' | 'rejected') => {
     await fetch('/api/admin/reviews', {
       method: 'PATCH',
@@ -218,8 +259,9 @@ export default function AdminPage() {
     if (status === 'authenticated') {
       fetchStats();
       fetchReviews();
+      fetchAi();
     }
-  }, [status, fetchStats, fetchReviews]);
+  }, [status, fetchStats, fetchReviews, fetchAi]);
 
   if (status === 'loading') {
     return (
@@ -445,6 +487,95 @@ export default function AdminPage() {
                   <p className="text-gray-500 text-sm text-center py-4">아직 생성된 영상이 없습니다.</p>
                 )}
               </div>
+            </div>
+
+            {/* 구독 AI 상태 */}
+            <div className="glass-card p-6 rounded-2xl mt-8">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-gray-400 text-sm flex items-center gap-2">
+                  <Cpu className="w-4 h-4" /> 구독 AI 상태
+                </h3>
+                <button
+                  onClick={fetchAi}
+                  disabled={aiLoading}
+                  className="text-xs text-gray-500 hover:text-white transition-colors flex items-center gap-1"
+                >
+                  <RefreshCw className={`w-3 h-3 ${aiLoading ? 'animate-spin' : ''}`} />
+                  새로고침
+                </button>
+              </div>
+              <p className="text-xs text-gray-600 mb-4">
+                잔여 크레딧은 <b className="text-gray-400">Recraft·ScraperAPI</b>만 실시간 조회됩니다.
+                나머지는 사용량 기반 과금이라 잔여 개념이 없어 콘솔 링크로 확인하세요.
+                {aiFetchedAt && <span className="ml-1">· 조회 {new Date(aiFetchedAt).toLocaleString('ko-KR')}</span>}
+              </p>
+
+              {aiError ? (
+                <p className="text-red-400 text-sm text-center py-4">AI 상태 로드 오류: {aiError}</p>
+              ) : !ai ? (
+                <p className="text-gray-500 text-sm text-center py-4 flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> 불러오는 중…
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {ai.map((s) => {
+                    const dot =
+                      s.status === 'ok' ? 'bg-green-400'
+                      : s.status === 'warn' ? 'bg-yellow-400'
+                      : s.status === 'critical' ? 'bg-red-500'
+                      : s.status === 'error' ? 'bg-red-400'
+                      : s.status === 'missing' ? 'bg-gray-500'
+                      : 'bg-sky-400/70';
+                    const detailColor =
+                      s.status === 'critical' || s.status === 'error' ? 'text-red-300'
+                      : s.status === 'warn' ? 'text-yellow-300'
+                      : s.status === 'ok' ? 'text-gray-300'
+                      : 'text-gray-400';
+                    const kindTag =
+                      s.kind === 'balance' ? { t: '실시간 잔여', c: 'text-green-300 bg-green-500/10' }
+                      : s.kind === 'usage' ? { t: '소비액만', c: 'text-sky-300 bg-sky-500/10' }
+                      : s.kind === 'free' ? { t: '무료', c: 'text-gray-300 bg-white/5' }
+                      : { t: '사용량 기반', c: 'text-gray-400 bg-white/5' };
+                    return (
+                      <div key={s.id} className="p-4 rounded-xl bg-white/3 border border-white/5">
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dot}`} />
+                            <span className="font-semibold text-white text-sm truncate">{s.name}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${kindTag.c}`}>{kindTag.t}</span>
+                          </div>
+                          <a
+                            href={s.dashboardUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-gray-500 hover:text-white flex-shrink-0"
+                            title="대시보드/콘솔 열기"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-1.5 truncate" title={s.use}>{s.use}</p>
+                        <div className="flex items-center gap-1.5">
+                          {(s.status === 'critical' || s.status === 'warn' || s.status === 'error') && (
+                            <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />
+                          )}
+                          <span className={`text-xs font-medium ${detailColor}`}>
+                            {s.keyConfigured ? s.detail : '⚠ 키 미설정'}
+                          </span>
+                        </div>
+                        {s.remaining != null && s.limit != null && s.limit > 0 && (
+                          <div className="mt-2 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${s.status === 'critical' ? 'bg-red-500' : s.status === 'warn' ? 'bg-yellow-400' : 'bg-green-400'}`}
+                              style={{ width: `${Math.max(2, Math.min(100, (s.remaining / s.limit) * 100))}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Reviews Management */}
