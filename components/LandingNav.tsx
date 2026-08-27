@@ -16,8 +16,7 @@ export default function LandingNav() {
 
         <nav className="sa-links">
           <a href="#how">작동 방식</a>
-          <a href="#tools">기능</a>
-          <a href="#samples">샘플</a>
+          <a href="#tools">기능 · 샘플</a>
           <a href="#pricing">요금</a>
         </nav>
 
