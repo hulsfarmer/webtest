@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { adminGuard } from '@/lib/admin-guard';
+import { getVsCreditStatus, setVsBaseline } from '@/lib/visionStoryCredits';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,6 +106,26 @@ async function hedraStatus(): Promise<Partial<ServiceStatus>> {
   }
 }
 
+// ── VisionStory: 잔여 API 없음 → 파일 원장 기반 추정(기준 잔여 − 이후 소비) ──
+function visionStoryStatus(): Partial<ServiceStatus> {
+  const s = getVsCreditStatus();
+  if (!s.hasBaseline) {
+    return {
+      status: 'na',
+      detail: `기준 잔여 미설정 · 이번 달 소비 ${s.usedThisMonth} · 아래에서 현재 잔여를 입력하세요`,
+    };
+  }
+  const remaining = s.remaining ?? 0;
+  const status: Status = remaining < 20 ? 'critical' : remaining < 60 ? 'warn' : 'ok';
+  const anchor = s.baselineAt ? s.baselineAt.slice(0, 10) : '';
+  return {
+    status,
+    remaining,
+    limit: s.baseline,
+    detail: `추정 잔여 ${remaining} 크레딧 (기준 ${s.baseline}@${anchor} − 이후 소비 ${s.usedSinceBaseline}) · 이번 달 ${s.usedThisMonth}`,
+  };
+}
+
 export async function GET() {
   const guard = await adminGuard();
   if (guard) return guard;
@@ -113,7 +134,7 @@ export async function GET() {
   const registry: Omit<ServiceStatus, 'keyConfigured' | 'status' | 'remaining' | 'limit' | 'detail' | 'error'>[] = [
     { id: 'recraft',     name: 'Recraft',        use: '로고 SVG/AI(.ai) 벡터 변환',                     envKey: 'RECRAFT_API_TOKEN', kind: 'balance', unit: '크레딧', dashboardUrl: 'https://www.recraft.ai/profile/api' },
     { id: 'scraperapi',  name: 'ScraperAPI',     use: '제품·업체 정보 링크 스크래핑(불러오기)',            envKey: 'SCRAPER_API_KEY',   kind: 'balance', unit: '요청',   dashboardUrl: 'https://dashboard.scraperapi.com/' },
-    { id: 'visionstory', name: 'VisionStory',    use: '제품 홍보영상 캐릭터(캐릭터·캐릭터2 ⭐)',           envKey: 'VISIONSTORY_API_KEY', kind: 'none',  unit: '크레딧', dashboardUrl: 'https://app.visionstory.ai/' },
+    { id: 'visionstory', name: 'VisionStory',    use: '제품 홍보영상 캐릭터(캐릭터·캐릭터2 ⭐)',           envKey: 'VISIONSTORY_API_KEY', kind: 'balance', unit: '크레딧', dashboardUrl: 'https://app.visionstory.ai/' },
     { id: 'hedra',       name: 'Hedra',          use: '말하는 캐릭터(구 엔진)',                          envKey: 'HEDRA_API_KEY',     kind: 'usage',   unit: 'USD',    dashboardUrl: 'https://www.hedra.com/' },
     { id: 'gemini',      name: 'Google Gemini',  use: '홍보 대본·로고/이미지 생성·유튜브 디자인·일부 TTS', envKey: 'GEMINI_API_KEY',    kind: 'none',    unit: '',       dashboardUrl: 'https://aistudio.google.com/app/apikey' },
     { id: 'anthropic',   name: 'Anthropic Claude', use: '홍보 대본/스크립트 생성',                        envKey: 'ANTHROPIC_API_KEY', kind: 'none',    unit: '',       dashboardUrl: 'https://console.anthropic.com/settings/billing' },
@@ -127,6 +148,7 @@ export async function GET() {
     recraft: recraftStatus(),
     scraperapi: scraperStatus(),
     hedra: hedraStatus(),
+    visionstory: Promise.resolve(visionStoryStatus()),
   };
 
   const services: ServiceStatus[] = await Promise.all(
@@ -154,4 +176,24 @@ export async function GET() {
   );
 
   return NextResponse.json({ services, fetchedAt: new Date().toISOString() });
+}
+
+// VisionStory "기준 잔여" 설정 — 충전했거나 실제 잔여와 어긋날 때 관리자가 현재값을 찍는다.
+export async function POST(req: NextRequest) {
+  const guard = await adminGuard();
+  if (guard) return guard;
+
+  let body: { service?: string; balance?: number };
+  try { body = await req.json(); } catch { return NextResponse.json({ error: '잘못된 요청' }, { status: 400 }); }
+
+  if (body.service !== 'visionstory') {
+    return NextResponse.json({ error: '지원하지 않는 서비스입니다.' }, { status: 400 });
+  }
+  const balance = Number(body.balance);
+  if (!Number.isFinite(balance) || balance < 0) {
+    return NextResponse.json({ error: '잔여 크레딧은 0 이상의 숫자여야 합니다.' }, { status: 400 });
+  }
+
+  const saved = setVsBaseline(balance);
+  return NextResponse.json({ ok: true, baseline: saved });
 }

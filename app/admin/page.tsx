@@ -170,6 +170,8 @@ export default function AdminPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiFetchedAt, setAiFetchedAt] = useState<string | null>(null);
+  const [vsInput, setVsInput] = useState('');
+  const [vsSaving, setVsSaving] = useState(false);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -226,6 +228,31 @@ export default function AdminPage() {
     }
     setAiLoading(false);
   }, []);
+
+  const saveVsBaseline = async () => {
+    const balance = Number(vsInput);
+    if (!Number.isFinite(balance) || balance < 0) {
+      alert('0 이상의 숫자를 입력하세요.');
+      return;
+    }
+    setVsSaving(true);
+    try {
+      const res = await fetch('/api/admin/ai-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ service: 'visionstory', balance }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || `HTTP ${res.status}`);
+      }
+      setVsInput('');
+      await fetchAi();
+    } catch (err) {
+      alert(`저장 실패: ${err instanceof Error ? err.message : err}`);
+    }
+    setVsSaving(false);
+  };
 
   const handleReviewAction = async (id: string, action: 'approved' | 'rejected') => {
     await fetch('/api/admin/reviews', {
@@ -569,6 +596,30 @@ export default function AdminPage() {
                               className={`h-full rounded-full ${s.status === 'critical' ? 'bg-red-500' : s.status === 'warn' ? 'bg-yellow-400' : 'bg-green-400'}`}
                               style={{ width: `${Math.max(2, Math.min(100, (s.remaining / s.limit) * 100))}%` }}
                             />
+                          </div>
+                        )}
+                        {s.id === 'visionstory' && (
+                          <div className="mt-2.5 pt-2.5 border-t border-white/5">
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="number"
+                                min={0}
+                                value={vsInput}
+                                onChange={(e) => setVsInput(e.target.value)}
+                                placeholder="현재 잔여 크레딧"
+                                className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-sky-500/50"
+                              />
+                              <button
+                                onClick={saveVsBaseline}
+                                disabled={vsSaving || vsInput === ''}
+                                className="text-xs px-2.5 py-1 rounded-lg bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 disabled:opacity-40 whitespace-nowrap"
+                              >
+                                {vsSaving ? '저장중…' : '기준 설정'}
+                              </button>
+                            </div>
+                            <p className="text-[10px] text-gray-600 mt-1">
+                              VisionStory는 잔여 API가 없어 대시보드의 현재 잔여를 여기 찍으면, 이후 소비를 자동 차감해 추정합니다. 충전 후에도 다시 찍어주세요.
+                            </p>
                           </div>
                         )}
                       </div>

@@ -12,6 +12,7 @@ import { generateGeminiAudio } from '@/lib/gemini-tts';
 import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, buildSegmentClip, concatSegments, probeDuration, sanitizeScript } from '@/lib/promo-compose';
 import { buildAlignedSubtitles, applySpeed } from '@/lib/promo-subtitles';
 import { hasCredits, chargeCredits } from '@/lib/usageStore';
+import { recordVsUsage } from '@/lib/visionStoryCredits';
 
 // 제품 홍보영상 (VisionStory 엔진) — Hedra판 /api/promo-character 의 자매 라우트.
 // 차이: 캐릭터 영상+한국어 음성을 VisionStory(V-Character, 내부 Gemini TTS)가 생성.
@@ -172,6 +173,8 @@ async function processPromoCharacterVsJob(jobId: string, input: CharVsJobInput) 
 
     // 생성 성공 → 실제 VisionStory 소비 크레딧만큼 차감 (실패 시엔 차감 안 함)
     try { await chargeCredits(input.userId, vsCreditsUsed); } catch (e) { console.error(`[PromoCharVsJob ${jobId}] 크레딧 차감 실패:`, e); }
+    // VisionStory 계정 소비 원장 기록 (관리자 잔여 추정용, 유저 과금과 별개)
+    recordVsUsage(vsCreditsUsed, jobId);
     cleanup();
     updateJob(jobId, { status: 'done', progress: 100, steps: { script: 'done', audio: 'done', video: 'done' }, videoUrl: `/api/video/${jobId}` });
   } catch (err) {

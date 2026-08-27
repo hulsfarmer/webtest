@@ -13,6 +13,7 @@ import { generateGeminiAudio } from '@/lib/gemini-tts';
 import { renderHeaderOverlay, renderCtaOverlay, renderPipAssets, renderSubtitle, composePromoCharacter, buildSegmentClip, concatSegments, probeDuration, sanitizeScript } from '@/lib/promo-compose';
 import { buildAlignedSubtitles, applySpeed } from '@/lib/promo-subtitles';
 import { hasCredits, chargeCredits } from '@/lib/usageStore';
+import { recordVsUsage } from '@/lib/visionStoryCredits';
 
 // 캐릭터2(AI배우) 고정 요금: 20초 1편당 15크레딧 (캐릭터 대비 프리미엄).
 const AI_ACTOR_CREDITS = 15;
@@ -191,6 +192,8 @@ async function processPromoCharacterAiJob(jobId: string, input: CharAiJobInput) 
 
     // 고정 15크레딧 차감(성공 시). 실제 VisionStory 소비(vsCreditsUsed=~10)와 무관한 정액 프리미엄.
     try { await chargeCredits(input.userId, AI_ACTOR_CREDITS); } catch (e) { console.error(`[PromoCharAiJob ${jobId}] 크레딧 차감 실패(소비 참고 ${vsCreditsUsed}):`, e); }
+    // VisionStory 계정 실소비 원장 기록 (관리자 잔여 추정용, 유저 정액 과금과 별개)
+    recordVsUsage(vsCreditsUsed, jobId);
     cleanup();
     updateJob(jobId, { status: 'done', progress: 100, steps: { script: 'done', audio: 'done', video: 'done' }, videoUrl: `/api/video/${jobId}` });
   } catch (err) {
