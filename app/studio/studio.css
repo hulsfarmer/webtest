@@ -83,8 +83,11 @@
 .st-nav .txt { white-space: nowrap; overflow: hidden; }
 .st-nav .badge { margin-left: auto; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; background: color-mix(in srgb, var(--pink) 16%, transparent); color: var(--pink); }
 .st-nav .badge.soon { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.st-nav .cost { margin-left: auto; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; letter-spacing: .2px; background: var(--surface-2); color: var(--text-faint); border: 1px solid var(--border); }
+.st-nav:hover .cost { color: var(--text-dim); }
 .st-nav.active { color: #fff; background: var(--grad); box-shadow: 0 6px 16px -6px rgba(124,58,237,.7); }
 .st-nav.active .badge { background: rgba(255,255,255,.22); color: #fff; }
+.st-nav.active .cost { background: rgba(255,255,255,.2); color: #fff; border-color: transparent; }
 
 .st-foot { padding: 12px; border-top: 1px solid var(--border); }
 .st-credits { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
@@ -109,6 +112,7 @@
 .st-app.collapsed .st-label,
 .st-app.collapsed .st-nav .txt,
 .st-app.collapsed .st-nav .badge,
+.st-app.collapsed .st-nav .cost,
 .st-app.collapsed .st-credits,
 .st-app.collapsed .st-who { display: none; }
 .st-app.collapsed .st-nav { justify-content: center; padding: 10px; }
@@ -170,7 +174,7 @@
   .st-app.drawer-open .st-sidebar { transform: translateX(0); }
   .st-app.collapsed .st-sidebar { width: var(--sidebar-w); }
   .st-app.collapsed .st-wordmark, .st-app.collapsed .st-label, .st-app.collapsed .st-nav .txt,
-  .st-app.collapsed .st-nav .badge, .st-app.collapsed .st-credits, .st-app.collapsed .st-who { display: revert; }
+  .st-app.collapsed .st-nav .badge, .st-app.collapsed .st-nav .cost, .st-app.collapsed .st-credits, .st-app.collapsed .st-who { display: revert; }
   .st-app.collapsed .st-brand-link { display: flex; }
   .st-app.collapsed .st-logout { display: grid; }
   .st-app.collapsed .st-nav { justify-content: flex-start; padding: 9px 10px; }

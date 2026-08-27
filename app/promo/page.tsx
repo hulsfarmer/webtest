@@ -1558,7 +1558,7 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
                 style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
               >
                 <Megaphone className="w-4 h-4" />
-                이 스크립트로 영상 생성
+                이 스크립트로 영상 생성 · 1크레딧
               </button>
             </div>
           </div>

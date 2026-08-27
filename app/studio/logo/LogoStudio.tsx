@@ -398,7 +398,7 @@ export default function LogoStudio() {
             </p>
           </div>
           <button className="primary" onClick={generate} disabled={busy}>
-            {loading ? "생성 중…" : "로고 생성"}
+            {loading ? "생성 중…" : "로고 생성 · 1크레딧"}
           </button>
           <p className="hint">
             Google AI Studio API 키(GEMINI_API_KEY)가 필요합니다. 무료 tier 제공.

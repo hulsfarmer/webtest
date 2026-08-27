@@ -563,7 +563,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
 
               <button onClick={onGenerateVideo} disabled={busy}
                 className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-neutral-950 font-semibold rounded-lg py-3">
-                {busy ? '영상 생성 중...' : '② 이 대본으로 영상 생성'}
+                {busy ? '영상 생성 중...' : `② 이 대본으로 영상 생성 · 약 ${isAiActor ? 15 : estimateVs().total}크레딧`}
               </button>
             </div>
           )}

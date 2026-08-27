@@ -10,7 +10,7 @@ type Usage = { plan: string; used: number; limit: number | null; remaining: numb
 
 type Item = {
   id: string; name: string; icon: string; href: string;
-  external?: boolean; badge?: 'new' | 'soon'; adminOnly?: boolean;
+  external?: boolean; badge?: 'new' | 'soon'; adminOnly?: boolean; cost?: string;
 };
 
 const ICONS: Record<string, string> = {
@@ -26,11 +26,11 @@ const ICONS: Record<string, string> = {
 };
 
 const CREATE: Item[] = [
-  { id: 'promo', name: '업체 홍보영상', icon: 'store', href: '/studio/promo' },
-  { id: 'event', name: '행사 홍보영상', icon: 'calendar', href: '/studio/event' },
-  { id: 'product-vs', name: '제품 홍보영상 (캐릭터)', icon: 'box', href: '/studio/product-vs' },
-  { id: 'product-ai', name: '제품 홍보영상 (캐릭터2) ⭐', icon: 'box', href: '/studio/product-ai' },
-  { id: 'logo', name: '로고 생성', icon: 'sparkle', href: '/studio/logo' },
+  { id: 'promo', name: '업체 홍보영상', icon: 'store', href: '/studio/promo', cost: '1C' },
+  { id: 'event', name: '행사 홍보영상', icon: 'calendar', href: '/studio/event', cost: '1C' },
+  { id: 'product-vs', name: '제품 홍보영상 (캐릭터)', icon: 'box', href: '/studio/product-vs', cost: '4C~' },
+  { id: 'product-ai', name: '제품 홍보영상 (캐릭터2) ⭐', icon: 'box', href: '/studio/product-ai', cost: '15C' },
+  { id: 'logo', name: '로고 생성', icon: 'sparkle', href: '/studio/logo', cost: '1C' },
   { id: 'convert', name: '파일 변환', icon: 'file', href: '/studio/convert', badge: 'soon', adminOnly: true },
   { id: 'youtube', name: '유튜브 디자인', icon: 'youtube', href: '/studio/youtube', adminOnly: true },
 ];
@@ -95,6 +95,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
           <span className="ico"><Icon name={it.icon} /></span>
           <span className="txt">{it.name}</span>
           {it.badge && <span className={`badge${it.badge === 'soon' ? ' soon' : ''}`}>{it.badge === 'new' ? 'NEW' : '준비중'}</span>}
+          {!it.badge && it.cost && <span className="cost" title={`영상 1건당 약 ${it.cost.replace('C', '크레딧')} 소모`}>{it.cost}</span>}
         </>
       );
       if (it.external) return <a key={it.id} className={cls} href={it.href} target="_blank" rel="noreferrer" title={it.name}>{inner}</a>;
