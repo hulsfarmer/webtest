@@ -19,6 +19,7 @@ import {
   X,
   ImageIcon,
   Youtube,
+  Instagram,
   Link2,
 } from 'lucide-react';
 import Header from '@/components/Header';
@@ -65,16 +66,40 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [assets, setAssets] = useState<{ id: string; type: string; title: string | null; image: string; created_at: string }[]>([]);
   const [tab, setTab] = useState<'all' | 'video' | 'logo' | 'banner'>('all');
-  // 유튜브 업로드 → 공유 링크
+  // 유튜브/인스타 업로드 → 공유 링크
   const [ytConnected, setYtConnected] = useState(false);
   const [ytBusyId, setYtBusyId] = useState<string | null>(null);
   const [ytMsg, setYtMsg] = useState<Record<string, string>>({});
+  const [igConnected, setIgConnected] = useState(false);
+  const [igBusyId, setIgBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/social/youtube/status').then((r) => r.json()).then((d) => setYtConnected(!!d.connected)).catch(() => {});
+    fetch('/api/social/instagram/status').then((r) => r.json()).then((d) => setIgConnected(!!d.connected)).catch(() => {});
   }, []);
 
   const ytUrlOf = (job: HistoryJob) => (job.script as { youtubeUrl?: string } | null)?.youtubeUrl || '';
+  const igUrlOf = (job: HistoryJob) => (job.script as { instagramUrl?: string } | null)?.instagramUrl || '';
+
+  async function publishInstagram(job: HistoryJob) {
+    setIgBusyId(job.id); setYtMsg((p) => ({ ...p, [job.id]: '' }));
+    try {
+      const meta = (job.script || {}) as { narration?: string; catchphrase?: string; buyLink?: string };
+      const caption = buildPromoDescription(meta.narration || meta.catchphrase || '', meta.buyLink || '');
+      const r = await fetch('/api/social/instagram/upload', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: job.id, caption }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '인스타 발행 실패');
+      setData((prev) => prev ? {
+        ...prev,
+        jobs: prev.jobs.map((j) => j.id === job.id ? { ...j, script: { ...(j.script || {}), instagramUrl: d.url } } : j),
+      } : prev);
+      setYtMsg((p) => ({ ...p, [job.id]: '인스타 릴스로 발행했어요!' }));
+    } catch (e) { setYtMsg((p) => ({ ...p, [job.id]: e instanceof Error ? e.message : String(e) })); }
+    finally { setIgBusyId(null); }
+  }
 
   async function publishYouTube(job: HistoryJob) {
     setYtBusyId(job.id); setYtMsg((p) => ({ ...p, [job.id]: '' }));
@@ -391,6 +416,16 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
                         {job.videoUrl && job.status === 'done' && !ytUrlOf(job) && ytConnected && (
                           <button onClick={() => publishYouTube(job)} disabled={ytBusyId === job.id} title="유튜브에 올려 링크 받기 (일부공개)" className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10">
                             {ytBusyId === job.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Youtube className="w-4 h-4" />}
+                          </button>
+                        )}
+                        {job.videoUrl && job.status === 'done' && igUrlOf(job) && (
+                          <a href={igUrlOf(job)} target="_blank" rel="noreferrer" title="인스타에서 보기" className="p-2 rounded-lg text-pink-400 hover:text-pink-300 hover:bg-pink-500/10">
+                            <Instagram className="w-4 h-4" />
+                          </a>
+                        )}
+                        {job.videoUrl && job.status === 'done' && !igUrlOf(job) && igConnected && (
+                          <button onClick={() => publishInstagram(job)} disabled={igBusyId === job.id} title="인스타 릴스로 발행" className="p-2 rounded-lg text-gray-400 hover:text-pink-400 hover:bg-pink-500/10">
+                            {igBusyId === job.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Instagram className="w-4 h-4" />}
                           </button>
                         )}
                         <button onClick={() => handleDelete(job.id)} disabled={deleting === job.id} title="삭제" className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10">

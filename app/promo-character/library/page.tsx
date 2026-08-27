@@ -15,6 +15,7 @@ interface LibItem {
   tags: string[];
   error: string | null;
   youtubeUrl: string;
+  instagramUrl: string;
   createdAt: string;
 }
 
@@ -27,7 +28,9 @@ export default function LibraryPage() {
   const [items, setItems] = useState<LibItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [ytConnected, setYtConnected] = useState(false);
+  const [igConnected, setIgConnected] = useState(false);
   const [busyId, setBusyId] = useState('');
+  const [igBusyId, setIgBusyId] = useState('');
   const [msg, setMsg] = useState<Record<string, string>>({});
 
   const load = async () => {
@@ -41,6 +44,7 @@ export default function LibraryPage() {
   useEffect(() => {
     load();
     fetch('/api/social/youtube/status').then((r) => r.json()).then((d) => setYtConnected(!!d.connected)).catch(() => {});
+    fetch('/api/social/instagram/status').then((r) => r.json()).then((d) => setIgConnected(!!d.connected)).catch(() => {});
   }, []);
 
   const setItemMsg = (id: string, m: string) => setMsg((p) => ({ ...p, [id]: m }));
@@ -60,6 +64,21 @@ export default function LibraryPage() {
       setItemMsg(it.id, '유튜브에 올렸어요! 링크를 복사해 공유하세요.');
     } catch (e) { setItemMsg(it.id, e instanceof Error ? e.message : String(e)); }
     finally { setBusyId(''); }
+  };
+
+  const publishInstagram = async (it: LibItem) => {
+    setIgBusyId(it.id); setItemMsg(it.id, '');
+    try {
+      const r = await fetch('/api/social/instagram/upload', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: it.id, caption: it.description }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '인스타 발행 실패');
+      setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, instagramUrl: d.url } : x));
+      setItemMsg(it.id, '인스타 릴스로 발행했어요!');
+    } catch (e) { setItemMsg(it.id, e instanceof Error ? e.message : String(e)); }
+    finally { setIgBusyId(''); }
   };
 
   const copyLink = async (it: LibItem) => {
@@ -151,6 +170,15 @@ export default function LibraryPage() {
                     <button onClick={() => publish(it)} disabled={busyId === it.id}
                       className="text-xs bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-lg px-3 py-2">
                       {busyId === it.id ? '올리는 중...' : '▶ 유튜브에 올려 링크 받기'}
+                    </button>
+                  )}
+                  {it.videoUrl && it.instagramUrl && (
+                    <a href={it.instagramUrl} target="_blank" rel="noreferrer" className="text-xs text-pink-400 underline self-center">인스타에서 보기</a>
+                  )}
+                  {it.videoUrl && !it.instagramUrl && igConnected && (
+                    <button onClick={() => publishInstagram(it)} disabled={igBusyId === it.id}
+                      className="text-xs bg-pink-600 hover:bg-pink-500 disabled:opacity-50 text-white rounded-lg px-3 py-2">
+                      {igBusyId === it.id ? '올리는 중...' : '📸 인스타 릴스로'}
                     </button>
                   )}
                   {it.description && (

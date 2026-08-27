@@ -23,7 +23,7 @@ export async function GET() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items = (data || []).map((r: any) => {
-    const meta = (r.script || {}) as { narration?: string; buyLink?: string; catchphrase?: string; tags?: string[]; youtubeUrl?: string };
+    const meta = (r.script || {}) as { narration?: string; buyLink?: string; catchphrase?: string; tags?: string[]; youtubeUrl?: string; instagramUrl?: string };
     const bizName = r.business_name || String(r.topic || '').replace(/^제품홍보:/, '') || '제목 없음';
     return {
       id: r.id,
@@ -38,6 +38,7 @@ export async function GET() {
         : (meta.narration ? buildYouTubeTags(bizName, meta.catchphrase || '', meta.narration) : []),
       error: r.error || null,
       youtubeUrl: meta.youtubeUrl || '',
+      instagramUrl: meta.instagramUrl || '',
       createdAt: r.created_at,
     };
   });
