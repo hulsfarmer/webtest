@@ -38,53 +38,62 @@ export default function LandingTools() {
     return () => { alive = false; };
   }, []);
 
-  return (
-    <div className="sa-tools">
-      {CARDS.map((t) => {
-        // 샘플 미디어
-        let media: React.ReactNode = null;
-        if (t.kind === 'video' && t.key && s?.videos?.[t.key]?.videoUrl) {
-          const v = s.videos[t.key];
-          media = (
-            <div className="sa-tool-media">
-              <video src={v.videoUrl} poster={v.posterUrl || undefined} controls playsInline preload="metadata" />
-            </div>
-          );
-        } else if (t.kind === 'logo' && s) {
-          const imgs = LOGO_STYLES.map((st) => ({ ...st, url: s.logo?.[st.id] })).filter((x) => x.url);
-          if (imgs.length > 0) {
-            media = (
-              <div className="sa-tool-logos">
-                {imgs.map((x) => (
-                  <figure key={x.id}><img src={x.url} alt={x.name} loading="lazy" /><figcaption>{x.name}</figcaption></figure>
-                ))}
-              </div>
-            );
-          }
-        }
-
-        const head = (
-          <>
-            <div className="ic">{t.icon}</div>
-            <h3>{t.name}{t.tag === 'new' && <span className="sa-tag new">NEW</span>}{t.tag === 'soon' && <span className="sa-tag soon">준비중</span>}</h3>
-            <p>{t.desc}</p>
-          </>
+  const renderCard = (t: Card) => {
+    let media: React.ReactNode = null;
+    if (t.kind === 'video' && t.key && s?.videos?.[t.key]?.videoUrl) {
+      const v = s.videos[t.key];
+      media = (
+        <div className="sa-tool-media">
+          <video src={v.videoUrl} poster={v.posterUrl || undefined} controls playsInline preload="metadata" />
+        </div>
+      );
+    } else if (t.kind === 'logo' && s) {
+      const imgs = LOGO_STYLES.map((st) => ({ ...st, url: s.logo?.[st.id] })).filter((x) => x.url);
+      if (imgs.length > 0) {
+        media = (
+          <div className="sa-tool-logos">
+            {imgs.map((x) => (
+              <figure key={x.id}><img src={x.url} alt={x.name} loading="lazy" /><figcaption>{x.name}</figcaption></figure>
+            ))}
+          </div>
         );
+      }
+    }
 
-        // 샘플이 있으면: 카드=div(미디어 재생 가능) + 하단 CTA 링크
-        if (media) {
-          return (
-            <div key={t.name} className={`sa-tool has-media${t.kind === 'logo' ? ' is-logo' : ''}`}>
-              {head}
-              {media}
-              {t.href && <Link className="sa-tool-cta" href={t.href}>만들어 보기 →</Link>}
-            </div>
-          );
-        }
-        // 샘플 없음: 기존처럼 전체가 링크(또는 준비중 비활성)
-        if (t.href) return <Link key={t.name} className="sa-tool" href={t.href}>{head}</Link>;
-        return <div key={t.name} className="sa-tool" aria-disabled="true">{head}</div>;
-      })}
+    const head = (
+      <>
+        <div className="ic">{t.icon}</div>
+        <h3>{t.name}{t.tag === 'new' && <span className="sa-tag new">NEW</span>}{t.tag === 'soon' && <span className="sa-tag soon">준비중</span>}</h3>
+        <p>{t.desc}</p>
+      </>
+    );
+
+    if (media) {
+      return (
+        <div key={t.name} className={`sa-tool has-media${t.kind === 'logo' ? ' is-logo' : ''}`}>
+          {head}
+          {media}
+          {t.href && <Link className="sa-tool-cta" href={t.href}>만들어 보기 →</Link>}
+        </div>
+      );
+    }
+    if (t.href) return <Link key={t.name} className="sa-tool" href={t.href}>{head}</Link>;
+    return <div key={t.name} className="sa-tool" aria-disabled="true">{head}</div>;
+  };
+
+  const videoCards = CARDS.filter((t) => t.kind === 'video');
+  const designCards = CARDS.filter((t) => t.kind === 'logo');
+
+  return (
+    <div className="sa-tool-groups">
+      <div className="sa-tool-group">
+        <div className="sa-group-label"><span className="ic">🎬</span> 홍보영상 · 쇼츠</div>
+        <div className="sa-tools">{videoCards.map(renderCard)}</div>
+      </div>
+      <div className="sa-tool-group">
+        <div className="sa-group-label"><span className="ic">🎨</span> 디자인</div>
+        <div className="sa-tools">{designCards.map(renderCard)}</div>
+      </div>
     </div>
   );
 }

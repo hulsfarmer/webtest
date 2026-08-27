@@ -255,6 +255,11 @@
 .sa-tool-logos figure { margin: 0; }
 .sa-tool-logos img { width: 100%; aspect-ratio: 1/1; object-fit: contain; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 5px; }
 .sa-tool-logos figcaption { margin-top: 4px; font-size: 10px; color: var(--text-dim); text-align: center; }
+/* 홍보영상 / 디자인 그룹 분리 */
+.sa-tool-groups { display: flex; flex-direction: column; gap: 34px; }
+.sa-group-label { display: flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 800; letter-spacing: -.01em; color: var(--text); margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.sa-group-label .ic { font-size: 17px; }
+
 /* 로고 카드는 전체폭으로 펴서 5스타일을 크게(약 2배) */
 .sa-tool.is-logo { grid-column: 1 / -1; }
 .sa-tool.is-logo .sa-tool-logos { grid-template-columns: repeat(5, minmax(0, 150px)); justify-content: center; gap: 18px; }
