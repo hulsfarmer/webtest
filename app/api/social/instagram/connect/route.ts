@@ -12,8 +12,8 @@ export async function GET() {
   if (!email || (admins.length && !admins.includes(email))) {
     return NextResponse.json({ error: '관리자만 연결할 수 있습니다.' }, { status: 403 });
   }
-  if (!process.env.META_APP_ID || !process.env.META_APP_SECRET) {
-    return NextResponse.json({ error: 'META_APP_ID/META_APP_SECRET가 설정되지 않았습니다.' }, { status: 400 });
+  if (!process.env.INSTAGRAM_APP_ID || !process.env.INSTAGRAM_APP_SECRET) {
+    return NextResponse.json({ error: 'INSTAGRAM_APP_ID/INSTAGRAM_APP_SECRET가 설정되지 않았습니다.' }, { status: 400 });
   }
   const state = crypto.randomBytes(16).toString('hex');
   const res = NextResponse.redirect(getAuthUrl(state));
