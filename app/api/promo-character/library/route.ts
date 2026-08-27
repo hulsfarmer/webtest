@@ -35,7 +35,7 @@ export async function GET() {
       buyLink: meta.buyLink || '',
       description: meta.narration ? buildPromoDescription(meta.narration, meta.buyLink || '') : '',
       tags: (meta.tags && meta.tags.length) ? meta.tags.slice(0, 15)
-        : (meta.narration ? buildYouTubeTags(bizName, meta.catchphrase || '', meta.narration) : []),
+        : (meta.narration ? buildYouTubeTags(bizName, meta.catchphrase || '', meta.narration, ['제품홍보영상']) : []),
       error: r.error || null,
       youtubeUrl: meta.youtubeUrl || '',
       instagramUrl: meta.instagramUrl || '',

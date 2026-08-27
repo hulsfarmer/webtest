@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { uploadVideo, isConnected } from '@/lib/youtube';
 import { getJob, updateJob } from '@/lib/jobStore';
-import { buildYouTubeTags } from '@/lib/promo-description';
+import { buildYouTubeTags, kindTagOf } from '@/lib/promo-description';
 import fs from 'fs';
 import path from 'path';
 
@@ -27,9 +27,9 @@ export async function POST(req: NextRequest) {
   if (tags.length === 0) {
     try {
       const job = await getJob(jobId);
-      const meta = job?.script ? JSON.parse(job.script) as { tags?: string[]; narration?: string; businessName?: string; catchphrase?: string } : {};
+      const meta = job?.script ? JSON.parse(job.script) as { tags?: string[]; narration?: string; businessName?: string; catchphrase?: string; _meta?: { mode?: string } } : {};
       if (meta.tags && meta.tags.length) tags = meta.tags.slice(0, 15);
-      else if (meta.narration) tags = buildYouTubeTags(meta.businessName || '', meta.catchphrase || '', meta.narration).slice(0, 15);
+      else if (meta.narration) tags = buildYouTubeTags(meta.businessName || '', meta.catchphrase || '', meta.narration, [kindTagOf(job?.topic, meta._meta?.mode)]).slice(0, 15);
     } catch { /* 태그는 부가정보이므로 실패해도 업로드는 진행 */ }
   }
 

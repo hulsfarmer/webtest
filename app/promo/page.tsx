@@ -260,8 +260,9 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
       if (optYt && !ytUrl) {
         const title = (businessName || '홍보 영상').trim().slice(0, 90);
         const narration = (scriptDraft?.sections || []).map((s) => s.text).join('  ').trim();
+        const kindTag = mode === 'event' ? '이벤트홍보영상' : '브랜드소개영상';
         const desc = buildPromoDescription(narration, ''); // 나레이션 + 이지온 제작·문의
-        const tags = buildYouTubeTags(businessName || '', scriptDraft?.title || '', narration); // 유튜브 태그 필드 자동
+        const tags = buildYouTubeTags(businessName || '', scriptDraft?.title || '', narration, [kindTag]); // 유튜브 태그 필드 자동(종류 태그 포함)
         const r = await fetch('/api/social/youtube/upload', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ jobId, title, description: desc, tags, privacyStatus: 'unlisted' }),
@@ -272,7 +273,7 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
       }
       if (optIg && !igUrl) {
         const narration = (scriptDraft?.sections || []).map((s) => s.text).join('  ').trim();
-        const caption = buildInstagramCaption(narration, '', businessName || '', scriptDraft?.title || ''); // 이지온 제작·문의 + 해시태그
+        const caption = buildInstagramCaption(narration, '', businessName || '', scriptDraft?.title || '', [mode === 'event' ? '이벤트홍보영상' : '브랜드소개영상']); // 이지온 제작·문의 + 해시태그(종류 태그 포함)
         const r = await fetch('/api/social/instagram/upload', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ jobId, caption }),

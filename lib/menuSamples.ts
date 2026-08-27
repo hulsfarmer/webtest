@@ -18,9 +18,9 @@ export const LOGO_DIR = path.join(DATA_DIR, 'logo-samples');
 
 export const VIDEO_MENUS = [
   { key: 'promo', name: '브랜드 소개 영상', href: '/studio/promo' },
-  { key: 'event', name: '이벤트 소개 영상', href: '/studio/event' },
-  { key: 'product-vs', name: '제품 소개 영상 (캐릭터)', href: '/studio/product-vs' },
-  { key: 'product-ai', name: '제품 소개 영상 (AI배우) ⭐', href: '/studio/product-ai' },
+  { key: 'event', name: '이벤트 홍보 영상', href: '/studio/event' },
+  { key: 'product-vs', name: '제품 홍보 영상 (캐릭터)', href: '/studio/product-vs' },
+  { key: 'product-ai', name: '제품 홍보 영상 (AI배우) ⭐', href: '/studio/product-ai' },
 ] as const;
 
 export const LOGO_STYLES = [

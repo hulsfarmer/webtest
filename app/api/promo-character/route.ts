@@ -70,7 +70,7 @@ async function processPromoCharacterJob(jobId: string, input: CharJobInput) {
       ytTags = await generateYouTubeTags(input.businessName || '', input.catchphrase || '', narration);
     } catch (e) {
       console.error(`[PromoCharacterJob ${jobId}] AI 태그 실패 → 휴리스틱:`, e instanceof Error ? e.message : e);
-      ytTags = buildYouTubeTags(input.businessName || '', input.catchphrase || '', narration);
+      ytTags = buildYouTubeTags(input.businessName || '', input.catchphrase || '', narration, ['제품홍보영상']);
     }
     // 라이브러리·유튜브 설명용 메타 저장 (나레이션 + 구매 링크 + 태그)
     let productImageUrl = '';

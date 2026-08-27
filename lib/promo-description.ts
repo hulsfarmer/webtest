@@ -19,12 +19,19 @@ export function buildPromoDescription(narration: string, buyLink: string): strin
  * 인스타 릴스 캡션 = 나레이션 + 이지온 제작·문의 + 해시태그.
  * 유튜브 설명(buildPromoDescription)에 IG 발견용 해시태그 줄을 덧붙인다.
  */
-export function buildInstagramCaption(narration: string, buyLink: string, businessName = '', catchphrase = ''): string {
+export function buildInstagramCaption(narration: string, buyLink: string, businessName = '', catchphrase = '', extra: string[] = []): string {
   const base = buildPromoDescription(narration, buyLink);
-  const tags = buildYouTubeTags(businessName, catchphrase, narration);
+  const tags = buildYouTubeTags(businessName, catchphrase, narration, extra);
   const hashtags = tags.slice(0, 12).map((t) => '#' + t.replace(/[#\s]/g, '')).filter((h) => h.length > 1);
   // 인스타는 별도 태그 필드가 없어 캡션의 해시태그가 곧 태그 → 맨 위에 배치(발견 유입)
   return hashtags.length ? `${hashtags.join(' ')}\n\n${base}` : base;
+}
+
+/** 영상 종류 태그 — topic/mode로 판별. 제품('제품홍보:') / 이벤트(mode='event') / 브랜드 */
+export function kindTagOf(topic?: string | null, mode?: string): string {
+  if ((topic || '').startsWith('제품홍보:')) return '제품홍보영상';
+  if (mode === 'event') return '이벤트홍보영상';
+  return '브랜드소개영상';
 }
 
 // 흔한 조사/어미·의미 약한 단어 (태그 잡음 제거용)

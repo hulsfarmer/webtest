@@ -93,7 +93,7 @@ async function processPromoCharacterAiJob(jobId: string, input: CharAiJobInput) 
       ytTags = await generateYouTubeTags(input.businessName || '', input.catchphrase || '', narration);
     } catch (e) {
       console.error(`[PromoCharAiJob ${jobId}] AI 태그 실패 → 휴리스틱:`, e instanceof Error ? e.message : e);
-      ytTags = buildYouTubeTags(input.businessName || '', input.catchphrase || '', narration);
+      ytTags = buildYouTubeTags(input.businessName || '', input.catchphrase || '', narration, ['제품홍보영상']);
     }
     // '수정' 복원용: 제품 이미지 영구 사본(public/imports)
     let productImageUrl = '';

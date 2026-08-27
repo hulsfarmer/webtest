@@ -23,7 +23,7 @@ import {
   Link2,
 } from 'lucide-react';
 import Header from '@/components/Header';
-import { buildPromoDescription, buildInstagramCaption } from '@/lib/promo-description';
+import { buildPromoDescription, buildInstagramCaption, kindTagOf } from '@/lib/promo-description';
 
 interface HistoryJob {
   id: string;
@@ -84,8 +84,8 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
   async function publishInstagram(job: HistoryJob) {
     setIgBusyId(job.id); setYtMsg((p) => ({ ...p, [job.id]: '' }));
     try {
-      const meta = (job.script || {}) as { narration?: string; catchphrase?: string; buyLink?: string };
-      const caption = buildInstagramCaption(meta.narration || meta.catchphrase || '', meta.buyLink || '', job.businessName || '', meta.catchphrase || '');
+      const meta = (job.script || {}) as { narration?: string; catchphrase?: string; buyLink?: string; _meta?: { mode?: string } };
+      const caption = buildInstagramCaption(meta.narration || meta.catchphrase || '', meta.buyLink || '', job.businessName || '', meta.catchphrase || '', [kindTagOf(job.topic, meta._meta?.mode)]);
       const r = await fetch('/api/social/instagram/upload', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobId: job.id, caption }),
