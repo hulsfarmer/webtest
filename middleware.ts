@@ -37,7 +37,7 @@ export async function middleware(req: NextRequest) {
   if (needsAuth) {
     if (!token) {
       const loginUrl = new URL('/login', req.url);
-      loginUrl.searchParams.set('callbackUrl', req.url);
+      loginUrl.searchParams.set('callbackUrl', path + req.nextUrl.search);
       return NextResponse.redirect(loginUrl);
     }
     if (!isAdmin && ADMIN_ONLY.some((p) => path === p || path.startsWith(p + '/'))) {
