@@ -245,3 +245,17 @@
 .sa-quote .who b { display: block; font-size: 13.5px; }
 .sa-quote .who span { font-size: 12px; color: var(--text-faint); }
 @media (max-width: 820px) { .sa-quotes { grid-template-columns: 1fr; } }
+
+/* 기능 카드 내 샘플 미디어 (영상/로고 5스타일) */
+.sa-tool.has-media { cursor: default; display: flex; flex-direction: column; }
+.sa-tool.has-media:hover { transform: none; }
+.sa-tool-media { margin-top: 14px; }
+.sa-tool-media video { width: 100%; max-width: 220px; aspect-ratio: 9/16; border-radius: 12px; background: #000; display: block; margin: 0 auto; }
+.sa-tool-logos { margin-top: 14px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.sa-tool-logos figure { margin: 0; }
+.sa-tool-logos img { width: 100%; aspect-ratio: 1/1; object-fit: contain; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 5px; }
+.sa-tool-logos figcaption { margin-top: 4px; font-size: 10px; color: var(--text-dim); text-align: center; }
+.sa-tool-cta { margin-top: 14px; align-self: flex-start; font-weight: 700; font-size: 14px; color: var(--purple); }
+.sa-tool-cta:hover { text-decoration: underline; }
+@media (max-width: 900px) { .sa-tools { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .sa-tools { grid-template-columns: 1fr; } .sa-tool-logos { grid-template-columns: repeat(5, 1fr); } }

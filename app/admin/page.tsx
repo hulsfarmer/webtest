@@ -25,6 +25,20 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 
+const SAMPLE_VIDEO_MENUS = [
+  { key: 'promo', name: '업체 홍보영상' },
+  { key: 'event', name: '행사 홍보영상' },
+  { key: 'product-vs', name: '제품 홍보영상 (캐릭터)' },
+  { key: 'product-ai', name: '제품 홍보영상 (캐릭터2) ⭐' },
+];
+const SAMPLE_LOGO_STYLES = [
+  { id: 'flat', name: '플랫 일러스트' },
+  { id: 'minimal', name: '미니멀/기하학' },
+  { id: 'emblem', name: '엠블럼/뱃지' },
+  { id: 'mascot', name: '마스코트' },
+  { id: 'lettermark', name: '레터마크(이니셜)' },
+];
+
 interface AiService {
   id: string;
   name: string;
@@ -172,6 +186,9 @@ export default function AdminPage() {
   const [aiFetchedAt, setAiFetchedAt] = useState<string | null>(null);
   const [vsInput, setVsInput] = useState('');
   const [vsSaving, setVsSaving] = useState(false);
+  const [msamples, setMsamples] = useState<{ videos: Record<string, { videoUrl: string; posterUrl: string | null; businessName?: string }>; logo: Record<string, string> } | null>(null);
+  const [recentVideos, setRecentVideos] = useState<{ jobId: string; videoUrl: string; posterUrl: string | null; businessName: string }[]>([]);
+  const [msSaving, setMsSaving] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -228,6 +245,46 @@ export default function AdminPage() {
     }
     setAiLoading(false);
   }, []);
+
+  const fetchMenuSamples = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/menu-samples');
+      if (!res.ok) return;
+      const d = await res.json();
+      setMsamples(d.samples ?? { videos: {}, logo: {} });
+      setRecentVideos(d.recentVideos ?? []);
+    } catch { /* ignore */ }
+  }, []);
+
+  const setMenuVideo = async (menuKey: string, jobId: string) => {
+    setMsSaving(menuKey);
+    try {
+      const v = recentVideos.find((x) => x.jobId === jobId);
+      const res = await fetch('/api/admin/menu-samples', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(jobId ? { menuKey, jobId, videoUrl: v?.videoUrl, posterUrl: v?.posterUrl, businessName: v?.businessName } : { menuKey, jobId: '' }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || `HTTP ${res.status}`);
+      setMsamples(d.samples);
+    } catch (err) { alert(`저장 실패: ${err instanceof Error ? err.message : err}`); }
+    setMsSaving(null);
+  };
+
+  const uploadLogoSample = async (style: string, file: File) => {
+    setMsSaving(`logo:${style}`);
+    try {
+      const fd = new FormData();
+      fd.append('style', style);
+      fd.append('file', file);
+      const res = await fetch('/api/admin/menu-samples', { method: 'POST', body: fd });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || `HTTP ${res.status}`);
+      setMsamples(d.samples);
+    } catch (err) { alert(`업로드 실패: ${err instanceof Error ? err.message : err}`); }
+    setMsSaving(null);
+  };
 
   const saveVsBaseline = async () => {
     const balance = Number(vsInput);
@@ -287,8 +344,9 @@ export default function AdminPage() {
       fetchStats();
       fetchReviews();
       fetchAi();
+      fetchMenuSamples();
     }
-  }, [status, fetchStats, fetchReviews, fetchAi]);
+  }, [status, fetchStats, fetchReviews, fetchAi, fetchMenuSamples]);
 
   if (status === 'loading') {
     return (
@@ -625,6 +683,91 @@ export default function AdminPage() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+
+            {/* 메뉴 샘플 (스튜디오 페이지 상단 + 랜딩 카드) */}
+            <div className="glass-card p-6 rounded-2xl mt-8">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-gray-400 text-sm flex items-center gap-2">
+                  <Video className="w-4 h-4" /> 메뉴 샘플 영상 · 로고
+                </h3>
+                <button onClick={fetchMenuSamples} className="text-xs text-gray-500 hover:text-white flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> 새로고침
+                </button>
+              </div>
+              <p className="text-xs text-gray-600 mb-4">
+                여기서 지정한 영상·이미지가 <b className="text-gray-400">각 스튜디오 메뉴 페이지 상단</b>과 <b className="text-gray-400">랜딩 기능 카드</b>에 함께 노출됩니다.
+              </p>
+
+              {!msamples ? (
+                <p className="text-gray-500 text-sm text-center py-4 flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> 불러오는 중…</p>
+              ) : (
+                <div className="space-y-4">
+                  {/* 영상 메뉴 4개 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {SAMPLE_VIDEO_MENUS.map((m) => {
+                      const cur = msamples.videos?.[m.key];
+                      return (
+                        <div key={m.key} className="p-3 rounded-xl bg-white/3 border border-white/5">
+                          <div className="text-sm font-semibold text-white mb-2">{m.name}</div>
+                          <div className="flex gap-2 items-start">
+                            {cur?.posterUrl && (
+                              <img src={cur.posterUrl} alt="" className="w-12 h-20 object-cover rounded-md bg-black flex-shrink-0" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <select
+                                value={cur ? recentVideos.find((v) => v.videoUrl === cur.videoUrl)?.jobId || '' : ''}
+                                onChange={(e) => setMenuVideo(m.key, e.target.value)}
+                                disabled={msSaving === m.key}
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500/50 disabled:opacity-50"
+                              >
+                                <option value="">— 지정 안 함 —</option>
+                                {recentVideos.map((v) => (
+                                  <option key={v.jobId} value={v.jobId}>{v.businessName}</option>
+                                ))}
+                              </select>
+                              {cur && <div className="text-[11px] text-emerald-300/80 mt-1 truncate">지정됨: {cur.businessName || cur.videoUrl}</div>}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 로고 5스타일 */}
+                  <div className="p-3 rounded-xl bg-white/3 border border-white/5">
+                    <div className="text-sm font-semibold text-white mb-2">로고 생성 — 5스타일 샘플 이미지</div>
+                    <div className="grid grid-cols-5 gap-2">
+                      {SAMPLE_LOGO_STYLES.map((st) => {
+                        const url = msamples.logo?.[st.id];
+                        const busy = msSaving === `logo:${st.id}`;
+                        return (
+                          <div key={st.id} className="text-center">
+                            <label className={`block cursor-pointer rounded-lg border border-dashed border-white/15 bg-white/3 aspect-square grid place-items-center overflow-hidden ${busy ? 'opacity-50' : 'hover:border-purple-500/50'}`}>
+                              {url ? (
+                                <img src={url} alt={st.name} className="w-full h-full object-contain p-1" />
+                              ) : busy ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                              ) : (
+                                <span className="text-[10px] text-gray-500">＋ 업로드</span>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                                className="hidden"
+                                disabled={busy}
+                                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogoSample(st.id, f); e.target.value = ''; }}
+                              />
+                            </label>
+                            <div className="text-[10px] text-gray-400 mt-1">{st.name}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-gray-600 mt-2">스타일별 대표 로고 이미지를 올려주세요. PNG·JPG·WEBP·SVG, 8MB 이하.</p>
+                  </div>
                 </div>
               )}
             </div>

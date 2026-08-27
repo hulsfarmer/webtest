@@ -2,21 +2,11 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import './landing.css';
 import LandingNav from '@/components/LandingNav';
-import ShowcaseStrip from '@/components/ShowcaseStrip';
+import LandingTools from '@/components/LandingTools';
 import PricingBlock from '@/components/PricingBlock';
 import MaintenanceModal from '@/components/MaintenanceModal';
 
 
-const LOGO_MAKER_URL = 'https://logomaker-blush.vercel.app';
-
-const TOOLS = [
-  { icon: '🏪', name: '업체 홍보영상', desc: '가게·회사·농장·병원 등 사업장을 소개하는 세로 쇼츠.', href: '/promo' },
-  { icon: '📅', name: '행사 홍보영상', desc: '축제·마켓·세일·오픈 등 이벤트를 긴급성 있게 알립니다.', href: '/promo?mode=event' },
-  { icon: '🎭', name: '제품 홍보영상', desc: '말하는 캐릭터가 제품을 직접 소개하는 드라마형 쇼츠.', href: '/promo-character', tag: 'new' as const },
-  { icon: '✦', name: '로고 생성', desc: '브랜드 이름과 분위기만으로 로고 시안 제작·다운로드.', href: LOGO_MAKER_URL, external: true },
-  { icon: '🔄', name: '파일 변환', desc: '영상·이미지·문서 포맷을 빠르게 변환합니다.', tag: 'soon' as const },
-  { icon: '🎬', name: '유튜브 디자인', desc: '채널 배너·썸네일을 브랜드 톤에 맞춰 자동 디자인.', tag: 'soon' as const },
-];
 
 const Arrow = (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
@@ -40,7 +30,7 @@ export default function Home() {
             <p className="sa-lead">업체명과 사진만 넣으면 대본·AI 음성·BGM·자막까지 자동으로. 영상 제작사 없이, 오늘 바로 SNS에 올리세요.</p>
             <div className="sa-cta-row">
               <Link className="sa-btn grad lg" href="/promo">무료로 시작하기 →</Link>
-              <a className="sa-btn ghost lg" href="#samples">샘플 영상 보기</a>
+              <a className="sa-btn ghost lg" href="#tools">샘플 영상 보기</a>
             </div>
             <div className="sa-trust">
               <span><span className="ck">✓</span> <b>무료 3회</b> 제공</span>
@@ -88,35 +78,12 @@ export default function Home() {
       <section className="sa-block" id="tools" style={{ background: 'var(--surface-2)' }}>
         <div className="sa-wrap">
           <div className="sa-sec-head">
-            <div className="sa-kick">기능</div>
-            <h2>홍보에 필요한 걸 한곳에서</h2>
-            <p>영상부터 로고까지. 로그인하면 좌측 스튜디오에서 원하는 도구를 골라 바로 만듭니다.</p>
+            <div className="sa-kick">기능 · 샘플</div>
+            <h2>메뉴마다, 실제 결과물을 먼저 보세요</h2>
+            <p>각 도구로 만든 홍보영상 샘플입니다. 마음에 드는 걸 골라 바로 만들어 보세요.</p>
           </div>
-          <div className="sa-tools">
-            {TOOLS.map((t) => {
-              const inner = (
-                <>
-                  <div className="ic">{t.icon}</div>
-                  <h3>{t.name}{t.tag === 'new' && <span className="sa-tag new">NEW</span>}{t.tag === 'soon' && <span className="sa-tag soon">준비중</span>}</h3>
-                  <p>{t.desc}</p>
-                </>
-              );
-              if (t.href && t.external) return <a key={t.name} className="sa-tool" href={t.href} target="_blank" rel="noreferrer">{inner}</a>;
-              if (t.href) return <Link key={t.name} className="sa-tool" href={t.href}>{inner}</Link>;
-              return <div key={t.name} className="sa-tool" aria-disabled="true">{inner}</div>;
-            })}
-          </div>
+          <LandingTools />
         </div>
-      </section>
-
-      {/* SAMPLES */}
-      <section className="sa-block" id="samples">
-        <div className="sa-wrap sa-sec-head">
-          <div className="sa-kick">샘플</div>
-          <h2>실제로 이렇게 만들어집니다</h2>
-          <p>업체명과 사진만 입력해서 나온 결과물입니다.</p>
-        </div>
-        <ShowcaseStrip />
       </section>
 
       {/* PRICING */}
