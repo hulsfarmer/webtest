@@ -351,3 +351,9 @@ textarea.st-inp { resize: vertical; min-height: 80px; line-height: 1.5; }
 .msample-logos img { width: 100%; aspect-ratio: 1/1; object-fit: contain; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px; }
 .msample-logos figcaption { margin-top: 5px; font-size: 11px; color: var(--text-dim); text-align: center; }
 @media (max-width: 640px) { .msample-logos { grid-template-columns: repeat(3, 1fr); } }
+
+/* 무료 크레딧 쿠폰 버튼 */
+.st-coupon { display: block; width: 100%; margin-top: 10px; padding: 9px; border: none; cursor: pointer; border-radius: 9px; font-weight: 800; font-family: inherit; font-size: 13px; color: #fff; text-align: center; background: linear-gradient(135deg, #ec4899, #f59e0b); box-shadow: 0 6px 16px -8px rgba(236,72,153,.6); }
+.st-coupon:hover { filter: brightness(1.05); }
+.st-coupon:disabled { opacity: .6; cursor: default; }
+.st-coupon-msg { margin-top: 6px; font-size: 11px; text-align: center; color: var(--good); font-weight: 700; }

@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import ThemeToggle from '@/components/ThemeToggle';
 
-type Usage = { plan: string; used: number; limit: number | null; remaining: number | null; credits: number };
+type Usage = { plan: string; used: number; limit: number | null; remaining: number | null; credits: number; claimable?: boolean; firstFreeClaim?: boolean };
 
 type Item = {
   id: string; name: string; icon: string; href: string;
@@ -59,18 +59,34 @@ export default function StudioShell({ children }: { children: React.ReactNode })
   const [collapsed, setCollapsed] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [usage, setUsage] = useState<Usage | null>(null);
+  const [claiming, setClaiming] = useState(false);
+  const [claimMsg, setClaimMsg] = useState('');
   const pathname = usePathname();
   const { data: session, status } = useSession();
 
-  useEffect(() => {
-    if (status !== 'authenticated') return;
-    let alive = true;
+  const loadUsage = useCallback(() => {
     fetch('/api/usage')
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (alive && d && !d.error) setUsage(d); })
+      .then((d) => { if (d && !d.error) setUsage(d); })
       .catch(() => { /* ignore */ });
-    return () => { alive = false; };
-  }, [status]);
+  }, []);
+
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    loadUsage();
+  }, [status, loadUsage]);
+
+  const claimFree = async () => {
+    setClaiming(true); setClaimMsg('');
+    try {
+      const r = await fetch('/api/credits/claim', { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '받기 실패');
+      setClaimMsg(`+${d.granted} 크레딧 충전됐어요!`);
+      loadUsage();
+    } catch (e) { setClaimMsg(e instanceof Error ? e.message : String(e)); }
+    setClaiming(false);
+  };
 
   const unlimited = usage?.limit === null && usage !== null;
   const remainText = status !== 'authenticated' ? '—' : usage == null ? '…' : unlimited ? '무제한' : String(usage.remaining ?? 0);
@@ -130,6 +146,12 @@ export default function StudioShell({ children }: { children: React.ReactNode })
               <div className="st-cnum">{remainText}{usage && !unlimited && usage.limit ? <span> / {usage.limit}회</span> : null}</div>
               <div className="st-clabel">남은 생성 횟수{usage && usage.credits > 0 ? ` · 크레딧 ${usage.credits}` : ''}</div>
               <div className="st-bar"><i style={{ width: `${barPct}%` }} /></div>
+              {usage?.claimable && (
+                <button className="st-coupon" onClick={claimFree} disabled={claiming}>
+                  {claiming ? '받는 중…' : `🎁 ${usage.firstFreeClaim ? '가입 선물' : '이번 달 무료'} 5크레딧 받기`}
+                </button>
+              )}
+              {claimMsg && <div className="st-coupon-msg">{claimMsg}</div>}
               <Link className="st-buy" href="/studio/billing">이용권 충전</Link>
             </div>
             {session ? (

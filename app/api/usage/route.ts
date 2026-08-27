@@ -20,6 +20,8 @@ export async function GET() {
     remaining: limit === Infinity ? null : usage.remaining + usage.credits,
     month: usage.month,
     credits: usage.credits,
+    claimable: usage.claimable,
+    firstFreeClaim: usage.firstFreeClaim,
   });
 }
 

@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       email,
       name,
       password_hash,
-      credits: 10, // 신규 무료 체험 크레딧
+      credits: 0, // 가입 선물 5크레딧은 '쿠폰 받기'로 지급 (free_credit_month=null → 즉시 클레임 가능)
     });
     if (error) throw error;
 

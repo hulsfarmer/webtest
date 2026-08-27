@@ -47,7 +47,12 @@ export interface UsageResult {
   month: string;
   remaining: number; // 구독/무료 월 한도 잔여
   credits: number;   // 단건 구매 크레딧 잔액(월 리셋 없음)
+  claimable: boolean;    // 이번 달 무료 크레딧 쿠폰 받기 가능 여부
+  firstFreeClaim: boolean; // 아직 한 번도 안 받음(=가입 선물)
 }
+
+// 무료 크레딧 쿠폰 (모든 유저, 매달 클레임)
+export const FREE_CREDIT_AMOUNT = 5;
 
 /**
  * Get usage info for a user from DB.
@@ -64,7 +69,7 @@ export async function getUsage(userId: string): Promise<UsageResult> {
     .single();
 
   if (!user) {
-    return { plan: 'free', count: 0, month: currentMonth, remaining: PLAN_LIMITS.free, credits: 0 };
+    return { plan: 'free', count: 0, month: currentMonth, remaining: PLAN_LIMITS.free, credits: 0, claimable: false, firstFreeClaim: false };
   }
 
   let plan = (user.plan || 'free') as Plan;
@@ -95,7 +100,30 @@ export async function getUsage(userId: string): Promise<UsageResult> {
   const remaining = Math.max(0, limit - count);
   const credits = (user.credits as number) || 0;
 
-  return { plan, count, month: currentMonth, remaining, credits };
+  const freeMonth = (user.free_credit_month as string | null) ?? null;
+  const claimable = freeMonth !== currentMonth;      // 이번 달 아직 안 받음
+  const firstFreeClaim = !freeMonth;                 // 한 번도 안 받음 = 가입 선물
+
+  return { plan, count, month: currentMonth, remaining, credits, claimable, firstFreeClaim };
+}
+
+/**
+ * 이번 달 무료 크레딧 쿠폰 받기. 이미 이번 달 받았으면 granted=0.
+ * @returns { granted, credits, firstFreeClaim }
+ */
+export async function claimFreeCredits(userId: string): Promise<{ granted: number; credits: number; firstFreeClaim: boolean; alreadyClaimed: boolean }> {
+  const currentMonth = getCurrentMonth();
+  const { data: user } = await supabase.from('users').select('credits, free_credit_month').eq('id', userId).single();
+  if (!user) return { granted: 0, credits: 0, firstFreeClaim: false, alreadyClaimed: false };
+
+  const freeMonth = (user.free_credit_month as string | null) ?? null;
+  if (freeMonth === currentMonth) {
+    return { granted: 0, credits: (user.credits as number) || 0, firstFreeClaim: false, alreadyClaimed: true };
+  }
+  const firstFreeClaim = !freeMonth;
+  const next = ((user.credits as number) || 0) + FREE_CREDIT_AMOUNT;
+  await supabase.from('users').update({ credits: next, free_credit_month: currentMonth }).eq('id', userId);
+  return { granted: FREE_CREDIT_AMOUNT, credits: next, firstFreeClaim, alreadyClaimed: false };
 }
 
 /**

@@ -28,7 +28,7 @@ export default function Home() {
               <a className="sa-btn ghost lg" href="#video-samples">샘플 영상 보기</a>
             </div>
             <div className="sa-trust">
-              <span><span className="ck">✓</span> <b>무료 3회</b> 제공</span>
+              <span><span className="ck">✓</span> <b>매달 무료 5크레딧</b></span>
               <span><span className="ck">✓</span> 신용카드 불필요</span>
               <span><span className="ck">✓</span> 한국어 완벽 지원</span>
             </div>
@@ -62,7 +62,7 @@ export default function Home() {
           <div className="sa-sec-head">
             <div className="sa-kick">요금</div>
             <h2>필요한 만큼만, 부담 없이</h2>
-            <p>가입하면 10크레딧 무료. 표시 가격은 VAT 포함 실청구가입니다.</p>
+            <p>가입하면 매달 무료 5크레딧(쿠폰 받기). 표시 가격은 VAT 포함 실청구가입니다.</p>
           </div>
           <PricingBlock />
         </div>
@@ -74,7 +74,7 @@ export default function Home() {
           <div className="sa-final">
             <div className="glow" />
             <h2>오늘, 첫 홍보 쇼츠를 만들어 보세요</h2>
-            <p>신용카드 없이 무료 3회. 3분이면 SNS에 올릴 영상이 나옵니다.</p>
+            <p>신용카드 없이 매달 무료 5크레딧. 3분이면 SNS에 올릴 영상이 나옵니다.</p>
             <div className="sa-cta-row" style={{ justifyContent: 'center' }}>
               <Link className="sa-btn ghost lg" href="/studio">무료로 시작하기 →</Link>
             </div>

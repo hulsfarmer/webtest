@@ -11,6 +11,7 @@ export function CustomSupabaseAdapter(): Adapter {
           email: user.email,
           emailVerified: user.emailVerified?.toISOString() ?? null,
           image: user.image,
+          credits: 0, // 가입 선물 5크레딧은 '쿠폰 받기'로 (free_credit_month=null → 즉시 클레임)
         })
         .select()
         .single();

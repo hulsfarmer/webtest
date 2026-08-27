@@ -28,7 +28,7 @@ export default function PricingBlock() {
           <h3 style={h3}>무료</h3>
           <div style={amt}>0<span style={unit}>원</span></div>
           <div style={who}>처음 써보는 분</div>
-          <Feats items={['가입 시 10크레딧', '모든 기능 사용']} />
+          <Feats items={['매달 무료 5크레딧', '모든 기능 사용']} />
           <Link href="/studio" style={{ ...btnGhost, marginTop: 'auto', textDecoration: 'none' }}>무료로 시작</Link>
         </div>
 
