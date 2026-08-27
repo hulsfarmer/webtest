@@ -114,7 +114,7 @@ export default function LibraryPage() {
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <Link href="/promo-character" className="text-sm text-neutral-400 hover:text-white">← 영상 만들기</Link>
+            <Link href="/studio" className="text-sm text-neutral-400 hover:text-white">← 영상 만들기</Link>
             <h1 className="text-2xl font-bold mt-2">내 홍보 영상</h1>
           </div>
           <div className="flex items-center gap-1.5">
@@ -128,7 +128,7 @@ export default function LibraryPage() {
         {!loading && items.length === 0 && (
           <div className="text-center py-20 text-neutral-500">
             아직 만든 영상이 없어요.
-            <div className="mt-4"><Link href="/promo-character" className="text-sky-400 underline">영상 만들러 가기</Link></div>
+            <div className="mt-4"><Link href="/studio" className="text-sky-400 underline">영상 만들러 가기</Link></div>
           </div>
         )}
 

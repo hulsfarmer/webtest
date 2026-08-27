@@ -260,7 +260,7 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
             <div>
               {!embedded && (
                 <Link
-                  href="/promo"
+                  href="/studio"
                   className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors mb-3"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -282,7 +282,7 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
               </button>
               {!embedded && (
                 <Link
-                  href="/promo"
+                  href="/studio"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity"
                 >
                   <Plus className="w-4 h-4" />
@@ -312,7 +312,7 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
               <h2 className="text-xl font-semibold text-gray-300 mb-2">아직 만든 영상이 없어요</h2>
               <p className="text-gray-500 mb-6">첫 번째 홍보영상을 만들어보세요!</p>
               <Link
-                href="/promo"
+                href="/studio"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:opacity-90"
               >
                 <Plus className="w-4 h-4" />
