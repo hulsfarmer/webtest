@@ -33,7 +33,7 @@ export async function GET() {
       progress: r.progress || 0,
       videoUrl: r.status === 'done' ? `/api/video/${r.id}` : null,
       buyLink: meta.buyLink || '',
-      description: meta.narration ? buildPromoDescription(meta.narration, meta.buyLink || '') : '',
+      description: meta.narration ? buildPromoDescription(meta.narration, meta.buyLink || '', { businessName: bizName, catchphrase: meta.catchphrase || '', extra: ['제품홍보영상'] }) : '',
       tags: (meta.tags && meta.tags.length) ? meta.tags.slice(0, 15)
         : (meta.narration ? buildYouTubeTags(bizName, meta.catchphrase || '', meta.narration, ['제품홍보영상']) : []),
       error: r.error || null,

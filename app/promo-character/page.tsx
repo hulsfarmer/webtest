@@ -168,11 +168,11 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
   // 유튜브 설명란: 나레이션 원문 + 구매 링크 + 제작 크레딧
   function buildDescription(): string {
     const narration = sections.map((s) => s.text).join('  ');
-    return buildPromoDescription(narration, buyLink || importUrl);
+    return buildPromoDescription(narration, buyLink || importUrl, { businessName, catchphrase, extra: ['제품홍보영상'] });
   }
   function buildIgCaption(): string {
     const narration = sections.map((s) => s.text).join('  ');
-    return buildInstagramCaption(narration, buyLink || importUrl, businessName, catchphrase);
+    return buildInstagramCaption(narration, buyLink || importUrl, businessName, catchphrase, ['제품홍보영상']);
   }
 
   // 체크한 곳(유튜브·홈페이지·다운로드)으로 한 번에 발행

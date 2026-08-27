@@ -259,7 +259,7 @@ export function PromoTool({ embedded = false, forceMode }: { embedded?: boolean;
         const title = (businessName || '홍보 영상').trim().slice(0, 90);
         const narration = (scriptDraft?.sections || []).map((s) => s.text).join('  ').trim();
         const kindTag = mode === 'event' ? '이벤트홍보영상' : '브랜드소개영상';
-        const desc = buildPromoDescription(narration, ''); // 나레이션 + 이지온 제작·문의
+        const desc = buildPromoDescription(narration, '', { businessName: businessName || '', catchphrase: scriptDraft?.title || '', extra: [kindTag] }); // 해시태그 첫줄 + 나레이션 + 이지온 제작·문의
         const tags = buildYouTubeTags(businessName || '', scriptDraft?.title || '', narration, [kindTag]); // 유튜브 태그 필드 자동(종류 태그 포함)
         const r = await fetch('/api/social/youtube/upload', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },

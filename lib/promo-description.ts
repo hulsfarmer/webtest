@@ -1,8 +1,19 @@
+/** 태그 옵션 — 설명·캡션 첫 줄 해시태그 생성용 (없으면 해시태그 줄 생략) */
+export interface TagOpts { businessName?: string; catchphrase?: string; extra?: string[] }
+
+/** 해시태그 한 줄 "#a #b #c …" — 유튜브 설명 첫줄·인스타 캡션 상단 공용 (앞 12개) */
+export function buildHashtagLine(narration: string, opts: TagOpts = {}): string {
+  const tags = buildYouTubeTags(opts.businessName || '', opts.catchphrase || '', narration, opts.extra || []);
+  const hashtags = tags.slice(0, 12).map((t) => '#' + t.replace(/[#\s]/g, '')).filter((h) => h.length > 1);
+  return hashtags.join(' ');
+}
+
 /**
  * 유튜브 설명란 문자열 생성 (promo-character 공용).
- * 순서: 나레이션 → 구매 링크 → 쿠팡 파트너스 고지 → 제작 크레딧
+ * 순서: (해시태그 줄) → 나레이션 → 구매 링크 → 쿠팡 파트너스 고지 → 제작 크레딧
+ * tagOpts를 넘기면 맨 첫 줄에 해시태그 줄을 붙인다(유튜브 제목 위 태그 노출·발견 유입).
  */
-export function buildPromoDescription(narration: string, buyLink: string): string {
+export function buildPromoDescription(narration: string, buyLink: string, tagOpts?: TagOpts): string {
   const n = (narration || '').replace(/[*#`_~]/g, '').replace(/[ \t]+/g, ' ').trim();
   const link = (buyLink || '').trim();
   const lines: string[] = [];
@@ -12,19 +23,20 @@ export function buildPromoDescription(narration: string, buyLink: string): strin
     lines.push('', '이 게시물은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.');
   }
   lines.push('', '🎬 제작: 이지온 (EasyOn)', '📩 홍보영상 제작문의: huls_family@naver.com · shortsai.kr');
-  return lines.join('\n');
+  const base = lines.join('\n');
+  if (tagOpts) {
+    const hl = buildHashtagLine(narration, tagOpts);
+    if (hl) return `${hl}\n\n${base}`;
+  }
+  return base;
 }
 
 /**
- * 인스타 릴스 캡션 = 나레이션 + 이지온 제작·문의 + 해시태그.
- * 유튜브 설명(buildPromoDescription)에 IG 발견용 해시태그 줄을 덧붙인다.
+ * 인스타 릴스 캡션 = 해시태그 줄 + 나레이션 + 이지온 제작·문의.
+ * 유튜브 설명과 동일한 구조(첫 줄 해시태그)를 공유한다.
  */
 export function buildInstagramCaption(narration: string, buyLink: string, businessName = '', catchphrase = '', extra: string[] = []): string {
-  const base = buildPromoDescription(narration, buyLink);
-  const tags = buildYouTubeTags(businessName, catchphrase, narration, extra);
-  const hashtags = tags.slice(0, 12).map((t) => '#' + t.replace(/[#\s]/g, '')).filter((h) => h.length > 1);
-  // 인스타는 별도 태그 필드가 없어 캡션의 해시태그가 곧 태그 → 맨 위에 배치(발견 유입)
-  return hashtags.length ? `${hashtags.join(' ')}\n\n${base}` : base;
+  return buildPromoDescription(narration, buyLink, { businessName, catchphrase, extra });
 }
 
 /** 영상 종류 태그 — topic/mode로 판별. 제품('제품홍보:') / 이벤트(mode='event') / 브랜드 */

@@ -105,9 +105,9 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
     setYtBusyId(job.id); setYtMsg((p) => ({ ...p, [job.id]: '' }));
     try {
       const title = (job.businessName || job.topic?.replace(/^제품홍보:/, '') || '홍보 영상').trim().slice(0, 90);
-      const meta = (job.script || {}) as { narration?: string; catchphrase?: string; buyLink?: string };
-      // 제품홍보영상(캐릭터) 도구와 동일한 설명란: 나레이션 + 구매링크 + 쿠팡 고지 + 제작 크레딧
-      const desc = buildPromoDescription(meta.narration || meta.catchphrase || '', meta.buyLink || '');
+      const meta = (job.script || {}) as { narration?: string; catchphrase?: string; buyLink?: string; _meta?: { mode?: string } };
+      // 해시태그 첫줄 + 나레이션 + 구매링크 + 쿠팡 고지 + 제작 크레딧
+      const desc = buildPromoDescription(meta.narration || meta.catchphrase || '', meta.buyLink || '', { businessName: job.businessName || '', catchphrase: meta.catchphrase || '', extra: [kindTagOf(job.topic, meta._meta?.mode)] });
       const r = await fetch('/api/social/youtube/upload', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobId: job.id, title, description: desc, privacyStatus: 'unlisted' }),
