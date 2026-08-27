@@ -384,13 +384,13 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
               <div className="pb-4 border-b border-neutral-800">
                 <label className="block text-sm text-emerald-300 mb-1.5">제품 링크로 자동 채우기 (선택)</label>
                 <div className="flex gap-2">
-                  <input className={inputCls} value={importUrl} onChange={(e) => setImportUrl(e.target.value)} placeholder={isAiActor ? '쿠팡 상품 페이지 URL' : '상품 페이지 URL (쿠팡·네이버·자사몰 등)'} />
+                  <input className={inputCls} value={importUrl} onChange={(e) => setImportUrl(e.target.value)} placeholder="쿠팡 상품 페이지 URL" />
                   <button onClick={onImport} disabled={importBusy}
                     className="shrink-0 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-medium">
                     {importBusy ? '불러오는 중' : '불러오기'}
                   </button>
                 </div>
-                <p className="text-xs text-neutral-500 mt-1.5">{isAiActor ? '쿠팡 상품 링크를 붙여넣으면 제품명·대표이미지를 자동으로 채워요. (네이버 등 다른 몰은 아래에서 이미지 직접 업로드)' : '쿠팡·네이버 등 상품 링크를 붙여넣으면 제품명·대표이미지를 자동으로 채워요. (안 되면 아래에 직접 입력)'}</p>
+                <p className="text-xs text-neutral-500 mt-1.5">쿠팡 상품 링크를 붙여넣으면 제품명·대표이미지를 자동으로 채워요. (네이버 등 다른 몰은 아래에서 이미지 직접 업로드)</p>
                 {importNote && <p className="text-xs text-amber-300/90 mt-1.5">{importNote}</p>}
               </div>
               <div>
