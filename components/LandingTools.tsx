@@ -26,7 +26,13 @@ const CARDS: Card[] = [
   { key: 'event', icon: '📅', name: '행사 홍보영상', desc: '축제·마켓·세일·오픈 등 이벤트를 긴급성 있게 알립니다.', href: '/studio/event', kind: 'video' },
   { key: 'product-vs', icon: '🎭', name: '제품 홍보영상 (캐릭터)', desc: '캐릭터가 제품을 직접 소개하는 세로 쇼츠.', href: '/studio/product-vs', kind: 'video' },
   { key: 'product-ai', icon: '⭐', name: '제품 홍보영상 (캐릭터2)', desc: '제품을 든 AI배우를 자동 생성해 20초로 말하게 하는 쇼츠.', href: '/studio/product-ai', kind: 'video', tag: 'new' },
-  { key: 'logo', icon: '✦', name: '로고 생성', desc: '브랜드 이름과 분위기만으로 로고 시안 제작·다운로드. 5가지 스타일.', href: '/studio/logo', kind: 'logo' },
+  { key: 'logo', icon: '✦', name: '로고 생성', desc: '브랜드 이름만 넣으면, 바로 쓸 수 있는 로고가 완성됩니다.', href: '/studio/logo', kind: 'logo' },
+];
+
+const LOGO_BENEFITS = [
+  { icon: '🎨', t: '5가지 스타일, 여러 버전', d: '플랫·미니멀·엠블럼·마스코트·레터마크 — 여러 시안을 뽑아 비교하고 고르세요.' },
+  { icon: '🖼️', t: '원하는 느낌 그대로', d: '마음에 드는 로고 이미지를 올리면 그 스타일을 그대로 따라 만들어 드려요.' },
+  { icon: '⬇️', t: '간판·인쇄까지 쓰는 고화질', d: 'PNG은 물론 SVG·AI(벡터)까지, 추가 비용 없이. 아무리 키워도 깨지지 않습니다.' },
 ];
 
 export default function LandingTools() {
@@ -73,6 +79,19 @@ export default function LandingTools() {
         <div key={t.name} className={`sa-tool has-media${t.kind === 'logo' ? ' is-logo' : ''}`}>
           {head}
           {media}
+          {t.kind === 'logo' && (
+            <>
+              <ul className="sa-logo-benefits">
+                {LOGO_BENEFITS.map((b) => (
+                  <li key={b.t}><span className="bic">{b.icon}</span><div><b>{b.t}</b><span>{b.d}</span></div></li>
+                ))}
+              </ul>
+              <div className="sa-logo-price">
+                <b>로고 한 장 약 200원</b>
+                <span>디자인 외주는 보통 수만 원 — 원하는 만큼 여러 버전을 부담 없이.</span>
+              </div>
+            </>
+          )}
           {t.href && <Link className="sa-tool-cta" href={t.href}>만들어 보기 →</Link>}
         </div>
       );
