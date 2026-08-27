@@ -15,7 +15,6 @@ export default function LandingNav() {
         <Link href="/" className="sa-brand"><span className="sa-mk">S</span>Shorts<b>AI</b></Link>
 
         <nav className="sa-links">
-          <a href="#how">작동 방식</a>
           <a href="#tools">기능 · 샘플</a>
           <a href="#pricing">요금</a>
         </nav>

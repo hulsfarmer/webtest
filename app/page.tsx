@@ -3,14 +3,9 @@ import { Suspense } from 'react';
 import './landing.css';
 import LandingNav from '@/components/LandingNav';
 import LandingTools from '@/components/LandingTools';
+import HeroPhone from '@/components/HeroPhone';
 import PricingBlock from '@/components/PricingBlock';
 import MaintenanceModal from '@/components/MaintenanceModal';
-
-
-
-const Arrow = (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-);
 
 export default function Home() {
   return (
@@ -41,38 +36,13 @@ export default function Home() {
 
           <div className="sa-stage">
             <div className="sa-phone">
-              <div className="sa-screen">
-                <div className="sa-photo" />
-                <div className="sa-shdr"><small>연남동 감성카페</small><b>매일 아침, 향긋한 한 잔</b></div>
-                <div className="sa-cap-area">
-                  <div className="c">직접 로스팅한 <i>원두</i></div>
-                  <div className="c">오션뷰 <i>창가 자리</i></div>
-                  <div className="c">지금 <i>방문하세요</i></div>
-                </div>
-                <div className="sa-prog"><i /></div>
-              </div>
+              <HeroPhone />
             </div>
             <div className="sa-float f1"><span className="ic" style={{ background: 'var(--grad)' }}>✦</span><span>AI 대본·자막 자동</span></div>
             <div className="sa-float f2"><span className="ic" style={{ background: 'linear-gradient(135deg,var(--pink),var(--purple))' }}>▶</span><span>평균 3분 12초 완성</span></div>
           </div>
         </div>
       </header>
-
-      {/* HOW */}
-      <section className="sa-block" id="how">
-        <div className="sa-wrap">
-          <div className="sa-sec-head">
-            <div className="sa-kick">작동 방식</div>
-            <h2>세 단계면 끝납니다</h2>
-            <p>편집 프로그램도, 촬영 장비도 필요 없습니다. 입력만 하면 나머지는 AI가 합니다.</p>
-          </div>
-          <div className="sa-steps">
-            <div className="sa-step"><div className="n" /><h3>정보·사진 입력</h3><p>업체명, 강점, 사진 몇 장만. 사진이 없으면 업종에 맞는 스톡 영상 배경을 자동으로 넣어줍니다.</p><div className="con">{Arrow}</div></div>
-            <div className="sa-step"><div className="n" /><h3>AI가 자동 제작</h3><p>클로드가 대본을 쓰고, 자연스러운 한국어 음성·BGM·자막을 나레이션에 딱 맞춰 싱크합니다.</p><div className="con">{Arrow}</div></div>
-            <div className="sa-step"><div className="n" /><h3>완성·바로 발행</h3><p>9:16 쇼츠를 내려받거나, 유튜브·틱톡으로 곧바로 발행. 마음에 안 들면 대본만 고쳐 재생성.</p></div>
-          </div>
-        </div>
-      </section>
 
       {/* TOOLS */}
       <section className="sa-block" id="tools" style={{ background: 'var(--surface-2)' }}>
