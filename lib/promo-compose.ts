@@ -130,6 +130,7 @@ export async function renderHeaderOverlay(businessName: string, catchphrase: str
   // 제품명·홍보문구를 같은 크기로. 각 ≤2줄 + 전체 높이가 밴드 이내가 되는 최대 폰트 탐색
   // (제품명 2줄+홍보문구 2줄=4줄이어도 밴드 안에 들어오게 자동 축소 → 위 잘림 방지)
   const MAXW = W - 130, BAND_PAD = 30;
+  const TOP_SAFE = 90; // 유튜브 쇼츠·인스타 릴스 상단 크롭/UI 대비 상단 여백 → 제목을 아래로
   const wrapAt = (text: string, size: number): string[] => {
     ctx.font = `${size}px "${fams.title}"`;
     const words = text.split(/\s+/).filter(Boolean);
@@ -148,7 +149,7 @@ export async function renderHeaderOverlay(businessName: string, catchphrase: str
     const nl = wrapAt(name, s), pl = phrase ? wrapAt(phrase, s) : [];
     const lineH = s * 1.16;
     const bh = nl.length * lineH + (phrase ? 22 : 0) + pl.length * lineH;
-    if (nl.length <= 2 && pl.length <= 2 && bh <= BH - BAND_PAD) { hSize = s; nameLines = nl; phraseLines = pl; break; }
+    if (nl.length <= 2 && pl.length <= 2 && bh <= BH - TOP_SAFE - BAND_PAD) { hSize = s; nameLines = nl; phraseLines = pl; break; }
   }
   const nameFit = { lines: nameLines, size: hSize };
   const phraseFit = { lines: phraseLines, size: phrase ? hSize : 0 };
@@ -169,8 +170,8 @@ export async function renderHeaderOverlay(businessName: string, catchphrase: str
     if (th.outline !== 'rgba(0,0,0,0)') { ctx.lineWidth = Math.max(3, size * 0.09); ctx.strokeStyle = th.outline; ctx.lineJoin = 'round'; ctx.strokeText(text, W / 2, y); }
     ctx.fillStyle = color; ctx.fillText(text, W / 2, y);
   };
-  // 밴드 안에서 세로 중앙 정렬
-  let baseline = (BH - blockH) / 2 + nameFit.size * 0.82;
+  // 상단 여백(TOP_SAFE) 아래 영역에서 세로 중앙 정렬 → 제목이 화면 맨 위에 안 붙음
+  let baseline = TOP_SAFE + (BH - TOP_SAFE - blockH) / 2 + nameFit.size * 0.82;
   nameFit.lines.forEach((ln) => { drawRow(ln, baseline, nameFit.size, fams.title, th.nameColor); baseline += nameLH; });
   if (phrase) {
     baseline = baseline - nameLH + gap + phraseFit.size;

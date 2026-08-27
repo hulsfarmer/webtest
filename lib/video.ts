@@ -291,8 +291,9 @@ const SAFE_TOP = Math.round(H_FULL * 0.15);     // 288px — 상단 UI 영역
 const SAFE_BOTTOM = Math.round(H_FULL * 0.25);  // 480px — 하단 UI 영역
 // 상단 1/5 검은 밴드: 업체명 + 스크립트 제목 (사진은 하단 4/5)
 const BAND_H = Math.round(H_FULL / 5);           // 384px — 상단 검은 배경 밴드
-const TITLE_ZONE_Y = 44;                          // 밴드 내부 상단 여백
-const TITLE_ZONE_H = BAND_H - 84;                 // 300px — 업체명 + 캐치프레이즈
+// 유튜브 쇼츠·인스타 릴스가 상단 UI를 얹거나 크롭해도 제목이 안 잘리게 상단 여백 확보(제목을 아래로)
+const TITLE_ZONE_Y = 120;                         // 밴드 내부 상단 여백(↑ 상단 안전영역)
+const TITLE_ZONE_H = BAND_H - TITLE_ZONE_Y - 32;  // 232px — 업체명 + 캐치프레이즈
 const DIV_Y = TITLE_ZONE_Y + TITLE_ZONE_H + 16;
 const BOX_W_MARGIN = 40;
 const INFO_H = 84;
