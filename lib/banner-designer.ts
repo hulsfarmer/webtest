@@ -22,11 +22,13 @@ export interface DesignSet {
   profileSvg: string;
 }
 
-// 각 세트에 서로 다른 방향을 심어 3종의 변화를 보장(그때그때 AI가 구체 디자인을 잡음)
-const STYLE_SEEDS = [
-  '미니멀 & 모던 — 딥한 단색/미묘한 그라데이션 배경, 넉넉한 여백, 얇은 악센트 라인, 절제된 세련미',
-  '볼드 & 다이내믹 — 대비 강한 색, 큰 기하학 도형이나 대각선 컬러 블록, 강렬한 타이포',
-  '따뜻 & 프렌들리 — 부드러운 그라데이션, 둥근 도형, 친근하고 밝은 분위기',
+// 사용자가 고르는 스타일 목록(로고 페이지처럼). id로 선택 → seed로 디자인 방향 지시.
+export const STYLES: { id: string; label: string; seed: string }[] = [
+  { id: 'minimal', label: '미니멀 모던', seed: '미니멀 & 모던 — 딥한 단색/미묘한 그라데이션 배경, 넉넉한 여백, 얇은 악센트 라인, 절제된 세련미' },
+  { id: 'bold', label: '볼드 다이내믹', seed: '볼드 & 다이내믹 — 대비 강한 색, 큰 기하학 도형이나 대각선 컬러 블록, 강렬한 타이포' },
+  { id: 'warm', label: '따뜻 프렌들리', seed: '따뜻 & 프렌들리 — 부드러운 그라데이션, 둥근 도형, 친근하고 밝은 분위기' },
+  { id: 'news', label: '뉴스·테크', seed: '뉴스·테크 — 블랙/딥그레이 기반, 시크하고 신뢰감 있는 분위기, 얇은 라인과 포인트 컬러' },
+  { id: 'vivid', label: '엔터·비비드', seed: '엔터·비비드 — 네온/비비드 컬러, 화려하고 눈에 띄는, 그라데이션과 발랄한 도형' },
 ];
 
 const SAFE = { x: 407, y: 407, w: 1234, h: 338 }; // 배너 안전영역(모든 기기 표시): 가운데 1235x338
@@ -113,10 +115,10 @@ async function genOne(b: BrandInput, seed: string): Promise<DesignSet | null> {
   }
 }
 
-/** 브랜드 정보로 3종 세트 생성(병렬). 실패한 세트는 제외. */
-export async function generateDesignSets(b: BrandInput): Promise<DesignSet[]> {
-  const sets = await Promise.all(STYLE_SEEDS.map((s) => genOne(b, s)));
-  return sets.filter((s): s is DesignSet => !!s);
+/** 고른 스타일 하나로 세트(배너+프로필) 1개 생성. 실패 시 null. */
+export async function generateOneSet(b: BrandInput, styleId: string): Promise<DesignSet | null> {
+  const seed = (STYLES.find((s) => s.id === styleId) || STYLES[0]).seed;
+  return genOne(b, seed);
 }
 
 /** 기존 세트(SVG)를 자연어 지시로 수정 → 수정된 SVG 세트 반환. 실패 시 null. */

@@ -4,6 +4,15 @@ import { useState, useEffect } from 'react';
 
 interface DesignSet { style: string; banner: string; profile: string; bannerSvg: string; profileSvg: string }
 
+// 스타일 목록(라벨) — 서버 lib과 id 일치. 설명은 고를 때 감 잡으라고.
+const STYLE_OPTIONS = [
+  { id: 'minimal', label: '미니멀 모던', desc: '딥 배경 · 넉넉한 여백 · 절제된 세련' },
+  { id: 'bold', label: '볼드 다이내믹', desc: '대비 강한 색 · 큰 도형 · 강렬' },
+  { id: 'warm', label: '따뜻 프렌들리', desc: '부드러운 그라데이션 · 둥근 도형' },
+  { id: 'news', label: '뉴스·테크', desc: '블랙 기반 · 시크 · 신뢰감' },
+  { id: 'vivid', label: '엔터·비비드', desc: '네온 · 화려 · 눈에 띔' },
+];
+
 function download(dataUrl: string, filename: string) {
   const a = document.createElement('a');
   a.href = dataUrl; a.download = filename;
@@ -16,6 +25,7 @@ export default function AiSetDesigner() {
   const [tagline, setTagline] = useState('');
   const [colors, setColors] = useState('');
   const [vibe, setVibe] = useState('');
+  const [style, setStyle] = useState('minimal');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [sets, setSets] = useState<DesignSet[]>([]);
@@ -82,12 +92,13 @@ export default function AiSetDesigner() {
     try {
       const r = await fetch('/api/youtube/banner-set', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brandName, headline, tagline, colors, vibe }),
+        body: JSON.stringify({ brandName, headline, tagline, colors, vibe, style }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || '생성 실패');
-      setSets(d.sets || []);
-      if (!d.sets?.length) setErr('생성된 디자인이 없어요. 다시 시도해주세요.');
+      setSets(d.set ? [d.set] : []);
+      setSavedId({});
+      if (!d.set) setErr('생성된 디자인이 없어요. 다시 시도해주세요.');
     } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(false); }
   }
@@ -102,7 +113,7 @@ export default function AiSetDesigner() {
     <div className="lgm">
       <div className="header">
         <h1>유튜브 배너·프로필 세트 <span className="badge">AI 디자인</span></h1>
-        <p>브랜드 정보만 넣으면 <b>배너(2048×1152) + 프로필(800×800)</b>을 통일감 있는 3가지 방향으로 디자인해 드려요. 마음에 드는 세트를 골라 한 번에 다운로드하세요.</p>
+        <p>브랜드 정보와 스타일만 고르면 <b>배너(2048×1152) + 프로필(800×800)</b>을 통일감 있게 디자인해 드려요. 다운로드·AI 수정·라이브러리 저장까지 한곳에서.</p>
       </div>
 
       <div className="grid">
@@ -115,6 +126,13 @@ export default function AiSetDesigner() {
           <div className="field">
             <label>배너 큰 문구</label>
             <input value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="복잡함은 끄고, 쉬움을 켭니다" />
+          </div>
+          <div className="field">
+            <label>스타일</label>
+            <select value={style} onChange={(e) => setStyle(e.target.value)}>
+              {STYLE_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+            <p className="hint" style={{ marginTop: 6 }}>{STYLE_OPTIONS.find((o) => o.id === style)?.desc}</p>
           </div>
           <div className="row">
             <div className="field">
@@ -131,22 +149,22 @@ export default function AiSetDesigner() {
             <input value={vibe} onChange={(e) => setVibe(e.target.value)} placeholder="AI 콘텐츠 제작, 깔끔하고 신뢰감 있는" />
           </div>
           <button className="primary" onClick={generate} disabled={busy}>
-            {busy ? 'AI가 3가지 방향을 디자인 중… (20~40초)' : '✨ 배너·프로필 세트 생성 · 2크레딧'}
+            {busy ? 'AI가 디자인 중… (15~30초)' : '✨ 배너·프로필 생성 · 1크레딧'}
           </button>
           {err && <div className="error">{err}</div>}
-          <p className="hint" style={{ marginTop: 8 }}>1회 생성에 3가지 세트가 나오고 2크레딧이 소모돼요. 유튜브 안전영역·규격에 맞춰 자동 배치됩니다.</p>
+          <p className="hint" style={{ marginTop: 8 }}>고른 스타일로 배너+프로필 1세트가 나오고 1크레딧이 소모돼요. 마음에 안 들면 스타일을 바꿔 다시 생성하거나, 아래에서 AI 수정할 수 있어요.</p>
         </div>
 
         {/* 우: 결과 */}
         <div className="card results">
           {!sets.length && !busy && (
-            <p className="hint" style={{ marginTop: 0 }}>왼쪽에 브랜드 정보를 넣고 <b>생성</b>을 누르면, 3가지 디자인 방향이 여기에 배너+프로필 세트로 나와요.</p>
+            <p className="hint" style={{ marginTop: 0 }}>왼쪽에서 브랜드 정보·스타일을 고르고 <b>생성</b>을 누르면, 배너+프로필이 여기에 나와요.</p>
           )}
           {busy && <p className="hint" style={{ marginTop: 0 }}>디자인을 그리는 중이에요…</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {sets.map((s, i) => (
               <div key={i} style={{ border: '1px solid var(--line, #2a2a2a)', borderRadius: 14, padding: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#34d399', marginBottom: 10 }}>방향 {i + 1} · {s.style}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#34d399', marginBottom: 10 }}>{s.style}</div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={s.banner} alt={`배너 ${i + 1}`} style={{ flex: '1 1 320px', minWidth: 240, borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)' }} />
