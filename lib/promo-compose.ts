@@ -144,19 +144,22 @@ export async function renderHeaderOverlay(businessName: string, catchphrase: str
     if (cur) lines.push(cur);
     return lines;
   };
-  let hSize = 42, nameLines = wrapAt(name, 42), phraseLines = phrase ? wrapAt(phrase, 42) : [];
-  for (let s = 80; s >= 42; s -= 2) {
-    const nl = wrapAt(name, s), pl = phrase ? wrapAt(phrase, s) : [];
+  const hasName = !!name;
+  // 문구 단독(제품1/2)은 더 크게, 제품명+문구(hedra·recompose)는 4줄 기준으로 폰트 자동 축소
+  const MAXFONT = hasName ? 80 : 96;
+  let hSize = 42, nameLines: string[] = hasName ? wrapAt(name, 42) : [], phraseLines = phrase ? wrapAt(phrase, 42) : [];
+  for (let s = MAXFONT; s >= 42; s -= 2) {
+    const nl = hasName ? wrapAt(name, s) : [];
+    const pl = phrase ? wrapAt(phrase, s) : [];
     const lineH = s * 1.16;
-    const bh = nl.length * lineH + (phrase ? 22 : 0) + pl.length * lineH;
+    const accent = hasName ? 0 : Math.round(s * 0.55); // 문구 단독: 악센트 바 + 여백 공간 확보
+    const bh = nl.length * lineH + (hasName && phrase ? 22 : 0) + pl.length * lineH + accent;
     if (nl.length <= 2 && pl.length <= 2 && bh <= BH - TOP_SAFE - BAND_PAD) { hSize = s; nameLines = nl; phraseLines = pl; break; }
   }
   const nameFit = { lines: nameLines, size: hSize };
   const phraseFit = { lines: phraseLines, size: phrase ? hSize : 0 };
   const nameLH = Math.round(hSize * 1.14);
   const phraseLH = phrase ? Math.round(hSize * 1.2) : 0;
-  const gap = phrase ? 22 : 0;
-  const blockH = nameFit.lines.length * nameLH + gap + phraseFit.lines.length * phraseLH;
 
   // 배경 밴드 (고정 높이, 아래 가장자리 살짝 페이드)
   ctx.fillStyle = th.bg; ctx.fillRect(0, 0, W, BH);
@@ -170,12 +173,31 @@ export async function renderHeaderOverlay(businessName: string, catchphrase: str
     if (th.outline !== 'rgba(0,0,0,0)') { ctx.lineWidth = Math.max(3, size * 0.09); ctx.strokeStyle = th.outline; ctx.lineJoin = 'round'; ctx.strokeText(text, W / 2, y); }
     ctx.fillStyle = color; ctx.fillText(text, W / 2, y);
   };
-  // 상단 여백(TOP_SAFE) 아래 영역에서 세로 중앙 정렬 → 제목이 화면 맨 위에 안 붙음
-  let baseline = TOP_SAFE + (BH - TOP_SAFE - blockH) / 2 + nameFit.size * 0.82;
-  nameFit.lines.forEach((ln) => { drawRow(ln, baseline, nameFit.size, fams.title, th.nameColor); baseline += nameLH; });
-  if (phrase) {
-    baseline = baseline - nameLH + gap + phraseFit.size;
-    phraseFit.lines.forEach((ln) => { drawRow(ln, baseline, phraseFit.size, fams.title, th.titleColor); baseline += phraseLH; });
+
+  if (hasName) {
+    // 제품명 + 홍보문구 (2단): 기존 레이아웃 (hedra·recompose)
+    const gap = phrase ? 22 : 0;
+    const blockH = nameFit.lines.length * nameLH + gap + phraseFit.lines.length * phraseLH;
+    let baseline = TOP_SAFE + (BH - TOP_SAFE - blockH) / 2 + nameFit.size * 0.82;
+    nameFit.lines.forEach((ln) => { drawRow(ln, baseline, nameFit.size, fams.title, th.nameColor); baseline += nameLH; });
+    if (phrase) {
+      baseline = baseline - nameLH + gap + phraseFit.size;
+      phraseFit.lines.forEach((ln) => { drawRow(ln, baseline, phraseFit.size, fams.title, th.titleColor); baseline += phraseLH; });
+    }
+  } else {
+    // 홍보문구 단독 (제품1/2): 상단 포인트색 악센트 바 + 큼직한 문구, 세로 중앙 정렬
+    const accentH = Math.max(5, Math.round(hSize * 0.14));
+    const accentW = Math.round(Math.min(150, Math.max(76, hSize * 1.6)));
+    const accentGap = Math.round(hSize * 0.44);
+    const blockH = accentH + accentGap + phraseFit.lines.length * phraseLH;
+    let y = TOP_SAFE + (BH - TOP_SAFE - blockH) / 2;
+    ctx.fillStyle = th.nameColor;
+    const bx = Math.round(W / 2 - accentW / 2);
+    const rr = (ctx as unknown as { roundRect?: (x: number, y: number, w: number, h: number, r: number) => void }).roundRect;
+    if (typeof rr === 'function') { ctx.beginPath(); rr.call(ctx, bx, y, accentW, accentH, accentH / 2); ctx.fill(); }
+    else ctx.fillRect(bx, y, accentW, accentH);
+    y += accentH + accentGap + phraseFit.size * 0.82;
+    phraseFit.lines.forEach((ln) => { drawRow(ln, y, phraseFit.size, fams.title, th.titleColor); y += phraseLH; });
   }
   fs.writeFileSync(outPath, canvas.toBuffer('image/png'));
 }

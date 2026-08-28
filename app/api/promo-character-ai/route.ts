@@ -36,6 +36,7 @@ interface CharAiJobInput extends PromoInput {
   presenter: 'female' | 'male'; // 자동 결정된 배우 성별 (배우 이미지 + 목소리 매칭)
   vsModel?: string;             // vs_talk_v1(저가·제품1) | vs_character_v4(프리미엄·제품2)
   credits?: number;             // 사이트 크레딧 정액 (제품1=5, 제품2=15)
+  holdProduct?: boolean;        // 제품2=true(제품 든 배우) / 제품1=false(제품 없이 말만)
   productImagePath: string;
   overlayTitle: string;
   overlayCta: string;
@@ -73,6 +74,7 @@ async function processPromoCharacterAiJob(jobId: string, input: CharAiJobInput) 
       presenter: input.presenter === 'male'
         ? 'a friendly Korean man in his late 20s to 30s'
         : 'a friendly Korean woman in her late 20s to 30s',
+      holdProduct: input.holdProduct !== false, // 제품1(저가)=false: 제품 안 들고 말만
     });
     fs.writeFileSync(actorPath, actorBuf);
     const avatarId = await createVisionStoryAvatar(actorBuf, 'image/png');
@@ -280,7 +282,7 @@ export async function POST(req: NextRequest) {
     voiceId: autoVoice, emotion, presenter: actorGender, productImagePath,
     overlayTitle: '', overlayCta: cta, // AI배우: 헤더 복잡도↓ — 제품명 빼고 홍보문구만
     catchphrase, headerTheme, speed, sections, buyLink,
-    introChar, productChar, outroChar, userId, vsModel, credits: jobCredits,
+    introChar, productChar, outroChar, userId, vsModel, credits: jobCredits, holdProduct: !budget,
   }).catch(console.error);
 
   return NextResponse.json({ jobId });
