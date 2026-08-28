@@ -252,6 +252,9 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
   const message = await getClient().messages.create({
     model: 'claude-sonnet-5',
     max_tokens: 1024,
+    // 단순 JSON 생성 — 사고 비활성(Sonnet5 기본 adaptive thinking OFF, 응답 첫 블록=텍스트, 예산 절약).
+    // 설치된 SDK 타입에 thinking 미포함 → 스프레드 캐스트로 런타임 전달.
+    ...({ thinking: { type: 'disabled' } } as Record<string, unknown>),
     messages: [
       {
         role: 'user',
@@ -260,8 +263,8 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
     ],
   });
 
-  const content = message.content[0];
-  if (content.type !== 'text') {
+  const content = message.content.find((b) => b.type === 'text');
+  if (!content || content.type !== 'text') {
     throw new Error('Unexpected response type from Claude');
   }
 
@@ -315,6 +318,9 @@ export async function generatePromoScriptFromImages(
   const message = await getClient().messages.create({
     model: 'claude-sonnet-5',
     max_tokens: 1024,
+    // 단순 JSON 생성 — 사고 비활성(Sonnet5 기본 adaptive thinking OFF, 응답 첫 블록=텍스트, 예산 절약).
+    // 설치된 SDK 타입에 thinking 미포함 → 스프레드 캐스트로 런타임 전달.
+    ...({ thinking: { type: 'disabled' } } as Record<string, unknown>),
     messages: [
       {
         role: 'user',
@@ -357,8 +363,8 @@ ${rules}
     ],
   });
 
-  const content = message.content[0];
-  if (content.type !== 'text') throw new Error('Unexpected response type from Claude');
+  const content = message.content.find((b) => b.type === 'text');
+  if (!content || content.type !== 'text') throw new Error('Unexpected response type from Claude');
 
   try {
     const raw = content.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
@@ -428,6 +434,9 @@ export async function reviseScript(
   const message = await getClient().messages.create({
     model: 'claude-sonnet-5',
     max_tokens: 1024,
+    // 단순 JSON 생성 — 사고 비활성(Sonnet5 기본 adaptive thinking OFF, 응답 첫 블록=텍스트, 예산 절약).
+    // 설치된 SDK 타입에 thinking 미포함 → 스프레드 캐스트로 런타임 전달.
+    ...({ thinking: { type: 'disabled' } } as Record<string, unknown>),
     messages: [
       {
         role: 'user',
@@ -450,8 +459,8 @@ ${JSON.stringify(originalScript, null, 2)}
     ],
   });
 
-  const content = message.content[0];
-  if (content.type !== 'text') throw new Error('Unexpected response type from Claude');
+  const content = message.content.find((b) => b.type === 'text');
+  if (!content || content.type !== 'text') throw new Error('Unexpected response type from Claude');
 
   try {
     const raw = content.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
