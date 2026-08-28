@@ -297,12 +297,12 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
       // VisionStory: 음성 = Gemini voice_id 그대로 전달, 내부 TTS가 처리
       fd.append('voice', voiceKey);
       fd.append('emotion', 'cheerful');
-      fd.append('duration', isAiActor ? '20' : duration);
+      fd.append('duration', '20'); // 제품1·제품2 모두 20초 고정
       fd.append('speed', '1.0'); // VisionStory는 자체 페이싱 자연스러움
       fd.append('introChar', introChar ? '1' : '0');
       fd.append('productChar', productChar ? '1' : '0');
       fd.append('outroChar', outroChar ? '1' : '0');
-      fd.append('estCredits', String(isAiActor ? 15 : estimateVs().total));
+      fd.append('estCredits', String(isAiActor ? 15 : 5)); // 제품1 고정 5크레딧
     } else {
       const v = VOICES.find((x) => x.id === voiceKey) ?? VOICES[0];
       fd.append('voice', v.google); // 하위호환(현재 미사용)
@@ -459,6 +459,10 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                 <div className="rounded-lg border border-neutral-800 bg-neutral-950/40 p-3 text-xs text-neutral-400">
                   배우·<b className="text-neutral-300">목소리</b>·길이(20초)는 <b className="text-neutral-300">제품에 맞춰 자동</b>으로 정해져요. (배우 성별에 맞는 목소리로 매칭) · <b className="text-emerald-300">1편 15크레딧</b>
                 </div>
+              ) : engine === 'visionstory' ? (
+                <div className="rounded-lg border border-neutral-800 bg-neutral-950/40 p-3 text-xs text-neutral-400">
+                  <b className="text-neutral-300">목소리</b>·길이(20초)는 <b className="text-neutral-300">제품에 맞춰 자동</b>으로 정해져요. (위에서 고른 캐릭터가 말합니다) · <b className="text-emerald-300">1편 5크레딧</b>
+                </div>
               ) : (
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -478,7 +482,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                 </div>
               </div>
               )}
-              {!isAiActor && (
+              {!isVS && (
               <div>
                 <label className="block text-sm text-neutral-300 mb-1.5">영상 속도</label>
                 <select className={inputCls} value={speed} onChange={(e) => setSpeed(e.target.value)}>
@@ -544,39 +548,9 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                 )}
               </div>
 
-              {isVS && !isAiActor && (() => {
-                const est = estimateVs();
-                const segState: Record<string, [boolean, (v: boolean) => void]> = {
-                  intro: [introChar, setIntroChar], product: [productChar, setProductChar], outro: [outroChar, setOutroChar],
-                };
-                return (
-                  <div className="pt-3 border-t border-neutral-800 space-y-2">
-                    <div className="text-sm font-semibold">구간별 캐릭터 · 예상 크레딧</div>
-                    <p className="text-xs text-neutral-500">캐릭터를 끄면 그 구간은 제품·자막·내레이션만 나와요 (더 저렴).</p>
-                    {est.lines.map((l) => {
-                      const [on, set] = segState[l.key];
-                      return (
-                        <div key={l.key} className="flex items-center justify-between text-sm">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={on} onChange={(e) => set(e.target.checked)} className="accent-emerald-500" />
-                            <span>{l.label} <span className="text-neutral-500">~{Math.round(l.d)}초</span></span>
-                          </label>
-                          <span className={on ? 'text-emerald-300' : 'text-neutral-500'}>{on ? `${l.c}크레딧` : '캐릭터 없음 · 무료'}</span>
-                        </div>
-                      );
-                    })}
-                    <div className="flex items-center justify-between pt-2 border-t border-neutral-800 text-sm font-semibold">
-                      <span>예상 합계</span>
-                      <span className="text-emerald-300">{est.total}크레딧 <span className="text-neutral-400 font-normal">(약 ₩{est.won.toLocaleString()})</span></span>
-                    </div>
-                    {est.allOn && <p className="text-[11px] text-neutral-500">전부 캐릭터 → 한 영상으로 합쳐 가장 저렴하게 생성돼요.</p>}
-                  </div>
-                );
-              })()}
-
               <button onClick={onGenerateVideo} disabled={busy}
                 className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-neutral-950 font-semibold rounded-lg py-3">
-                {busy ? '영상 생성 중...' : `② 이 대본으로 영상 생성 · 약 ${isAiActor ? 15 : estimateVs().total}크레딧`}
+                {busy ? '영상 생성 중...' : `② 이 대본으로 영상 생성 · 약 ${isAiActor ? 15 : isVS ? 5 : estimateVs().total}크레딧`}
               </button>
             </div>
           )}

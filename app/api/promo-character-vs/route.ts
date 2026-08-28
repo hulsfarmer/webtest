@@ -15,8 +15,17 @@ import { hasCredits, chargeCredits } from '@/lib/usageStore';
 import { recordVsUsage } from '@/lib/visionStoryCredits';
 
 // 제품 홍보영상 (VisionStory 엔진) — Hedra판 /api/promo-character 의 자매 라우트.
-// 차이: 캐릭터 영상+한국어 음성을 VisionStory(V-Character, 내부 Gemini TTS)가 생성.
+// 차이: 캐릭터 영상+한국어 음성을 VisionStory(V-Talk, 내부 Gemini TTS)가 생성.
 // 자막은 반환 영상 오디오를 STT로 정렬(우리 시스템 재사용). 제품 합성은 동일.
+// 나레이션·자막·음성 정책을 제품2(AI배우)와 동일하게 맞춤: 자기소개 없음, 성별 자동 음성.
+const VS_TALK_CREDITS = 5; // 제품1 고정 요금(vs_talk_v1 720p 20초 = VisionStory ~4크레딧 소비)
+
+/** 제품 정보로 배우 성별 자동 추론 (남성용 상품이면 남성, 그 외 기본 여성) — 제품2와 동일 로직. */
+function inferActorGender(...parts: (string | undefined)[]): 'female' | 'male' {
+  const t = parts.filter(Boolean).join(' ').toLowerCase();
+  if (/(남성|남자|맨즈|men['’]?s|\bmen\b|\bman\b|면도|쉐이빙|수염|남성용|아빠|신랑)/.test(t)) return 'male';
+  return 'female';
+}
 
 interface CharVsJobInput extends PromoInput {
   voiceId: string;          // VisionStory Gemini voice_id (예: 'Aoede')
@@ -110,7 +119,7 @@ async function processPromoCharacterVsJob(jobId: string, input: CharVsJobInput) 
     };
     const mkChar = async (audioP: string, suffix: string) => {
       const av = await createVisionStoryAvatar(input.characterBuf, 'image/png');
-      const vid = await submitVisionStoryVideo({ avatarId: av, audioBuf: fs.readFileSync(audioP), model: 'vs_character_v4', aspectRatio: '9:16', resolution: '720p' });
+      const vid = await submitVisionStoryVideo({ avatarId: av, audioBuf: fs.readFileSync(audioP), model: 'vs_talk_v1', aspectRatio: '9:16', resolution: '720p' });
       const cb = await pollVisionStoryVideo(vid, (_st, cost) => { if (typeof cost === 'number') vsCreditsUsed += cost; updateJob(jobId, { progress: 60, status: 'generating_video' }); });
       const cp = path.join(tmpDir, `${jobId}_${suffix}.mp4`); fs.writeFileSync(cp, cb); subPaths.push(cp);
       return cp;
@@ -171,9 +180,9 @@ async function processPromoCharacterVsJob(jobId: string, input: CharVsJobInput) 
       else await concatSegments(clips, outPath);
     }
 
-    // 생성 성공 → 실제 VisionStory 소비 크레딧만큼 차감 (실패 시엔 차감 안 함)
-    try { await chargeCredits(input.userId, vsCreditsUsed); } catch (e) { console.error(`[PromoCharVsJob ${jobId}] 크레딧 차감 실패:`, e); }
-    // VisionStory 계정 소비 원장 기록 (관리자 잔여 추정용, 유저 과금과 별개)
+    // 생성 성공 → 고정 5크레딧 차감 (실패 시엔 차감 안 함). 실소비(vsCreditsUsed)와 무관한 정액.
+    try { await chargeCredits(input.userId, VS_TALK_CREDITS); } catch (e) { console.error(`[PromoCharVsJob ${jobId}] 크레딧 차감 실패(실소비 ${vsCreditsUsed}):`, e); }
+    // VisionStory 계정 실소비 원장 기록 (관리자 잔여 추정용, 유저 과금과 별개)
     recordVsUsage(vsCreditsUsed, jobId);
     cleanup();
     updateJob(jobId, { status: 'done', progress: 100, steps: { script: 'done', audio: 'done', video: 'done' }, videoUrl: `/api/video/${jobId}` });
@@ -200,7 +209,7 @@ export async function POST(req: NextRequest) {
   const headerTheme = (fd.get('headerTheme') as string | null) ?? 'navy';
   const voiceId = ((fd.get('voice') as string | null) ?? 'Aoede').trim(); // VisionStory Gemini voice_id
   const emotion = ((fd.get('emotion') as string | null) ?? 'cheerful').trim();
-  const duration = parseInt((fd.get('duration') as string | null) ?? '20', 10);
+  const duration = 20; // 제품1 고정 20초
   const speed = Math.min(2.0, Math.max(0.5, parseFloat((fd.get('speed') as string | null) ?? '1.0') || 1.0));
   const characterName = ((fd.get('characterName') as string | null) ?? '').trim();
   const tone = (fd.get('tone') as string | null) ?? '친근한';
@@ -212,8 +221,8 @@ export async function POST(req: NextRequest) {
   const introChar = ((fd.get('introChar') as string | null) ?? '1') !== '0';
   const productChar = ((fd.get('productChar') as string | null) ?? '1') !== '0';
   const outroChar = ((fd.get('outroChar') as string | null) ?? '1') !== '0';
-  // 프론트가 계산한 예상 크레딧(부족 시 생성 차단용). 없으면 길이 기반 추정.
-  const estCredits = Math.max(4, parseInt((fd.get('estCredits') as string | null) ?? '', 10) || Math.ceil(duration / 15) * 4);
+  // 고정 5크레딧 (사전 잔액 확인용)
+  const estCredits = VS_TALK_CREDITS;
 
   let sections: ScriptSection[] | undefined;
   const sectionsRaw = fd.get('sections') as string | null;
@@ -264,11 +273,15 @@ export async function POST(req: NextRequest) {
   });
   updateJob(jobId, { status: 'queued', progress: 5, steps: { script: 'pending', audio: 'pending', video: 'pending' } });
 
+  // 목소리 자동: 제품 정보로 성별 추론 → 그 성별 목소리 매칭 (제품2와 동일, 사용자 voice 무시)
+  const actorGender = inferActorGender(businessName, businessType, sellingPoints);
+  const autoVoice = actorGender === 'male' ? 'charon' : 'aoede';
+
   processPromoCharacterVsJob(jobId, {
     businessName, businessType, sellingPoints, cta, duration, tone,
-    voiceId, emotion, characterBuf, productImagePath,
+    voiceId: autoVoice, emotion, characterBuf, productImagePath,
     overlayTitle: '', overlayCta: cta, // 헤더 복잡도↓ — 제품명 빼고 홍보문구만
-    catchphrase, headerTheme, speed, characterName, sections, buyLink,
+    catchphrase, headerTheme, speed, characterName: '', sections, buyLink, // characterName 제거 → 자기소개 없이 제품2와 동일 나레이션
     introChar, productChar, outroChar, userId,
   }).catch(console.error);
 

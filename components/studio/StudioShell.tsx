@@ -28,7 +28,7 @@ const ICONS: Record<string, string> = {
 const CREATE: Item[] = [
   { id: 'promo', name: '브랜드 소개 영상', icon: 'store', href: '/studio/promo', cost: '1C' },
   { id: 'event', name: '이벤트 홍보 영상', icon: 'calendar', href: '/studio/event', cost: '1C' },
-  { id: 'product-vs', name: '제품 홍보 영상 (캐릭터)', icon: 'box', href: '/studio/product-vs', cost: '4C~' },
+  { id: 'product-vs', name: '제품 홍보 영상 (캐릭터)', icon: 'box', href: '/studio/product-vs', cost: '5C' },
   { id: 'product-ai', name: '제품 홍보 영상 (AI배우) ⭐', icon: 'box', href: '/studio/product-ai', cost: '15C' },
   { id: 'logo', name: '로고 생성', icon: 'sparkle', href: '/studio/logo', cost: '1C' },
   { id: 'convert', name: '파일 변환', icon: 'file', href: '/studio/convert', badge: 'soon', adminOnly: true },
