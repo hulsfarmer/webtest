@@ -383,7 +383,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
     <div className={embedded ? 'st-toolskin rounded-2xl px-4 py-8' : 'min-h-screen bg-neutral-950 text-neutral-100 px-4 py-10'}>
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">제품 홍보 캐릭터 영상{isAiActor ? ' (AI배우)' : isVS ? '' : ' (고급)'}</h1>
+          <h1 className="text-2xl font-bold">{isVS ? '제품홍보영상' : '제품 홍보 캐릭터 영상 (고급)'}{isAiActor && <span style={{ fontSize: '0.6em', fontWeight: 400, opacity: 0.6, marginLeft: 4 }}>premium</span>}</h1>
         </div>
         <p className="text-sm text-neutral-400 mt-1 mb-8">
           {isVS

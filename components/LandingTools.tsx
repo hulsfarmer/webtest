@@ -18,14 +18,14 @@ const LOGO_STYLES = [
 
 type Card = {
   key?: string; icon: string; name: string; desc: string;
-  href?: string; kind?: 'video' | 'logo'; tag?: 'new' | 'soon';
+  href?: string; kind?: 'video' | 'logo'; tag?: 'new' | 'soon'; premium?: boolean;
 };
 
 const CARDS: Card[] = [
   { key: 'promo', icon: '🏪', name: '브랜드 소개 영상', desc: '가게·회사·농장·병원 등 사업장을 소개하는 세로 쇼츠.', href: '/studio/promo', kind: 'video' },
   { key: 'event', icon: '📅', name: '이벤트 홍보 영상', desc: '축제·마켓·세일·오픈 등 이벤트를 긴급성 있게 알립니다.', href: '/studio/event', kind: 'video' },
-  { key: 'product-vs', icon: '🎭', name: '제품 홍보 영상 (캐릭터)', desc: '캐릭터가 제품을 직접 소개하는 세로 쇼츠.', href: '/studio/product-vs', kind: 'video' },
-  { key: 'product-ai', icon: '⭐', name: '제품 홍보 영상 (AI배우)', desc: '제품을 든 AI배우를 자동 생성해 20초로 말하게 하는 쇼츠.', href: '/studio/product-ai', kind: 'video', tag: 'new' },
+  { key: 'product-vs', icon: '🎭', name: '제품홍보영상', desc: '제품 이미지만 넣으면 AI배우를 자동 생성해 말하게 하는 세로 쇼츠 (기본형).', href: '/studio/product-vs', kind: 'video' },
+  { key: 'product-ai', icon: '⭐', name: '제품홍보영상', premium: true, desc: '제품을 든 AI배우를 자동 생성해 말하게 하는 쇼츠. 손동작·표현이 더 풍부한 프리미엄.', href: '/studio/product-ai', kind: 'video' },
   { key: 'logo', icon: '✦', name: '로고 생성', desc: '브랜드 이름만 넣으면, 바로 쓸 수 있는 로고가 완성됩니다.', href: '/studio/logo', kind: 'logo' },
 ];
 
@@ -69,14 +69,14 @@ export default function LandingTools() {
     const head = (
       <>
         <div className="ic">{t.icon}</div>
-        <h3>{t.name}{t.tag === 'new' && <span className="sa-tag new">NEW</span>}{t.tag === 'soon' && <span className="sa-tag soon">준비중</span>}</h3>
+        <h3>{t.name}{t.premium && <span style={{ fontSize: '0.58em', fontWeight: 400, opacity: 0.6, marginLeft: 4 }}>premium</span>}{t.tag === 'new' && <span className="sa-tag new">NEW</span>}{t.tag === 'soon' && <span className="sa-tag soon">준비중</span>}</h3>
         <p>{t.desc}</p>
       </>
     );
 
     if (media) {
       return (
-        <div key={t.name} className={`sa-tool has-media${t.kind === 'logo' ? ' is-logo' : ''}`}>
+        <div key={t.key ?? t.name} className={`sa-tool has-media${t.kind === 'logo' ? ' is-logo' : ''}`}>
           {head}
           {media}
           {t.kind === 'logo' && (
@@ -96,8 +96,8 @@ export default function LandingTools() {
         </div>
       );
     }
-    if (t.href) return <Link key={t.name} className="sa-tool" href={t.href}>{head}</Link>;
-    return <div key={t.name} className="sa-tool" aria-disabled="true">{head}</div>;
+    if (t.href) return <Link key={t.key ?? t.name} className="sa-tool" href={t.href}>{head}</Link>;
+    return <div key={t.key ?? t.name} className="sa-tool" aria-disabled="true">{head}</div>;
   };
 
   const videoCards = CARDS.filter((t) => t.kind === 'video');

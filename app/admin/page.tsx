@@ -28,8 +28,8 @@ import {
 const SAMPLE_VIDEO_MENUS = [
   { key: 'promo', name: '브랜드 소개 영상' },
   { key: 'event', name: '이벤트 홍보 영상' },
-  { key: 'product-vs', name: '제품 홍보 영상 (캐릭터)' },
-  { key: 'product-ai', name: '제품 홍보 영상 (AI배우) ⭐' },
+  { key: 'product-vs', name: '제품홍보영상' },
+  { key: 'product-ai', name: '제품홍보영상 (premium)' },
 ];
 const SAMPLE_LOGO_STYLES = [
   { id: 'flat', name: '플랫 일러스트' },
