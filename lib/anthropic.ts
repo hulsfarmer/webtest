@@ -189,7 +189,7 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
 - **이모지는 절대 사용하지 마** — 제목·문장·CTA 어디에도 이모지 금지 (텍스트만)
 - **각 문장에서 핵심 단어 2개 정도를 각각 별표(*)로 감싸** 강조 (각각 한 단어씩, 예: '매일 *직접* 구운 *빵*'). 조사 빼고 명사·형용사 위주로 짧게
 - bgKeyword는 업종(${businessType})에 어울리는 영어 스톡영상 검색어
-- ⚠️ **길이 규칙(가장 중요, 반드시 준수)**: 총 ${duration}초 영상이야(초당 약 5.5자). **전체 나레이션(모든 구간 text 합)을 한국어 ${charBudget}자 이내로 반드시 맞춰줘.** 구간별 목표 — 인트로(hook) ~${hookChars}자, 제품소개(main 전체 합) ~${mainChars}자, 마무리(cta) ~${ctaChars}자. **초과 절대 금지** (초과하면 영상이 길어지고 비용이 올라감). 내용이 많으면 가장 강한 핵심만 남기고 과감히 쳐내서 글자 수를 지켜줘 — 길게 늘어놓지 말 것${nameRule}`;
+- ⚠️ **길이 규칙(가장 중요, 반드시 준수)**: 총 ${duration}초 영상이야(초당 약 5.5자). **전체 나레이션(모든 구간 text 합)을 한국어 ${Math.round(charBudget * 0.9)}~${charBudget}자로 꽉 채워줘** — 너무 짧으면 영상이 허전하고 짧아지니, 핵심 혜택을 충분히 풀어서 이 글자 수 범위를 반드시 채우되 ${charBudget}자 초과는 절대 금지. 구간별 목표 — 인트로(hook) ~${hookChars}자, 제품소개(main 전체 합) ~${mainChars}자, 마무리(cta) ~${ctaChars}자.${nameRule}`;
 
   const eventPrompt = `행사(이벤트) 홍보 영상 스크립트를 한국어로 작성해주세요.
 
@@ -249,7 +249,7 @@ export async function generatePromoScript(input: PromoInput): Promise<VideoScrip
 - **이모지는 절대 사용하지 마** — 제목·문장·CTA 어디에도 이모지 금지 (텍스트만)
 - **각 문장에서 핵심 단어 2개 정도를 각각 별표(*)로 감싸** 강조 (각각 한 단어씩, 예: '이번 *주말* *단이틀* 놓치지 마세요'). 조사 빼고 명사·형용사 위주로 짧게
 - bgKeyword는 행사 분위기(${businessType})에 어울리는 영어 스톡영상 검색어
-- ⚠️ **길이 규칙(가장 중요, 반드시 준수)**: 총 ${duration}초 영상이야(초당 약 5.5자). **전체 나레이션(모든 구간 text 합)을 한국어 ${charBudget}자 이내로 반드시 맞춰줘.** 구간별 목표 — 인트로(hook) ~${hookChars}자, 제품소개(main 전체 합) ~${mainChars}자, 마무리(cta) ~${ctaChars}자. **초과 절대 금지** (초과하면 영상이 길어지고 비용이 올라감). 내용이 많으면 가장 강한 핵심만 남기고 과감히 쳐내서 글자 수를 지켜줘 — 길게 늘어놓지 말 것${nameRule}`;
+- ⚠️ **길이 규칙(가장 중요, 반드시 준수)**: 총 ${duration}초 영상이야(초당 약 5.5자). **전체 나레이션(모든 구간 text 합)을 한국어 ${Math.round(charBudget * 0.9)}~${charBudget}자로 꽉 채워줘** — 너무 짧으면 영상이 허전하고 짧아지니, 핵심 혜택을 충분히 풀어서 이 글자 수 범위를 반드시 채우되 ${charBudget}자 초과는 절대 금지. 구간별 목표 — 인트로(hook) ~${hookChars}자, 제품소개(main 전체 합) ~${mainChars}자, 마무리(cta) ~${ctaChars}자.${nameRule}`;
 
   const message = await getClient().messages.create({
     model: 'claude-sonnet-5',
