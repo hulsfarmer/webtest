@@ -6,11 +6,12 @@ interface DesignSet { style: string; banner: string; profile: string; bannerSvg:
 
 // 스타일 목록(라벨) — 서버 lib과 id 일치. 설명은 고를 때 감 잡으라고.
 const STYLE_OPTIONS = [
-  { id: 'minimal', label: '미니멀 모던', desc: '딥 배경 · 넉넉한 여백 · 절제된 세련' },
-  { id: 'bold', label: '볼드 다이내믹', desc: '대비 강한 색 · 큰 도형 · 강렬' },
-  { id: 'warm', label: '따뜻 프렌들리', desc: '부드러운 그라데이션 · 둥근 도형' },
-  { id: 'news', label: '뉴스·테크', desc: '블랙 기반 · 시크 · 신뢰감' },
-  { id: 'vivid', label: '엔터·비비드', desc: '네온 · 화려 · 눈에 띔' },
+  { id: 'left', label: '좌측 미니멀', desc: '왼쪽 정렬 · 딥 배경 · 넉넉한 여백' },
+  { id: 'center', label: '센터 임팩트', desc: '가운데 정렬 · 좌우 대칭 · 균형' },
+  { id: 'colorblock', label: '컬러 블록', desc: '강한 단색 패널 위 텍스트 · 볼드' },
+  { id: 'bigtype', label: '빅 타이포', desc: '큰 타이포 중심 · 에디토리얼' },
+  { id: 'split', label: '대각 스플릿', desc: '대각선 분할 · 다이내믹 대비' },
+  { id: 'glass', label: '글래스 카드', desc: '반투명 카드 · 글래스모피즘' },
 ];
 
 function download(dataUrl: string, filename: string) {
@@ -25,7 +26,7 @@ export default function AiSetDesigner() {
   const [tagline, setTagline] = useState('');
   const [colors, setColors] = useState('');
   const [vibe, setVibe] = useState('');
-  const [style, setStyle] = useState('minimal');
+  const [style, setStyle] = useState('left');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [sets, setSets] = useState<DesignSet[]>([]);
