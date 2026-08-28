@@ -34,6 +34,8 @@ interface CharAiJobInput extends PromoInput {
   voiceId: string;
   emotion: string;
   presenter: 'female' | 'male'; // 자동 결정된 배우 성별 (배우 이미지 + 목소리 매칭)
+  vsModel?: string;             // vs_talk_v1(저가·제품1) | vs_character_v4(프리미엄·제품2)
+  credits?: number;             // 사이트 크레딧 정액 (제품1=5, 제품2=15)
   productImagePath: string;
   overlayTitle: string;
   overlayCta: string;
@@ -131,7 +133,7 @@ async function processPromoCharacterAiJob(jobId: string, input: CharAiJobInput) 
       return p;
     };
     const mkChar = async (audioP: string, suffix: string) => {
-      const vid = await submitVisionStoryVideo({ avatarId, audioBuf: fs.readFileSync(audioP), model: 'vs_character_v4', aspectRatio: '9:16', resolution: '720p' });
+      const vid = await submitVisionStoryVideo({ avatarId, audioBuf: fs.readFileSync(audioP), model: input.vsModel || 'vs_character_v4', aspectRatio: '9:16', resolution: '720p' });
       const cb = await pollVisionStoryVideo(vid, (_st, cost) => { if (typeof cost === 'number') vsCreditsUsed += cost; updateJob(jobId, { progress: 60, status: 'generating_video' }); });
       const cp = path.join(tmpDir, `${jobId}_${suffix}.mp4`); fs.writeFileSync(cp, cb); subPaths.push(cp);
       return cp;
@@ -190,8 +192,9 @@ async function processPromoCharacterAiJob(jobId: string, input: CharAiJobInput) 
       else await concatSegments(clips, outPath);
     }
 
-    // 고정 15크레딧 차감(성공 시). 실제 VisionStory 소비(vsCreditsUsed=~10)와 무관한 정액 프리미엄.
-    try { await chargeCredits(input.userId, AI_ACTOR_CREDITS); } catch (e) { console.error(`[PromoCharAiJob ${jobId}] 크레딧 차감 실패(소비 참고 ${vsCreditsUsed}):`, e); }
+    // 정액 크레딧 차감(성공 시). 실소비(vsCreditsUsed)와 무관. 제품1=5 / 제품2=15.
+    const charge = input.credits ?? AI_ACTOR_CREDITS;
+    try { await chargeCredits(input.userId, charge); } catch (e) { console.error(`[PromoCharAiJob ${jobId}] 크레딧 차감 실패(소비 참고 ${vsCreditsUsed}):`, e); }
     // VisionStory 계정 실소비 원장 기록 (관리자 잔여 추정용, 유저 정액 과금과 별개)
     recordVsUsage(vsCreditsUsed, jobId);
     cleanup();
@@ -225,7 +228,11 @@ export async function POST(req: NextRequest) {
   const introChar = ((fd.get('introChar') as string | null) ?? '1') !== '0';
   const productChar = ((fd.get('productChar') as string | null) ?? '1') !== '0';
   const outroChar = ((fd.get('outroChar') as string | null) ?? '1') !== '0';
-  const estCredits = AI_ACTOR_CREDITS; // 고정 15크레딧
+  const tier = ((fd.get('tier') as string | null) ?? 'premium').trim();
+  const budget = tier === 'budget'; // 제품1(저가): vs_talk_v1·5크레딧 / 제품2(프리미엄): vs_character_v4·15크레딧
+  const vsModel = budget ? 'vs_talk_v1' : 'vs_character_v4';
+  const jobCredits = budget ? 5 : AI_ACTOR_CREDITS;
+  const estCredits = jobCredits;
 
   let sections: ScriptSection[] | undefined;
   const sectionsRaw = fd.get('sections') as string | null;
@@ -273,7 +280,7 @@ export async function POST(req: NextRequest) {
     voiceId: autoVoice, emotion, presenter: actorGender, productImagePath,
     overlayTitle: '', overlayCta: cta, // AI배우: 헤더 복잡도↓ — 제품명 빼고 홍보문구만
     catchphrase, headerTheme, speed, sections, buyLink,
-    introChar, productChar, outroChar, userId,
+    introChar, productChar, outroChar, userId, vsModel, credits: jobCredits,
   }).catch(console.error);
 
   return NextResponse.json({ jobId });
