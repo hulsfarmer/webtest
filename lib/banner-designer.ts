@@ -53,7 +53,9 @@ ${seed}
 - viewBox="0 0 ${BANNER_W} ${BANNER_H}", width/height 명시
 - ⚠️ **모든 글자/로고는 안전영역 안에 배치**: x ${SAFE.x}~${SAFE.x + SAFE.w}, y ${SAFE.y}~${SAFE.y + SAFE.h} (이 밖은 기기에 따라 잘림)
 - 헤드라인은 이 영역에서 크고 또렷하게. 배경/장식은 전체(0~2048)에 자유롭게.
-- 글자 겹침/삐져나감 금지. 한글 길이에 맞춰 font-size 조절(예: 한글 8자↓ ~120px, 14자↓ ~92px, 20자↓ ~72px).
+- ⚠️ **여백 충분히(답답하지 않게)**: 글자를 안전영역 가장자리나 화면 폭에 꽉 채우지 마. 헤드라인 가로 폭은 안전영역의 **70~80% 이내**로, 상하좌우에 넉넉한 숨 쉴 공간을 남겨. 폰트는 최대치까지 키우지 말고 **한 단계 작게** 잡아 여유롭게.
+- 줄 간격(line-height)은 폰트 크기의 **1.25~1.4배**로 넉넉히. 여러 줄이 서로 붙지 않게.
+- 글자 겹침/삐져나감 금지. 한글 길이에 맞춰 font-size 조절(예: 한글 8자↓ ~100px, 14자↓ ~78px, 20자↓ ~62px). 위 여백 규칙이 폰트 크기보다 우선.
 
 [프로필 규격 — 반드시 지킬 것]
 - viewBox="0 0 ${PROFILE_S} ${PROFILE_S}", 정사각. **유튜브가 원형으로 크롭**하니 핵심(로고/이니셜/브랜드명)은 중앙 원(반지름 ~340) 안에.
@@ -66,8 +68,12 @@ ${seed}
 - 세련되고 프로다운 완성도. "AI 티" 나는 조잡함 금지.
 - ⚠️ **SVG는 간결하게**: rect·circle·ellipse·line·polygon·linearGradient/radialGradient 같은 단순 요소 위주로 구성하고, 좌표가 긴 복잡한 <path>·필터·패턴은 쓰지 마. 요소 개수는 적게(배너 ~15개 이하), 각 SVG는 1500자 이내로 짧게. 적은 요소로 세련되게.
 
-[출력 형식 — 순수 JSON만, 코드블록/설명 없이]
-{"style":"이 세트의 한국어 스타일명(짧게)","bannerSvg":"<svg ...>...</svg>","profileSvg":"<svg ...>...</svg>"}`;
+[출력 형식 — 아래 형식 그대로. 설명·코드블록 없이. SVG 안에는 따옴표(") 자유롭게 써도 됨]
+STYLE: 이 세트의 한국어 스타일명(짧게)
+[BANNER]
+<svg ...>...</svg>
+[PROFILE]
+<svg ...>...</svg>`;
 }
 
 /** 스타일 시드 1개로 한 세트(배너+프로필) SVG 생성 */
@@ -84,10 +90,19 @@ async function genOne(b: BrandInput, seed: string): Promise<DesignSet | null> {
     if (msg.stop_reason === 'max_tokens') console.warn('[banner-designer] 응답이 max_tokens에서 잘림');
     const block = msg.content.find((x) => x.type === 'text');
     if (!block || block.type !== 'text') return null;
-    const raw = block.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    const obj = JSON.parse(raw) as DesignSet;
-    if (!obj.bannerSvg || !obj.profileSvg) return null;
-    return { style: obj.style || '스타일', bannerSvg: obj.bannerSvg, profileSvg: obj.profileSvg };
+    const text = block.text;
+    // 구분자 기반 파싱(SVG 속 따옴표에 안전). 각 구획에서 <svg>…</svg>만 정확히 추출.
+    const styleM = text.match(/STYLE:\s*(.+)/);
+    const svgOf = (section: string): string | null => {
+      const m = section.match(/<svg[\s\S]*?<\/svg>/i);
+      return m ? m[0] : null;
+    };
+    const bannerPart = text.split(/\[BANNER\]/i)[1]?.split(/\[PROFILE\]/i)[0] ?? '';
+    const profilePart = text.split(/\[PROFILE\]/i)[1] ?? '';
+    const bannerSvg = svgOf(bannerPart);
+    const profileSvg = svgOf(profilePart);
+    if (!bannerSvg || !profileSvg) return null;
+    return { style: (styleM?.[1] || '스타일').trim(), bannerSvg, profileSvg };
   } catch (e) {
     console.error('[banner-designer] genOne 실패:', e instanceof Error ? e.message : e);
     return null;
