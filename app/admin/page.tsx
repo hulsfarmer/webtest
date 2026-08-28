@@ -38,6 +38,14 @@ const SAMPLE_LOGO_STYLES = [
   { id: 'mascot', name: '마스코트' },
   { id: 'lettermark', name: '레터마크(이니셜)' },
 ];
+const SAMPLE_BANNER_STYLES = [
+  { id: 'left', name: '좌측 미니멀' },
+  { id: 'center', name: '센터 임팩트' },
+  { id: 'colorblock', name: '컬러 블록' },
+  { id: 'bigtype', name: '빅 타이포' },
+  { id: 'split', name: '대각 스플릿' },
+  { id: 'glass', name: '글래스 카드' },
+];
 
 interface AiService {
   id: string;
@@ -186,7 +194,7 @@ export default function AdminPage() {
   const [aiFetchedAt, setAiFetchedAt] = useState<string | null>(null);
   const [vsInput, setVsInput] = useState('');
   const [vsSaving, setVsSaving] = useState(false);
-  const [msamples, setMsamples] = useState<{ videos: Record<string, { videoUrl: string; posterUrl: string | null; businessName?: string }>; logo: Record<string, string> } | null>(null);
+  const [msamples, setMsamples] = useState<{ videos: Record<string, { videoUrl: string; posterUrl: string | null; businessName?: string }>; logo: Record<string, string>; banner?: Record<string, string> } | null>(null);
   const [recentVideos, setRecentVideos] = useState<{ jobId: string; videoUrl: string; posterUrl: string | null; businessName: string }[]>([]);
   const [msSaving, setMsSaving] = useState<string | null>(null);
 
@@ -276,6 +284,21 @@ export default function AdminPage() {
     setMsSaving(`logo:${style}`);
     try {
       const fd = new FormData();
+      fd.append('style', style);
+      fd.append('file', file);
+      const res = await fetch('/api/admin/menu-samples', { method: 'POST', body: fd });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || `HTTP ${res.status}`);
+      setMsamples(d.samples);
+    } catch (err) { alert(`업로드 실패: ${err instanceof Error ? err.message : err}`); }
+    setMsSaving(null);
+  };
+
+  const uploadBannerSample = async (style: string, file: File) => {
+    setMsSaving(`banner:${style}`);
+    try {
+      const fd = new FormData();
+      fd.append('kind', 'banner');
       fd.append('style', style);
       fd.append('file', file);
       const res = await fetch('/api/admin/menu-samples', { method: 'POST', body: fd });
@@ -691,7 +714,7 @@ export default function AdminPage() {
             <div className="glass-card p-6 rounded-2xl mt-8">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="text-gray-400 text-sm flex items-center gap-2">
-                  <Video className="w-4 h-4" /> 메뉴 샘플 영상 · 로고
+                  <Video className="w-4 h-4" /> 메뉴 샘플 영상 · 로고 · 배너
                 </h3>
                 <button onClick={fetchMenuSamples} className="text-xs text-gray-500 hover:text-white flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" /> 새로고침
@@ -767,6 +790,39 @@ export default function AdminPage() {
                       })}
                     </div>
                     <p className="text-[10px] text-gray-600 mt-2">스타일별 대표 로고 이미지를 올려주세요. PNG·JPG·WEBP·SVG, 8MB 이하.</p>
+                  </div>
+
+                  {/* 유튜브 배너 6스타일 */}
+                  <div className="p-3 rounded-xl bg-white/3 border border-white/5">
+                    <div className="text-sm font-semibold text-white mb-2">유튜브 배너 — 6스타일 샘플 이미지</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {SAMPLE_BANNER_STYLES.map((st) => {
+                        const url = msamples.banner?.[st.id];
+                        const busy = msSaving === `banner:${st.id}`;
+                        return (
+                          <div key={st.id} className="text-center">
+                            <label className={`block cursor-pointer rounded-lg border border-dashed border-white/15 bg-white/3 aspect-[16/9] grid place-items-center overflow-hidden ${busy ? 'opacity-50' : 'hover:border-purple-500/50'}`}>
+                              {url ? (
+                                <img src={url} alt={st.name} className="w-full h-full object-cover" />
+                              ) : busy ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                              ) : (
+                                <span className="text-[10px] text-gray-500">＋ 업로드</span>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                                className="hidden"
+                                disabled={busy}
+                                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadBannerSample(st.id, f); e.target.value = ''; }}
+                              />
+                            </label>
+                            <div className="text-[10px] text-gray-400 mt-1">{st.name}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-gray-600 mt-2">스타일별 대표 배너(2048×1152 권장) 이미지를 올려주세요. 유튜브 배너 페이지 상단·랜딩 카드에 노출됩니다. PNG·JPG·WEBP, 8MB 이하.</p>
                   </div>
                 </div>
               )}

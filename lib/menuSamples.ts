@@ -31,13 +31,25 @@ export const LOGO_STYLES = [
   { id: 'lettermark', name: '레터마크(이니셜)' },
 ] as const;
 
+// 유튜브 배너 6스타일 — lib/banner-designer.ts STYLES 및 스튜디오 STYLE_OPTIONS 와 id 일치.
+export const BANNER_STYLES = [
+  { id: 'left', name: '좌측 미니멀' },
+  { id: 'center', name: '센터 임팩트' },
+  { id: 'colorblock', name: '컬러 블록' },
+  { id: 'bigtype', name: '빅 타이포' },
+  { id: 'split', name: '대각 스플릿' },
+  { id: 'glass', name: '글래스 카드' },
+] as const;
+
 export const VIDEO_MENU_KEYS = VIDEO_MENUS.map((m) => m.key) as readonly string[];
 export const LOGO_STYLE_IDS = LOGO_STYLES.map((s) => s.id) as readonly string[];
+export const BANNER_STYLE_IDS = BANNER_STYLES.map((s) => s.id) as readonly string[];
 
 export interface VideoSample { jobId: string; videoUrl: string; posterUrl: string | null; businessName?: string }
 export interface MenuSamples {
   videos: Record<string, VideoSample>;   // menuKey → 영상
-  logo: Record<string, string>;          // styleId → 이미지 URL(/logo-samples/xxx.png)
+  logo: Record<string, string>;          // styleId → 이미지 URL(/api/logo-sample/xxx.png)
+  banner: Record<string, string>;        // 배너 styleId → 이미지 URL(/api/logo-sample/xxx.png)
   updatedAt: string | null;
 }
 
@@ -47,9 +59,9 @@ export function readMenuSamples(): MenuSamples {
   try {
     const raw = fs.readFileSync(FILE, 'utf8');
     const j = JSON.parse(raw) as Partial<MenuSamples>;
-    return { videos: j.videos ?? {}, logo: j.logo ?? {}, updatedAt: j.updatedAt ?? null };
+    return { videos: j.videos ?? {}, logo: j.logo ?? {}, banner: j.banner ?? {}, updatedAt: j.updatedAt ?? null };
   } catch {
-    return { videos: {}, logo: {}, updatedAt: null };
+    return { videos: {}, logo: {}, banner: {}, updatedAt: null };
   }
 }
 
@@ -68,12 +80,22 @@ export function setMenuVideo(menuKey: string, sample: VideoSample | null): MenuS
   return s;
 }
 
-/** 로고 스타일 이미지 지정. imgUrl 은 /logo-samples/... 공개 경로. */
+/** 로고 스타일 이미지 지정. imgUrl 은 /api/logo-sample/... 공개 경로. */
 export function setLogoStyle(styleId: string, imgUrl: string | null): MenuSamples {
   if (!LOGO_STYLE_IDS.includes(styleId)) throw new Error('알 수 없는 스타일');
   const s = readMenuSamples();
   if (!imgUrl) delete s.logo[styleId];
   else s.logo[styleId] = imgUrl;
+  write(s);
+  return s;
+}
+
+/** 배너 스타일 이미지 지정. imgUrl 은 /api/logo-sample/... 공개 경로. */
+export function setBannerStyle(styleId: string, imgUrl: string | null): MenuSamples {
+  if (!BANNER_STYLE_IDS.includes(styleId)) throw new Error('알 수 없는 스타일');
+  const s = readMenuSamples();
+  if (!imgUrl) delete s.banner[styleId];
+  else s.banner[styleId] = imgUrl;
   write(s);
   return s;
 }

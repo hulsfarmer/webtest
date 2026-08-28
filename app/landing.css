@@ -256,6 +256,11 @@
 .sa-tool-logos figure { margin: 0; }
 .sa-tool-logos img { width: 100%; aspect-ratio: 1/1; object-fit: contain; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 5px; }
 .sa-tool-logos figcaption { margin-top: 4px; font-size: 10px; color: var(--text-dim); text-align: center; }
+/* 배너 카드 썸네일 (가로형) */
+.sa-tool-banners { margin-top: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sa-tool-banners figure { margin: 0; }
+.sa-tool-banners img { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; }
+.sa-tool-banners figcaption { margin-top: 4px; font-size: 10px; color: var(--text-dim); text-align: center; }
 /* 홍보영상 / 디자인 그룹 분리 */
 .sa-tool-groups { display: flex; flex-direction: column; gap: 34px; }
 .sa-group-label { display: flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 800; letter-spacing: -.01em; color: var(--text); margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
@@ -270,6 +275,10 @@
 @media (max-width: 900px) { .sa-tool.is-logo .sa-tool-logos { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
 /* 모바일: 2개씩 크게 */
 @media (max-width: 560px) { .sa-tool.is-logo .sa-tool-logos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } .sa-tool.is-logo .sa-tool-logos figcaption { font-size: 12.5px; } }
+/* 배너 카드: 전체폭 · 3열, 태블릿/모바일 2열 */
+.sa-tool.is-logo .sa-tool-banners { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.sa-tool.is-logo .sa-tool-banners figcaption { font-size: 13px; margin-top: 8px; font-weight: 600; }
+@media (max-width: 900px) { .sa-tool.is-logo .sa-tool-banners { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } }
 /* 로고 장점 카피 */
 .sa-logo-benefits { list-style: none; margin: 20px auto 0; padding: 0; max-width: 820px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .sa-logo-benefits li { display: flex; gap: 10px; align-items: flex-start; text-align: left; }

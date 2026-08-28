@@ -164,8 +164,8 @@ export default function AiSetDesigner() {
           {busy && <p className="hint" style={{ marginTop: 0 }}>디자인을 그리는 중이에요…</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {sets.map((s, i) => (
-              <div key={i} style={{ border: '1px solid var(--line, #2a2a2a)', borderRadius: 14, padding: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#34d399', marginBottom: 10 }}>{s.style}</div>
+              <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 14, padding: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--purple)', marginBottom: 10 }}>{s.style}</div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={s.banner} alt={`배너 ${i + 1}`} style={{ flex: '1 1 320px', minWidth: 240, borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)' }} />
@@ -191,7 +191,7 @@ export default function AiSetDesigner() {
                     onKeyDown={(e) => { if (e.key === 'Enter') refine(i); }}
                     placeholder="✏️ 수정 요청 (예: 색을 초록으로, 문구를 ~로)"
                     disabled={refineBusy === i}
-                    style={{ flex: 1, background: 'var(--bg2, #0e0e0e)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 10px', color: 'inherit', fontSize: 13 }}
+                    style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '8px 10px', color: 'var(--text)', fontSize: 13 }}
                   />
                   <button onClick={() => refine(i)} disabled={refineBusy === i || !(refineText[i] || '').trim()}
                     style={{ whiteSpace: 'nowrap', background: '#334155', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 12px', fontSize: 13, cursor: 'pointer', opacity: refineBusy === i ? 0.6 : 1 }}>

@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const d = await generateOneSet(body, (body.style || 'minimal').trim());
+    const d = await generateOneSet(body, (body.style || 'left').trim());
     if (!d) return NextResponse.json({ error: '디자인 생성에 실패했어요. 잠시 후 다시 시도해주세요.' }, { status: 502 });
 
     const [banner, profile] = await Promise.all([renderBanner(d.bannerSvg), renderProfile(d.profileSvg)]);
