@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const p = path.join(tmpDir, `hdr_${uuidv4()}.png`);
   try {
     await renderHeaderOverlay(
-      String(b.businessName || '제품명'),
+      String(b.businessName || ''), // 빈 값이면 그대로 빈 값 → 문구 단독 헤더(제품1/2). 폴백 '제품명' 제거
       String(b.catchphrase || ''),
       String(b.headerTheme || 'navy'),
       p,
