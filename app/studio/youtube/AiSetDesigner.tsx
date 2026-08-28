@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-interface DesignSet { style: string; banner: string; profile: string }
+interface DesignSet { style: string; banner: string; profile: string; bannerSvg: string; profileSvg: string }
 
 function download(dataUrl: string, filename: string) {
   const a = document.createElement('a');
@@ -19,6 +19,25 @@ export default function AiSetDesigner() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [sets, setSets] = useState<DesignSet[]>([]);
+  const [refineText, setRefineText] = useState<Record<number, string>>({});
+  const [refineBusy, setRefineBusy] = useState<number | null>(null);
+
+  async function refine(i: number) {
+    const instruction = (refineText[i] || '').trim();
+    if (!instruction) return;
+    setRefineBusy(i); setErr('');
+    try {
+      const r = await fetch('/api/youtube/banner-refine', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bannerSvg: sets[i].bannerSvg, profileSvg: sets[i].profileSvg, instruction }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '수정 실패');
+      setSets((prev) => prev.map((s, j) => (j === i ? d.set : s)));
+      setRefineText((prev) => ({ ...prev, [i]: '' }));
+    } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+    finally { setRefineBusy(null); }
+  }
 
   async function generate() {
     if (!brandName.trim()) { setErr('채널/브랜드 이름을 입력하세요.'); return; }
@@ -103,6 +122,20 @@ export default function AiSetDesigner() {
                 <button className="primary" style={{ marginTop: 12 }} onClick={() => downloadSet(s, i)}>
                   ⬇ 이 세트 다운로드 (배너+프로필)
                 </button>
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <input
+                    value={refineText[i] || ''}
+                    onChange={(e) => setRefineText((p) => ({ ...p, [i]: e.target.value }))}
+                    onKeyDown={(e) => { if (e.key === 'Enter') refine(i); }}
+                    placeholder="✏️ 수정 요청 (예: 색을 초록으로, 문구를 ~로)"
+                    disabled={refineBusy === i}
+                    style={{ flex: 1, background: 'var(--bg2, #0e0e0e)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 10px', color: 'inherit', fontSize: 13 }}
+                  />
+                  <button onClick={() => refine(i)} disabled={refineBusy === i || !(refineText[i] || '').trim()}
+                    style={{ whiteSpace: 'nowrap', background: '#334155', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 12px', fontSize: 13, cursor: 'pointer', opacity: refineBusy === i ? 0.6 : 1 }}>
+                    {refineBusy === i ? '수정 중…' : '수정 · 1C'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>

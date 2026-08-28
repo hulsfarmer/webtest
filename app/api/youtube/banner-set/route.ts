@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
         style: d.style,
         banner: `data:image/png;base64,${banner.toString('base64')}`,
         profile: `data:image/png;base64,${profile.toString('base64')}`,
+        bannerSvg: d.bannerSvg, profileSvg: d.profileSvg, // 수정(refine)용
       };
     }));
     // 생성 성공 시에만 차감 (실패 시 과금 없음). 관리자는 면제.

@@ -119,6 +119,53 @@ export async function generateDesignSets(b: BrandInput): Promise<DesignSet[]> {
   return sets.filter((s): s is DesignSet => !!s);
 }
 
+/** 기존 세트(SVG)를 자연어 지시로 수정 → 수정된 SVG 세트 반환. 실패 시 null. */
+export async function refineDesignSet(bannerSvg: string, profileSvg: string, instruction: string): Promise<DesignSet | null> {
+  const prompt = `아래는 유튜브 채널 "배너 + 프로필" 한 세트의 현재 SVG야. 사용자의 수정 요청을 반영해서 **디자인의 전체 톤·구조는 최대한 유지하면서** 요청한 부분만 바꾼 새 SVG를 만들어줘.
+
+[수정 요청]
+${instruction}
+
+[현재 배너 SVG]
+${bannerSvg}
+
+[현재 프로필 SVG]
+${profileSvg}
+
+[지킬 규칙]
+- 배너 viewBox 0 0 ${BANNER_W} ${BANNER_H}, 프로필 viewBox 0 0 ${PROFILE_S} ${PROFILE_S} 유지.
+- 배너 텍스트는 안전영역(x 407~1641, y 407~745) 안, 왼쪽정렬 한 블록, 전체 높이 ≤300px로 세로 중앙. 헤드라인↔보조문구 간격 넉넉히. 오른쪽·구석은 배경/장식 전용.
+- 한글은 font-family="Noto Sans CJK KR, sans-serif". 외부참조·복잡한 path·필터 금지, 간결하게.
+- 배너와 프로필은 같은 색/무드로 통일.
+
+[출력 형식 — 아래 형식 그대로. 설명·코드블록 없이. SVG 안에는 따옴표(") 자유]
+STYLE: 수정된 세트의 한국어 스타일명(짧게)
+[BANNER]
+<svg ...>...</svg>
+[PROFILE]
+<svg ...>...</svg>`;
+  try {
+    const msg = await client().messages.create({
+      model: 'claude-sonnet-5',
+      max_tokens: 4000,
+      ...({ thinking: { type: 'disabled' } } as Record<string, unknown>),
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const block = msg.content.find((x) => x.type === 'text');
+    if (!block || block.type !== 'text') return null;
+    const text = block.text;
+    const styleM = text.match(/STYLE:\s*(.+)/);
+    const svgOf = (section: string): string | null => { const m = section.match(/<svg[\s\S]*?<\/svg>/i); return m ? m[0] : null; };
+    const nb = svgOf(text.split(/\[BANNER\]/i)[1]?.split(/\[PROFILE\]/i)[0] ?? '');
+    const np = svgOf(text.split(/\[PROFILE\]/i)[1] ?? '');
+    if (!nb || !np) return null;
+    return { style: (styleM?.[1] || '수정본').trim(), bannerSvg: nb, profileSvg: np };
+  } catch (e) {
+    console.error('[banner-designer] refine 실패:', e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
 /** SVG → PNG 버퍼 (정확한 규격). sharp는 빌드 회피 위해 동적 import. */
 export async function renderSvg(svg: string, w: number, h: number): Promise<Buffer> {
   const sharp = (await import('sharp')).default;
