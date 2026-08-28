@@ -75,7 +75,10 @@ async function genOne(b: BrandInput, seed: string): Promise<DesignSet | null> {
   try {
     const msg = await client().messages.create({
       model: 'claude-sonnet-5',
-      max_tokens: 8000,
+      max_tokens: 4000,
+      // 사고(thinking) 비활성 — SVG 디자인엔 불필요하고 출력토큰·비용·지연을 크게 줄임(품질 유지 확인).
+      // 설치 SDK 타입에 thinking 미포함 → 스프레드 캐스트로 런타임 전달.
+      ...({ thinking: { type: 'disabled' } } as Record<string, unknown>),
       messages: [{ role: 'user', content: designPrompt(b, seed) }],
     });
     if (msg.stop_reason === 'max_tokens') console.warn('[banner-designer] 응답이 max_tokens에서 잘림');
