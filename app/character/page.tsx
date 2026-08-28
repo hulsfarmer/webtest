@@ -87,7 +87,7 @@ export default function CharacterPage() {
           setStatusMsg('');
           setBusy(false);
         } else {
-          setStatusMsg(`⏳ 처리 중... (${secs}초 경과 · Kling Avatar 생성은 보통 1~2분)`);
+          setStatusMsg(`⏳ 처리 중... (${secs}초 경과 · 영상 생성은 보통 1~2분)`);
         }
       } catch { /* keep polling */ }
     }, 3000);
@@ -100,7 +100,7 @@ export default function CharacterPage() {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold">🎬 말하는 캐릭터</h1>
         <p className="text-sm text-neutral-400 mt-1 mb-8">
-          캐릭터 이미지 + 스크립트 → 자연스럽게 말하는 9:16 쇼츠 영상 (Kling Avatar · Chirp3-HD 음성)
+          캐릭터 이미지 + 스크립트 → 자연스럽게 말하는 9:16 쇼츠 영상
         </p>
 
         <div className="grid md:grid-cols-2 gap-6">
@@ -169,8 +169,8 @@ export default function CharacterPage() {
           <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5">
             <div className="text-sm font-semibold mb-3">결과</div>
             <div className="text-sm text-neutral-400 space-y-1 mb-3">
-              <div>{stepDot(steps.audio)} 음성 생성 (Chirp3-HD)</div>
-              <div>{stepDot(steps.video)} 영상 생성 (Kling Avatar)</div>
+              <div>{stepDot(steps.audio)} 음성 생성</div>
+              <div>{stepDot(steps.video)} 영상 생성</div>
             </div>
             {statusMsg && <div className="text-sm text-neutral-300 mb-3">{statusMsg}</div>}
             {error && <div className="text-sm text-red-400 mb-3">❌ {error}</div>}

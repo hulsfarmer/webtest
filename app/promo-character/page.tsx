@@ -572,8 +572,8 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
             {ytMsg && !videoUrl && <div className="text-xs text-neutral-300 mb-3">{ytMsg}</div>}
             <div className="text-sm text-neutral-400 space-y-1 mb-3">
               <div>{dot(steps.script)} 대본</div>
-              <div>{dot(steps.audio)} 나레이션 음성 (Chirp3-HD)</div>
-              <div>{dot(steps.video)} 캐릭터 영상 + 합성 (Kling)</div>
+              <div>{dot(steps.audio)} 나레이션 음성</div>
+              <div>{dot(steps.video)} 캐릭터 영상 + 합성</div>
             </div>
             {statusMsg && <div className="text-sm text-neutral-300 mb-3">{statusMsg}</div>}
             {error && <div className="text-sm text-red-400 mb-3">{error}</div>}
