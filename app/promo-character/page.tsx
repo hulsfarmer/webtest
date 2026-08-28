@@ -130,7 +130,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
       }
     } catch { /* noop */ }
     if (hasScript && hasImg) setPhase('script'); // 대본·이미지 다 있으면 바로 편집 화면
-    else setImportNote('이전 설정을 불러왔어요. 제품 이미지를 다시 올리거나 링크로 불러온 뒤 진행하세요.');
+    else setImportNote('이전 설정을 불러왔어요. 제품 이미지를 다시 올린 뒤 진행하세요.');
     window.history.replaceState({}, '', window.location.pathname);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -395,6 +395,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
           {/* 좌: 입력 or 대본편집 */}
           {phase === 'form' ? (
             <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 space-y-4">
+              {false /* 쿠팡 스크래핑 불가 — 링크 자동채우기 임시 숨김(당분간). 재개 시 true */ && (
               <div className="pb-4 border-b border-neutral-800">
                 <label className="block text-sm text-emerald-300 mb-1.5">제품 링크로 자동 채우기 (선택)</label>
                 <div className="flex gap-2">
@@ -407,6 +408,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
                 <p className="text-xs text-neutral-500 mt-1.5">쿠팡 상품 링크를 붙여넣으면 제품명·대표이미지를 자동으로 채워요. (네이버 등 다른 몰은 아래에서 이미지 직접 업로드)</p>
                 {importNote && <p className="text-xs text-amber-300/90 mt-1.5">{importNote}</p>}
               </div>
+              )}
               <div>
                 <label className="block text-sm text-neutral-300 mb-1.5">제품명 *</label>
                 <input className={inputCls} value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="글로우 세럼" />
@@ -426,7 +428,7 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
               <div>
                 <label className="block text-sm text-neutral-300 mb-1.5">구매 링크 (쿠팡 등 · 유튜브 설명란에 삽입)</label>
                 <input className={inputCls} value={buyLink} onChange={(e) => setBuyLink(e.target.value)} placeholder="https://link.coupang.com/..." />
-                <p className="text-xs text-neutral-500 mt-1.5">제품 링크를 불러오면 자동으로 채워져요. 쿠팡 파트너스 링크로 바꿔 넣으면 수익이 발생합니다.</p>
+                <p className="text-xs text-neutral-500 mt-1.5">쿠팡 파트너스 등 구매 링크를 넣으면 유튜브 설명란에 삽입돼요. 수익이 발생합니다.</p>
               </div>
               <div>
                 <label className="block text-sm text-neutral-300 mb-1.5">제품 이미지 *</label>
