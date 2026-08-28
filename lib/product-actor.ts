@@ -41,10 +41,11 @@ export async function generateActorHoldingProduct(productBuf: Buffer, opts: Acto
     reqParts.push({ text: prompt }, { inline_data: { mime_type: 'image/png', data: png.toString('base64') } });
   } else {
     prompt =
-      `Create a photorealistic vertical 9:16 UGC-style advertising photo. ` +
-      `${who} stands in a bright, clean, well-lit room with soft natural light, facing the camera with a warm, natural smile, speaking to the viewer as if presenting. ` +
-      `Upper body visible, clear well-lit face, hands relaxed and natural — NOT holding any product or object. ` +
-      `Sharp focus, natural skin texture, realistic. No text overlays, no captions, no watermarks, no logos. ` +
+      `Create a photorealistic vertical 9:16 UGC-style advertising photo of a person about to speak. ` +
+      `${who} stands in a bright, clean, well-lit room with soft natural light, facing the camera DIRECTLY in a straight front view, head level, with a warm, approachable expression and a relaxed, gently CLOSED mouth (not smiling wide, not open). ` +
+      `Both arms hang naturally and relaxed at the sides; both hands are completely EMPTY and visible — NOT holding, cupping, gripping, raising, or presenting anything, no object anywhere in the frame, no hand near the chest. ` +
+      `Head-and-shoulders framing with a clear, unobstructed, sharply focused face; the mouth and jaw are fully visible and crisp for accurate lip-sync animation. ` +
+      `Natural skin texture, realistic, no motion blur. No products, no text overlays, no captions, no watermarks, no logos. ` +
       (ctx ? `Context: ${ctx}.` : '');
     reqParts.push({ text: prompt });
   }
