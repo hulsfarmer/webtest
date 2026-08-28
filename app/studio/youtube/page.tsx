@@ -1,5 +1,4 @@
 import '../logo/logomaker.css';
-import YoutubeStudio from './YoutubeStudio';
 import AiSetDesigner from './AiSetDesigner';
 import AdminOnly from '@/components/studio/AdminOnly';
 
@@ -9,7 +8,6 @@ export default function Page() {
   return (
     <AdminOnly>
       <AiSetDesigner />
-      <YoutubeStudio />
     </AdminOnly>
   );
 }
