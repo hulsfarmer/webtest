@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface DesignSet { style: string; banner: string; profile: string; bannerSvg: string; profileSvg: string }
 
@@ -21,6 +21,43 @@ export default function AiSetDesigner() {
   const [sets, setSets] = useState<DesignSet[]>([]);
   const [refineText, setRefineText] = useState<Record<number, string>>({});
   const [refineBusy, setRefineBusy] = useState<number | null>(null);
+  const [savedId, setSavedId] = useState<Record<number, string>>({}); // 세트 index → 저장된 assets id
+  const [savingIdx, setSavingIdx] = useState<number | null>(null);
+
+  // 라이브러리 '배너' 수정으로 진입 → 저장된 세트를 불러와 편집 시작
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('editBanner');
+      if (!raw) return;
+      sessionStorage.removeItem('editBanner');
+      const o = JSON.parse(raw) as { id: string; title?: string; image: string; meta?: { bannerSvg?: string; profileSvg?: string; profile?: string } };
+      if (!o.meta?.bannerSvg || !o.meta?.profileSvg) return;
+      setBrandName((o.title || '').split(' · ')[0] || '');
+      setSets([{ style: (o.title || '').split(' · ')[1] || '저장된 디자인', banner: o.image, profile: o.meta.profile || o.image, bannerSvg: o.meta.bannerSvg, profileSvg: o.meta.profileSvg }]);
+      setSavedId({ 0: o.id }); // 이후 저장은 이 항목을 갱신(PATCH)
+    } catch { /* ignore */ }
+  }, []);
+
+  async function saveToLibrary(i: number) {
+    const s = sets[i];
+    setSavingIdx(i); setErr('');
+    try {
+      const existing = savedId[i];
+      const payload = {
+        type: 'banner' as const,
+        title: `${brandName || '유튜브'} · ${s.style}`.slice(0, 80),
+        image: s.banner,
+        meta: { bannerSvg: s.bannerSvg, profileSvg: s.profileSvg, profile: s.profile },
+      };
+      const r = existing
+        ? await fetch('/api/assets', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: existing, image: s.banner, title: payload.title, meta: payload.meta }) })
+        : await fetch('/api/assets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '저장 실패');
+      if (d.id) setSavedId((p) => ({ ...p, [i]: d.id }));
+    } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+    finally { setSavingIdx(null); }
+  }
 
   async function refine(i: number) {
     const instruction = (refineText[i] || '').trim();
@@ -119,9 +156,15 @@ export default function AiSetDesigner() {
                     <div style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>프로필</div>
                   </div>
                 </div>
-                <button className="primary" style={{ marginTop: 12 }} onClick={() => downloadSet(s, i)}>
-                  ⬇ 이 세트 다운로드 (배너+프로필)
-                </button>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <button className="primary" style={{ flex: 1 }} onClick={() => downloadSet(s, i)}>
+                    ⬇ 다운로드 (배너+프로필)
+                  </button>
+                  <button onClick={() => saveToLibrary(i)} disabled={savingIdx === i}
+                    style={{ whiteSpace: 'nowrap', background: '#334155', color: '#fff', border: 'none', borderRadius: 8, padding: '0 14px', fontSize: 13, cursor: 'pointer', opacity: savingIdx === i ? 0.6 : 1 }}>
+                    {savingIdx === i ? '저장 중…' : savedId[i] ? '✓ 저장됨' : '💾 라이브러리 저장'}
+                  </button>
+                </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                   <input
                     value={refineText[i] || ''}

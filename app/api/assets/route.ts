@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const type = new URL(req.url).searchParams.get('type');
   let q = supabase
     .from('assets')
-    .select('id, type, title, image, created_at')
+    .select('id, type, title, image, meta, created_at')
     .eq('user_id', session.user.id)
     .order('created_at', { ascending: false })
     .limit(100);
@@ -27,9 +27,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
-  let body: { type?: string; title?: string; image?: string };
+  let body: { type?: string; title?: string; image?: string; meta?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 }); }
-  const { type, title, image } = body;
+  const { type, title, image, meta } = body;
   if (!image || typeof image !== 'string' || !image.startsWith('data:image')) {
     return NextResponse.json({ error: '저장할 이미지가 없습니다.' }, { status: 400 });
   }
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   }
   const { data, error } = await supabase
     .from('assets')
-    .insert({ user_id: session.user.id, type, title: (title || '').slice(0, 80), image })
+    .insert({ user_id: session.user.id, type, title: (title || '').slice(0, 80), image, meta: meta ?? null })
     .select('id')
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -49,15 +49,16 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
-  let body: { id?: string; image?: string; title?: string };
+  let body: { id?: string; image?: string; title?: string; meta?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 }); }
-  const { id, image, title } = body;
+  const { id, image, title, meta } = body;
   if (!id) return NextResponse.json({ error: 'id가 필요합니다.' }, { status: 400 });
   const { data: row } = await supabase.from('assets').select('user_id').eq('id', id).single();
   if (!row || row.user_id !== session.user.id) return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
-  const patch: { image?: string; title?: string } = {};
+  const patch: { image?: string; title?: string; meta?: unknown } = {};
   if (typeof image === 'string' && image.startsWith('data:image')) patch.image = image;
   if (typeof title === 'string') patch.title = title.slice(0, 80);
+  if (meta !== undefined) patch.meta = meta;
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: '변경할 내용이 없습니다.' }, { status: 400 });
   const { error } = await supabase.from('assets').update(patch).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -64,7 +64,7 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
-  const [assets, setAssets] = useState<{ id: string; type: string; title: string | null; image: string; created_at: string }[]>([]);
+  const [assets, setAssets] = useState<{ id: string; type: string; title: string | null; image: string; meta?: unknown; created_at: string }[]>([]);
   const [tab, setTab] = useState<'all' | 'video' | 'logo' | 'banner'>('all');
   // 유튜브/인스타 업로드 → 공유 링크
   const [ytConnected, setYtConnected] = useState(false);
@@ -147,8 +147,15 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
     }
   };
 
-  const editAsset = (a: { id: string; image: string; title: string | null }) => {
-    try { sessionStorage.setItem('editLogo', JSON.stringify({ id: a.id, image: a.image, title: a.title })); } catch { /* ignore */ }
+  const editAsset = (a: { id: string; type: string; image: string; title: string | null; meta?: unknown }) => {
+    try {
+      if (a.type === 'banner') {
+        sessionStorage.setItem('editBanner', JSON.stringify({ id: a.id, title: a.title, image: a.image, meta: a.meta }));
+        router.push('/studio/youtube');
+        return;
+      }
+      sessionStorage.setItem('editLogo', JSON.stringify({ id: a.id, image: a.image, title: a.title }));
+    } catch { /* ignore */ }
     router.push('/studio/logo');
   };
 
@@ -456,7 +463,7 @@ export function HistoryTool({ embedded = false }: { embedded?: boolean } = {}) {
                       <p className="text-xs text-gray-500">{a.type === 'logo' ? '로고' : '배너'}</p>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
-                      {a.type === 'logo' && (
+                      {(a.type === 'logo' || a.type === 'banner') && (
                         <button onClick={() => editAsset(a)} title="수정" className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10"><Pencil className="w-4 h-4" /></button>
                       )}
                       <a href={a.image} download={`${a.title || a.type}.png`} className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10"><Download className="w-4 h-4" /></a>
