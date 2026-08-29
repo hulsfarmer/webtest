@@ -39,6 +39,8 @@ interface AffiliateJobInput {
   resolution: SeedanceResolution;
   musicTone: string;
   productImagePath: string;
+  /** 사용자가 편집한 스크립트 (있으면 hook-script 생성 생략) */
+  script?: HookScript;
 }
 
 function buildClipPrompts(input: AffiliateJobInput): [string, string] {
@@ -75,15 +77,17 @@ async function processAffiliateJob(jobId: string, input: AffiliateJobInput): Pro
       progress: 10,
       steps: { script: 'running', audio: 'pending', video: 'pending' },
     });
-    const script: HookScript = await generateHookScript({
-      productName: input.productName,
-      sellingPoints: input.sellingPoints,
-      target: input.target,
-      tone: input.tone,
-      angle: input.angle,
-      brand: input.brand,
-      affiliateUrl: input.affiliateUrl,
-    });
+    const script: HookScript =
+      input.script ??
+      (await generateHookScript({
+        productName: input.productName,
+        sellingPoints: input.sellingPoints,
+        target: input.target,
+        tone: input.tone,
+        angle: input.angle,
+        brand: input.brand,
+        affiliateUrl: input.affiliateUrl,
+      }));
     updateJob(jobId, {
       script: JSON.stringify(script),
       steps: { script: 'done', audio: 'pending', video: 'running' },
@@ -202,12 +206,39 @@ export async function POST(req: NextRequest) {
   const resolution = (((fd.get('resolution') as string | null) ?? '480p').trim() as SeedanceResolution);
   const musicTone = ((fd.get('musicTone') as string | null) ?? 'energetic').trim();
   const productFile = fd.get('product') as File | null;
+  const scriptOnly = (fd.get('scriptOnly') as string | null) === '1';
+  const scriptRaw = (fd.get('script') as string | null) ?? '';
 
   if (!productName) return NextResponse.json({ error: '제품명을 입력해주세요.' }, { status: 400 });
   if (!sellingPoints.length)
     return NextResponse.json({ error: '셀링포인트를 입력해주세요.' }, { status: 400 });
+
+  // ① 스크립트만 생성 (검토 게이트 — 영상 생성 전, 무과금)
+  if (scriptOnly) {
+    const s = await generateHookScript({
+      productName,
+      sellingPoints,
+      target,
+      tone,
+      angle,
+      brand,
+      affiliateUrl,
+    });
+    return NextResponse.json({ script: s });
+  }
+
   if (!productFile || typeof productFile.arrayBuffer !== 'function')
     return NextResponse.json({ error: '제품 사진을 업로드해주세요.' }, { status: 400 });
+
+  // ② 수정된 스크립트가 있으면 그걸 사용 (hook-script 재생성 생략)
+  let editedScript: HookScript | undefined;
+  if (scriptRaw) {
+    try {
+      editedScript = JSON.parse(scriptRaw) as HookScript;
+    } catch {
+      /* 무시하고 자동 생성 */
+    }
+  }
 
   const tmpDir = path.join(process.cwd(), 'data', 'tmp');
   if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
@@ -239,6 +270,7 @@ export async function POST(req: NextRequest) {
     resolution,
     musicTone,
     productImagePath,
+    script: editedScript,
   }).catch(console.error);
 
   return NextResponse.json({ jobId, estimatedCostUsd: +estCost.toFixed(2) });
