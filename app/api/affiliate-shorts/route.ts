@@ -155,7 +155,7 @@ async function processAffiliateJob(jobId: string, input: AffiliateJobInput): Pro
     updateJob(jobId, {
       status: 'done',
       progress: 100,
-      videoUrl: `/videos/${jobId}.mp4`,
+      videoUrl: `/api/video/${jobId}`,
       steps: { script: 'done', audio: 'done', video: 'done' },
     });
 
