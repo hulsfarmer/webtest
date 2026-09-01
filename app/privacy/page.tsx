@@ -72,12 +72,12 @@ export default function PrivacyPage() {
       </Section>
 
       <Section title="9. 개인정보 보호책임자">
-        <p>성명: 안수동<br />연락처: 010-4149-0673 / support@shortsai.kr</p>
+        <p>성명: Sutong An<br />연락처: 010-4149-0673 / support@shortsai.kr</p>
       </Section>
 
       <div className="mt-12 pt-6 border-t border-white/10 text-sm text-gray-500">
-        상호: 이지온 | 대표: 안수동 | 사업자등록번호: 794-03-04121<br />
-        주소: 제주특별자치도 제주시 조천읍 함덕12길 46-1, 202호
+        상호: 이지온 | 대표: Sutong An | 사업자등록번호: 794-03-04121<br />
+        주소: 202, 46-1, Hamdeok 12-gil, Jocheon-eup, Jeju-si, Jeju-do, Republic of Korea
       </div>
     </main>
   );
