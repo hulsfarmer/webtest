@@ -53,31 +53,41 @@ const SYS =
 
 export async function generateAdDraft(productName: string, price: string, texts: string[]): Promise<AdDraft> {
   const facts = [`제품명: ${productName}`, price ? `가격: ${price}` : '', ...texts].filter(Boolean).join('\n');
-  const usr =
-    `팩트:\n${facts}\n\n출력 JSON 스키마:\n` +
-    `{"hook":{"pains":["..","..",".."],"question":"..?","scenes":[{"text":"고민구","imgPrompt":"english scene description"}]},` +
-    `"slots":[{"caption":"..","narration":".."}],` +
-    `"cta":{"caption":"..","price":"..","narration":".."}}\n` +
-    `scenes 는 pains 와 1:1(3개). slots 는 제품등장 포함 4~5개. 전체 나레이션 합계 약 165자(30초).`;
+  // 구조화 출력(tool-use)로 검증된 객체를 받는다 — JSON 파싱 취약성 제거
+  const TOOL = {
+    name: 'ad_script',
+    description: '30초 세로 광고 쇼츠 스크립트',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        hook: {
+          type: 'object', properties: {
+            pains: { type: 'array', items: { type: 'string' }, description: '고민 3개(짧은 구)' },
+            question: { type: 'string' },
+            scenes: {
+              type: 'array', description: 'pains와 1:1(3개)',
+              items: { type: 'object', properties: { text: { type: 'string' }, imgPrompt: { type: 'string', description: '영어, 마스코트가 문제만 연출' } }, required: ['text', 'imgPrompt'] },
+            },
+          }, required: ['pains', 'question', 'scenes'],
+        },
+        slots: { type: 'array', description: '제품등장 포함 4~5개', items: { type: 'object', properties: { caption: { type: 'string' }, narration: { type: 'string' } }, required: ['caption', 'narration'] } },
+        cta: { type: 'object', properties: { caption: { type: 'string' }, price: { type: 'string' }, narration: { type: 'string' } }, required: ['caption', 'narration'] },
+      },
+      required: ['hook', 'slots', 'cta'],
+    },
+  };
   const m = await clientOf().messages.create({
-    model: 'claude-sonnet-5', max_tokens: 4000, system: SYS, messages: [{ role: 'user', content: usr }],
+    model: 'claude-sonnet-5', max_tokens: 4000, system: SYS,
+    tools: [TOOL], tool_choice: { type: 'tool', name: 'ad_script' },
+    messages: [{ role: 'user', content: `팩트:\n${facts}\n\n전체 나레이션 합계 약 165자(30초). ad_script 도구로 출력.` }],
   });
-  const raw = m.content.map((c) => ('text' in c ? c.text : '')).join('');
-  // 코드펜스/앞뒤 텍스트 제거 후 첫 { ~ 마지막 } 추출 (견고)
-  const a = raw.indexOf('{'), b = raw.lastIndexOf('}');
-  if (a < 0 || b <= a) throw new Error('AI 응답에서 JSON을 찾지 못했어요. 다시 시도해주세요.');
-  let jsonStr = raw.slice(a, b + 1);
-  let j: {
+  const block = m.content.find((c) => c.type === 'tool_use') as { input?: unknown } | undefined;
+  if (!block?.input) throw new Error('AI 스크립트 생성 실패. 다시 시도해주세요.');
+  const j = block.input as {
     hook: { pains: string[]; question: string; scenes?: HookScene[] };
     slots: { caption: string; narration: string }[];
     cta: { caption: string; price?: string; narration: string };
   };
-  try { j = JSON.parse(jsonStr); }
-  catch {
-    // 문자열 값 안 실제 줄바꿈/제어문자 보정 후 재시도
-    jsonStr = jsonStr.replace(new RegExp('[\\u0000-\\u001F]+','g'), ' ');
-    j = JSON.parse(jsonStr);
-  }
   const slots: DraftSlot[] = [];
   slots.push({ kind: 'hook', lines: (j.hook.pains || []).slice(0, 3), question: j.hook.question, scenes: j.hook.scenes, narration: [...(j.hook.pains || []), j.hook.question].join(', ') });
   for (const s of j.slots || []) slots.push({ kind: 'promo', lines: [s.caption], narration: hangulizeCounters(s.narration || s.caption) });
