@@ -32,6 +32,11 @@ async function getAccessToken(): Promise<string> {
   if (!clientId || !clientSecret) {
     throw new Error('네이버 커머스 API 키(NAVER_COMMERCE_CLIENT_ID/SECRET)가 설정되지 않았어요.');
   }
+  // 시크릿은 bcrypt salt($2a$/$2b$...) 형식이어야 함. $ 가 .env 로드 시 변수확장으로 망가지면
+  // 형식이 깨져 bcrypt 가 "Invalid salt version" 을 던진다 → 원인을 알려주는 메시지로 대체.
+  if (!/^\$2[aby]?\$\d{2}\$/.test(clientSecret)) {
+    throw new Error('네이버 시크릿 형식이 손상됐어요($ 확장 문제). .env.local 에서 각 $ 를 \\$ 로 이스케이프하세요.');
+  }
 
   // 서버-네이버 시계 오차 방어용으로 3초 뺀 timestamp(ms)
   const timestamp = String(now - 3000);
