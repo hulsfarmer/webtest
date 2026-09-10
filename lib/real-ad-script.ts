@@ -49,7 +49,7 @@ const SYS =
   '(3) 훅은 이 제품이 해결하는 고민 3개(각 6~10자 짧은 구)와 마지막 의문형 질문 한 문장. ' +
   '(4) 각 고민마다 AI 일러스트용 영어 프롬프트(imgPrompt)를 써. 귀여운 오리지널 마스코트 캐릭터가 그 고민(문제)을 겪는 한 장면만 묘사 — 해결책·제품 좋은 모습·전환("then...")은 절대 넣지 마(훅은 문제만). 캐릭터의 불편한 동작·표정·감정 + 관련 소품(젖은 바닥, 물방울, 세탁기 등). 15~30단어, 영어, "the character"로 지칭. 예: "the character wincing and holding its neck in discomfort while wearing a lumpy U-shaped neck pillow, tiny red spark marks". ' +
   '(5) 자막(lines)은 6~14자로 짧게, 이모지 금지. ' +
-  '(6) 오직 JSON만 출력(코드펜스·설명 없이).';
+  '(6) 오직 JSON만 출력(코드펜스·설명 없이). 한 줄 compact JSON으로, 문자열 값 안에 줄바꿈·제어문자 넣지 마.';
 
 export async function generateAdDraft(productName: string, price: string, texts: string[]): Promise<AdDraft> {
   const facts = [`제품명: ${productName}`, price ? `가격: ${price}` : '', ...texts].filter(Boolean).join('\n');
@@ -60,15 +60,24 @@ export async function generateAdDraft(productName: string, price: string, texts:
     `"cta":{"caption":"..","price":"..","narration":".."}}\n` +
     `scenes 는 pains 와 1:1(3개). slots 는 제품등장 포함 4~5개. 전체 나레이션 합계 약 165자(30초).`;
   const m = await clientOf().messages.create({
-    model: 'claude-sonnet-5', max_tokens: 1800, system: SYS, messages: [{ role: 'user', content: usr }],
+    model: 'claude-sonnet-5', max_tokens: 4000, system: SYS, messages: [{ role: 'user', content: usr }],
   });
-  let raw = m.content.map((c) => ('text' in c ? c.text : '')).join('').trim();
-  raw = raw.replace(/^```json?/i, '').replace(/```$/,'').trim();
-  const j = JSON.parse(raw) as {
+  const raw = m.content.map((c) => ('text' in c ? c.text : '')).join('');
+  // 코드펜스/앞뒤 텍스트 제거 후 첫 { ~ 마지막 } 추출 (견고)
+  const a = raw.indexOf('{'), b = raw.lastIndexOf('}');
+  if (a < 0 || b <= a) throw new Error('AI 응답에서 JSON을 찾지 못했어요. 다시 시도해주세요.');
+  let jsonStr = raw.slice(a, b + 1);
+  let j: {
     hook: { pains: string[]; question: string; scenes?: HookScene[] };
     slots: { caption: string; narration: string }[];
     cta: { caption: string; price?: string; narration: string };
   };
+  try { j = JSON.parse(jsonStr); }
+  catch {
+    // 문자열 값 안 실제 줄바꿈/제어문자 보정 후 재시도
+    jsonStr = jsonStr.replace(new RegExp('[\\u0000-\\u001F]+','g'), ' ');
+    j = JSON.parse(jsonStr);
+  }
   const slots: DraftSlot[] = [];
   slots.push({ kind: 'hook', lines: (j.hook.pains || []).slice(0, 3), question: j.hook.question, scenes: j.hook.scenes, narration: [...(j.hook.pains || []), j.hook.question].join(', ') });
   for (const s of j.slots || []) slots.push({ kind: 'promo', lines: [s.caption], narration: hangulizeCounters(s.narration || s.caption) });
