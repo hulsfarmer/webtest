@@ -41,7 +41,7 @@ export interface HookSceneSpec {
   text: string;
   pose: string;
   face: string;
-  prop?: 'qmark' | 'excl' | 'drops' | 'washer' | '';
+  prop?: string;   // qmark/excl/drops/washer/hearts/zzz/coin/stink/sparkle/sweat
   item?: boolean;
   itemLabel?: string;
 }
@@ -180,6 +180,7 @@ async function renderMascotScene(scene: HookSceneSpec, showQ: boolean, question:
     washer: scene.prop === 'washer',
     drops: scene.prop === 'drops',
     mark: scene.prop === 'qmark' ? 'qmark' : scene.prop === 'excl' ? 'excl' : undefined,
+    prop: scene.prop as never,
   });
   if (showQ && question) {
     ctx.font = `bold 54px ${fontFamily()}`; ctx.fillStyle = DARK; ctx.textAlign = 'center';

@@ -45,8 +45,8 @@ const SYS =
   '(1) 주어진 팩트에 없는 내용/과장 절대 금지. ' +
   '(2) 나레이션의 모든 숫자·수량은 한글로 풀어써(3장->세 장, 3개->세 개, 5종->다섯 가지, 100x70->가로 백 세로 칠십, 15,900원->만 오천구백 원, 30도->삼십 도). ' +
   '(3) 훅은 이 제품이 해결하는 고민 3개(각 6~10자 짧은 구)와 마지막 의문형 질문 한 문장. ' +
-  '(4) 각 고민마다 스틱 마스코트 장면을 연출해. pose는 [fall(넘어짐), liftfoot(발들어 물뚝뚝), holditem(제품 들고), shiver(떨기), headhold(머리감싸기), point(가리킴), shrug(글쎄), think(고민), onearm(한팔), twoarms(두팔), oneleg(한발), jump(뛰기), run(달리기), stand] 중, face는 [worried, shock, dizzy, annoyed, happy, sad, neutral, cold(추위), hot(더위)] 중 선택. ' +
-  '가이드: 미끄럼/넘어짐->pose fall,face dizzy,prop excl / 물기·흡수안됨->pose liftfoot,face annoyed,prop drops / 세탁·관리 어려움->pose holditem,face worried,item true,itemLabel(제품 영문약칭 대문자),prop washer / 추움->pose shiver,face cold / 더움->pose stand,face hot / 아픔·답답->headhold,sad / 신남·추천->jump 또는 twoarms,happy / 그외->think 또는 point. ' +
+  '(4) 각 고민마다 스틱 마스코트 장면을 연출해. pose는 [fall,liftfoot,holditem,shiver,headhold,point,shrug,think,onearm,twoarms,oneleg,jump,run,sit,liedown,clap,thumbsup,nosepinch,facepalm,armscross,wave,stand] 중, face는 [worried,shock,dizzy,annoyed,happy,sad,neutral,cold,hot,love,cry,sleepy,angry,disgust,wink] 중, prop은 [qmark,excl,drops,washer,hearts,zzz,coin,stink,sparkle,sweat, 또는 없음] 중 선택. ' +
+  '가이드: 미끄럼/넘어짐->fall,dizzy,excl / 물기·흡수안됨->liftfoot,annoyed,drops / 세탁·관리어려움->holditem,worried,item true,itemLabel(영문약칭),washer / 추움->shiver,cold / 더움->stand,hot,sweat / 냄새·찝찝->nosepinch,disgust,stink / 아픔·답답->headhold,sad / 비쌈·돈걱정->stand,sad,coin / 지루·귀찮->stand,sleepy,zzz / 불만->armscross,angry / 신남·추천·만족->thumbsup 또는 jump,happy,sparkle. ' +
   '(5) 자막(lines)은 6~14자로 짧게, 이모지 금지. ' +
   '(6) 오직 JSON만 출력(코드펜스·설명 없이).';
 
