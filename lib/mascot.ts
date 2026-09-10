@@ -3,12 +3,15 @@
 // 표정(face) · 포즈(pose) · 소품(prop)을 조합해 훅 장면을 그린다. (IP 안전 오리지널)
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export type Face = 'worried' | 'shock' | 'dizzy' | 'annoyed' | 'happy' | 'sad' | 'neutral';
-export type Pose = 'stand' | 'fall' | 'liftfoot' | 'holditem' | 'shiver' | 'headhold' | 'point' | 'shrug' | 'think';
+export type Face = 'worried' | 'shock' | 'dizzy' | 'annoyed' | 'happy' | 'sad' | 'neutral' | 'cold' | 'hot';
+export type Pose = 'stand' | 'fall' | 'liftfoot' | 'holditem' | 'shiver' | 'headhold' | 'point' | 'shrug' | 'think'
+  | 'onearm' | 'twoarms' | 'oneleg' | 'jump' | 'run';
+export type Dir = 'front' | 'back' | 'up' | 'down';
 export type Prop = 'qmark' | 'excl' | 'drops' | 'washer' | 'sweat';
 
-export const FACES: Face[] = ['worried', 'shock', 'dizzy', 'annoyed', 'happy', 'sad', 'neutral'];
-export const POSES: Pose[] = ['stand', 'fall', 'liftfoot', 'holditem', 'shiver', 'headhold', 'point', 'shrug', 'think'];
+export const FACES: Face[] = ['worried', 'shock', 'dizzy', 'annoyed', 'happy', 'sad', 'neutral', 'cold', 'hot'];
+export const POSES: Pose[] = ['stand', 'fall', 'liftfoot', 'holditem', 'shiver', 'headhold', 'point', 'shrug', 'think', 'onearm', 'twoarms', 'oneleg', 'jump', 'run'];
+export const DIRS: Dir[] = ['front', 'back', 'up', 'down'];
 
 const DARK = '#2d2f34', RED = '#d62828', BLUE = '#4a8cd2', GREY = '#96989e', MATC = '#787d87';
 
@@ -22,10 +25,38 @@ function circle(ctx: any, cx: number, cy: number, r: number, opt: { fill?: strin
   if (opt.stroke) { ctx.strokeStyle = opt.stroke; ctx.lineWidth = opt.w || 4; ctx.stroke(); }
 }
 
-function drawFace(ctx: any, cx: number, cy: number, s: number, face: Face) {
+function drawFace(ctx: any, cx: number, cy: number, s: number, face: Face, dir: Dir = 'front') {
   ctx.strokeStyle = DARK; ctx.fillStyle = DARK;
-  const ex = 34 * s, ey = -10 * s;
+  // 뒤통수: 얼굴 없음 + 머리 가마
+  if (dir === 'back') {
+    ctx.strokeStyle = DARK; ctx.lineWidth = 6 * s;
+    for (const dx of [-16, 0, 16]) { ctx.beginPath(); ctx.moveTo(cx + dx * s, cy - 55 * s); ctx.lineTo(cx + dx * s + 8 * s, cy - 78 * s); ctx.stroke(); }
+    return;
+  }
+  const ex = 34 * s, ey = (dir === 'up' ? -30 : dir === 'down' ? 8 : -10) * s;
   const eye = (px: number, py: number, r: number) => circle(ctx, px, py, r, { fill: DARK });
+  // 추위/더위 특수 표정
+  if (face === 'cold') {
+    for (const sx of [-1, 1]) eye(cx + sx * ex, cy + ey, 9 * s);
+    line(ctx, cx - ex - 18 * s, cy + ey - 24 * s, cx - ex + 12 * s, cy + ey - 14 * s, 6 * s);
+    line(ctx, cx + ex + 18 * s, cy + ey - 24 * s, cx + ex - 12 * s, cy + ey - 14 * s, 6 * s);
+    // 덜덜 이(악문 입: 사각 + 세로선)
+    const my = cy + 34 * s; ctx.strokeStyle = DARK; ctx.lineWidth = 5 * s;
+    ctx.strokeRect(cx - 24 * s, my - 6 * s, 48 * s, 22 * s);
+    for (const vx of [-8, 8]) line(ctx, cx + vx * s, my - 6 * s, cx + vx * s, my + 16 * s, 3 * s);
+    line(ctx, cx - 24 * s, my + 5 * s, cx + 24 * s, my + 5 * s, 3 * s);
+    // 파란 냉기 볼
+    ctx.strokeStyle = BLUE; for (const sx of [-1, 1]) for (const yy of [0, 10]) line(ctx, cx + sx * 62 * s, cy + ey + yy * s, cx + sx * 74 * s, cy + ey + (yy + 8) * s, 5 * s);
+    ctx.strokeStyle = DARK; return;
+  }
+  if (face === 'hot') {
+    for (const sx of [-1, 1]) { ctx.beginPath(); ctx.lineWidth = 6 * s; ctx.strokeStyle = DARK; ctx.arc(cx + sx * ex, cy + ey + 6 * s, 11 * s, Math.PI, 2 * Math.PI); ctx.stroke(); } // 지친 눈(^)
+    const my = cy + 38 * s; circle(ctx, cx, my, 17 * s, { stroke: DARK, w: 6 * s, fill: '#fff' }); // 헥헥 입
+    ctx.fillStyle = RED; ctx.beginPath(); ctx.ellipse(cx + 4 * s, my + 8 * s, 8 * s, 12 * s, 0, 0, Math.PI * 2); ctx.fill(); // 혀
+    // 땀방울
+    ctx.fillStyle = BLUE; ctx.beginPath(); ctx.ellipse(cx + 70 * s, cy - 40 * s, 9 * s, 14 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = DARK; return;
+  }
   if (face === 'shock') {
     for (const sx of [-1, 1]) { circle(ctx, cx + sx * ex, cy + ey, 14 * s, { stroke: DARK, w: 5 * s, fill: '#fff' }); eye(cx + sx * ex, cy + ey, 6 * s); }
   } else if (face === 'dizzy') {
@@ -40,8 +71,8 @@ function drawFace(ctx: any, cx: number, cy: number, s: number, face: Face) {
       line(ctx, cx + ex + 18 * s, cy + ey - 24 * s, cx + ex - 12 * s, cy + ey - 14 * s, 6 * s);
     }
   }
-  // 입
-  const my = cy + 34 * s;
+  // 입 (방향 반영)
+  const my = cy + (dir === 'up' ? 18 : dir === 'down' ? 46 : 34) * s;
   if (face === 'shock') { circle(ctx, cx, my + 10 * s, 15 * s, { stroke: DARK, w: 6 * s, fill: '#fff' }); }
   else if (face === 'happy') { ctx.beginPath(); ctx.lineWidth = 6 * s; ctx.strokeStyle = DARK; ctx.arc(cx, my, 22 * s, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke(); }
   else if (face === 'sad' || face === 'worried') { ctx.beginPath(); ctx.lineWidth = 6 * s; ctx.strokeStyle = DARK; ctx.arc(cx, my + 28 * s, 22 * s, 1.15 * Math.PI, 1.85 * Math.PI); ctx.stroke(); }
@@ -77,8 +108,8 @@ function roundRect(ctx: any, x: number, y: number, w: number, h: number, r: numb
 }
 
 /** 마스코트 본체. cx,cy=머리 중심. */
-export function drawMascot(ctx: any, cx: number, cy: number, opts: { pose?: Pose; face?: Face; s?: number }) {
-  const s = opts.s ?? 2; const pose = opts.pose ?? 'stand'; const lw = 13 * s; const r = 80 * s;
+export function drawMascot(ctx: any, cx: number, cy: number, opts: { pose?: Pose; face?: Face; s?: number; dir?: Dir }) {
+  const s = opts.s ?? 2; const pose = opts.pose ?? 'stand'; const lw = 13 * s; const r = 80 * s; const dir: Dir = opts.dir ?? 'front';
   ctx.strokeStyle = DARK; ctx.fillStyle = DARK;
   // 포즈별 머리 위치 보정 + 몸
   const neck = cy + r, hip = neck + 150 * s, sh = neck + 18 * s;
@@ -89,14 +120,14 @@ export function drawMascot(ctx: any, cx: number, cy: number, opts: { pose?: Pose
 
   if (pose === 'fall') {
     // 넘어짐: 머리 낮게, 몸 대각, 다리 번쩍
-    circle(ctx, cx, cy, r, { stroke: DARK, w: lw, fill: '#fff' }); drawFace(ctx, cx, cy, s, opts.face ?? 'dizzy');
+    circle(ctx, cx, cy, r, { stroke: DARK, w: lw, fill: '#fff' }); drawFace(ctx, cx, cy, s, opts.face ?? 'dizzy', dir);
     L(cx + 40 * s, cy + r - 10 * s, cx + 180 * s, hip - 40 * s);       // 몸통 대각
     L(cx + 180 * s, hip - 40 * s, cx + 150 * s, hip - 150 * s); L(cx + 180 * s, hip - 40 * s, cx + 230 * s, hip - 130 * s); // 다리 번쩍
     L(cx + 30 * s, cy + r, cx - 40 * s, cy + r + 70 * s); L(cx + 50 * s, cy + r - 20 * s, cx + 110 * s, cy + r - 60 * s);   // 팔
     return;
   }
   circle(ctx, cx, cy, r, { stroke: DARK, w: lw, fill: '#fff' });
-  drawFace(ctx, cx, cy, s, opts.face ?? (pose === 'shiver' ? 'worried' : 'neutral'));
+  drawFace(ctx, cx, cy, s, opts.face ?? (pose === 'shiver' ? 'worried' : 'neutral'), dir);
   if (pose === 'shiver') {
     L(cx, neck, cx, hip); armsHug(); legs();
     ctx.strokeStyle = BLUE; for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) { const bx = cx + sx * 150 * s, yy = cy - 50 * s + k * 34 * s; ctx.beginPath(); ctx.lineWidth = 8 * s; ctx.arc(bx, yy + 15 * s, 16 * s, sx < 0 ? 0.5 * Math.PI : 1.5 * Math.PI, sx < 0 ? 1.5 * Math.PI : 2.5 * Math.PI); ctx.stroke(); }
@@ -114,6 +145,24 @@ export function drawMascot(ctx: any, cx: number, cy: number, opts: { pose?: Pose
     L(cx, neck, cx, hip); legs(); L(cx, sh, cx - 75 * s, sh - 10 * s); L(cx - 75 * s, sh - 10 * s, cx - 95 * s, sh - 55 * s); L(cx, sh, cx + 75 * s, sh - 10 * s); L(cx + 75 * s, sh - 10 * s, cx + 95 * s, sh - 55 * s);
   } else if (pose === 'think') {
     L(cx, neck, cx, hip); legs(); L(cx, sh, cx - 60 * s, sh + 60 * s); L(cx, sh, cx + 40 * s, sh + 20 * s); L(cx + 40 * s, sh + 20 * s, cx + 30 * s, cy + 30 * s); // 턱에 손
+  } else if (pose === 'onearm') {
+    L(cx, neck, cx, hip); legs(); L(cx, sh, cx - 60 * s, sh + 60 * s); L(cx, sh, cx + 80 * s, sh - 75 * s); // 한 팔 번쩍
+  } else if (pose === 'twoarms') {
+    L(cx, neck, cx, hip); legs(); L(cx, sh, cx - 80 * s, sh - 75 * s); L(cx, sh, cx + 80 * s, sh - 75 * s); // 두 팔 번쩍
+  } else if (pose === 'oneleg') {
+    L(cx, neck, cx, hip); armsDown(); L(cx, hip, cx - 40 * s, hip + 95 * s); L(cx, hip, cx + 55 * s, hip + 40 * s); // 한 발만 땅, 한 발 듦
+  } else if (pose === 'jump') {
+    // 두 팔 들고 뛰기: 다리 굽혀 공중, 팔 번쩍, 발밑 모션
+    L(cx, neck, cx, hip); L(cx, sh, cx - 80 * s, sh - 70 * s); L(cx, sh, cx + 80 * s, sh - 70 * s);
+    L(cx, hip, cx - 50 * s, hip + 55 * s); L(cx - 50 * s, hip + 55 * s, cx - 30 * s, hip + 100 * s);
+    L(cx, hip, cx + 50 * s, hip + 55 * s); L(cx + 50 * s, hip + 55 * s, cx + 30 * s, hip + 100 * s);
+    ctx.strokeStyle = GREY; for (const dx of [-70, 0, 70]) line(ctx, cx + dx * s - 20 * s, hip + 150 * s, cx + dx * s + 20 * s, hip + 150 * s, 6 * s); ctx.strokeStyle = DARK;
+  } else if (pose === 'run') {
+    // 달리기: 몸 약간 기울고 다리 교차, 팔 앞뒤
+    L(cx, neck, cx + 15 * s, hip);
+    L(cx + 10 * s, sh, cx + 80 * s, sh - 25 * s); L(cx + 10 * s, sh, cx - 55 * s, sh + 55 * s); // 팔 앞뒤
+    L(cx + 15 * s, hip, cx + 75 * s, hip + 70 * s); L(cx + 15 * s, hip, cx - 45 * s, hip + 85 * s); // 다리 교차
+    ctx.strokeStyle = GREY; for (const yy of [-20, 20]) line(ctx, cx - 110 * s, cy + yy * s, cx - 60 * s, cy + yy * s, 6 * s); ctx.strokeStyle = DARK; // 스피드 라인
   } else { // stand
     L(cx, neck, cx, hip); armsDown(); legs();
   }
