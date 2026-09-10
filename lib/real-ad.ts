@@ -61,12 +61,15 @@ function fontFamily(): string {
 }
 async function registerFonts() {
   const { GlobalFonts } = await import('@napi-rs/canvas');
+  // 실사 광고 확정 폰트: Pretendard (우리가 완성한 영상에서 사용) → 없으면 Noto/BlackHanSans 대체
   const body = [
+    path.join(process.cwd(), 'public/fonts/Pretendard-Medium.ttf'),
     path.join(process.cwd(), 'public/fonts/NotoSansKR-Regular.ttf'),
     '/System/Library/Fonts/AppleSDGothicNeo.ttc',
     '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
   ].find((f) => fs.existsSync(f));
   const bold = [
+    path.join(process.cwd(), 'public/fonts/Pretendard-SemiBold.ttf'),
     path.join(process.cwd(), 'public/fonts/BlackHanSans-Regular.ttf'),
     path.join(process.cwd(), 'public/fonts/NotoSansKR-Regular.ttf'),
   ].find((f) => fs.existsSync(f));

@@ -32,7 +32,7 @@ export default function RealAdStudioPage() {
   const [price, setPrice] = useState('');
   const [brandName, setBrandName] = useState('homeezion');
   const [voice, setVoice] = useState('nova');
-  const [bgmId, setBgmId] = useState('energetic');
+  const [bgmId, setBgmId] = useState('phonk');
   const [html, setHtml] = useState('');
 
   const [images, setImages] = useState<string[]>([]);

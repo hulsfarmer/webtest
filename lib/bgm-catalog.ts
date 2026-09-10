@@ -1,6 +1,6 @@
 // ── 클라이언트/서버 공용 BGM 카탈로그 (Node.js 모듈 없음) ────────────────────
 
-export type BgmId = 'cafe' | 'professional' | 'energetic' | 'warm' | 'trendy' | 'calm' | 'none';
+export type BgmId = 'phonk' | 'cafe' | 'professional' | 'energetic' | 'warm' | 'trendy' | 'calm' | 'none';
 
 export interface BgmTrack {
   id: BgmId;
@@ -12,6 +12,14 @@ export interface BgmTrack {
 }
 
 export const BGM_CATALOG: BgmTrack[] = [
+  {
+    id: 'phonk',
+    label: '펑키',
+    emoji: '🎧',
+    desc: '펑키 · 리듬감 (실사광고 기본)',
+    url: '',                    // 로컬 public/bgm/phonk.mp3 사용
+    filename: 'phonk.mp3',
+  },
   {
     id: 'cafe',
     label: '카페 감성',

@@ -53,7 +53,13 @@ export async function resolveBgmPath(bgmId: BgmId): Promise<string | null> {
   if (bgmId === 'none') return null;
 
   const track = getBgmTrack(bgmId);
-  if (!track?.url) return null;
+  if (!track) return null;
+
+  // 리포지토리에 동봉된 로컬 BGM 우선 (외부 다운로드 불필요)
+  const bundled = path.join(process.cwd(), 'public', 'bgm', track.filename);
+  if (track.filename && fs.existsSync(bundled)) return bundled;
+
+  if (!track.url) return null;
 
   const bgmDir   = path.join(process.cwd(), 'data', 'bgm');
   if (!fs.existsSync(bgmDir)) fs.mkdirSync(bgmDir, { recursive: true });
