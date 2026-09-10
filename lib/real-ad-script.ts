@@ -47,7 +47,7 @@ const SYS =
   '(1) 주어진 팩트에 없는 내용/과장 절대 금지. ' +
   '(2) 나레이션의 모든 숫자·수량은 한글로 풀어써(3장->세 장, 3개->세 개, 5종->다섯 가지, 100x70->가로 백 세로 칠십, 15,900원->만 오천구백 원, 30도->삼십 도). ' +
   '(3) 훅은 이 제품이 해결하는 고민 3개(각 6~10자 짧은 구)와 마지막 의문형 질문 한 문장. ' +
-  '(4) 각 고민마다 AI 일러스트용 영어 프롬프트(imgPrompt)를 써. 귀여운 오리지널 마스코트 캐릭터가 그 고민 상황을 연출하는 한 장면 묘사: 캐릭터의 동작·표정·감정 + (관련되면 제품을 착용/사용/들고 있는 모습, 세탁기 등 소품). 20~40단어, 영어, 캐릭터 종류는 지정 말고 "the character"로. 예: "the character wearing a U-shaped neck pillow, wincing in discomfort, tiny red spark marks near the neck". ' +
+  '(4) 각 고민마다 AI 일러스트용 영어 프롬프트(imgPrompt)를 써. 귀여운 오리지널 마스코트 캐릭터가 그 고민(문제)을 겪는 한 장면만 묘사 — 해결책·제품 좋은 모습·전환("then...")은 절대 넣지 마(훅은 문제만). 캐릭터의 불편한 동작·표정·감정 + 관련 소품(젖은 바닥, 물방울, 세탁기 등). 15~30단어, 영어, "the character"로 지칭. 예: "the character wincing and holding its neck in discomfort while wearing a lumpy U-shaped neck pillow, tiny red spark marks". ' +
   '(5) 자막(lines)은 6~14자로 짧게, 이모지 금지. ' +
   '(6) 오직 JSON만 출력(코드펜스·설명 없이).';
 
