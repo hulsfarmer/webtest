@@ -9,7 +9,7 @@ export type Pose = 'stand' | 'fall' | 'liftfoot' | 'holditem' | 'shiver' | 'head
   | 'onearm' | 'twoarms' | 'oneleg' | 'jump' | 'run'
   | 'sit' | 'liedown' | 'clap' | 'thumbsup' | 'nosepinch' | 'facepalm' | 'armscross' | 'wave';
 export type Dir = 'front' | 'back' | 'up' | 'down';
-export type Prop = 'qmark' | 'excl' | 'drops' | 'washer' | 'sweat' | 'hearts' | 'zzz' | 'coin' | 'stink' | 'sparkle';
+export type Prop = 'qmark' | 'excl' | 'drops' | 'washer' | 'sweat' | 'hearts' | 'zzz' | 'coin' | 'stink' | 'sparkle' | 'neckpillow' | 'pokes';
 
 export const FACES: Face[] = ['worried', 'shock', 'dizzy', 'annoyed', 'happy', 'sad', 'neutral', 'cold', 'hot', 'love', 'cry', 'sleepy', 'angry', 'disgust', 'wink'];
 export const POSES: Pose[] = ['stand', 'fall', 'liftfoot', 'holditem', 'shiver', 'headhold', 'point', 'shrug', 'think', 'onearm', 'twoarms', 'oneleg', 'jump', 'run', 'sit', 'liedown', 'clap', 'thumbsup', 'nosepinch', 'facepalm', 'armscross', 'wave'];
@@ -236,6 +236,20 @@ function drawCoin(ctx: any, cx: number, cy: number, s: number) { for (const [dx,
 function drawStink(ctx: any, cx: number, cy: number, s: number) { ctx.strokeStyle = '#7ba05b'; ctx.lineWidth = 5 * s; for (const dx of [-20, 10, 40]) { ctx.beginPath(); for (let k = 0; k < 4; k++) { const yy = cy - k * 22 * s; if (k === 0) ctx.moveTo(cx + dx * s, yy); else ctx.quadraticCurveTo(cx + dx * s + (k % 2 ? 14 : -14) * s, yy + 11 * s, cx + dx * s, yy); } ctx.stroke(); } ctx.strokeStyle = DARK; }
 function drawSparkle(ctx: any, cx: number, cy: number, s: number) { ctx.strokeStyle = '#f2b705'; ctx.lineWidth = 5 * s; for (const [dx, dy, r] of [[0, 0, 22], [46, -18, 14], [-42, -14, 16]]) { line(ctx, cx + dx * s - r * s, cy + dy * s, cx + dx * s + r * s, cy + dy * s, 5 * s); line(ctx, cx + dx * s, cy + dy * s - r * s, cx + dx * s, cy + dy * s + r * s, 5 * s); } ctx.strokeStyle = DARK; }
 function drawSweat(ctx: any, cx: number, cy: number, s: number) { ctx.fillStyle = BLUE; ctx.beginPath(); ctx.ellipse(cx, cy, 10 * s, 15 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = DARK; }
+// 목베개 U자 (목에 두름). headCy = 머리 중심, 목은 그 아래.
+export function drawNeckPillow(ctx: any, cx: number, headCy: number, s: number, color = '#8fb7de') {
+  const ny = headCy + 96 * s;
+  ctx.fillStyle = color; ctx.strokeStyle = '#5b86ad'; ctx.lineWidth = 5 * s;
+  for (const sx of [-1, 1]) { ctx.beginPath(); ctx.ellipse(cx + sx * 62 * s, ny, 34 * s, 44 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+  ctx.beginPath(); ctx.ellipse(cx, ny + 30 * s, 74 * s, 30 * s, 0, 0, Math.PI); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = DARK; ctx.strokeStyle = DARK;
+}
+// 배김(뾰족 자극) 표시
+export function drawPokes(ctx: any, cx: number, cy: number, s: number) {
+  ctx.strokeStyle = RED; ctx.lineWidth = 5 * s;
+  for (const a of [-0.4, 0, 0.4]) { const x = cx + Math.sin(a) * 30 * s; line(ctx, x, cy, x + Math.sin(a) * 20 * s, cy - 30 * s, 5 * s); }
+  ctx.strokeStyle = DARK;
+}
 
 /** 훅 장면 소품 배치 (마스코트 기준). */
 export function drawSceneProps(ctx: any, cx: number, headCy: number, s: number, spec: { prop?: Prop; label?: string; item?: boolean; itemLabel?: string; washer?: boolean; drops?: boolean; mark?: 'qmark' | 'excl' }) {
@@ -251,4 +265,6 @@ export function drawSceneProps(ctx: any, cx: number, headCy: number, s: number, 
   else if (spec.prop === 'stink') drawStink(ctx, cx + 150 * s, headCy - 10 * s, s);
   else if (spec.prop === 'sparkle') drawSparkle(ctx, cx + 150 * s, headCy - 60 * s, s);
   else if (spec.prop === 'sweat') drawSweat(ctx, cx + 60 * s, headCy - 50 * s, s);
+  else if (spec.prop === 'neckpillow') drawNeckPillow(ctx, cx, headCy, s);
+  else if (spec.prop === 'pokes') drawPokes(ctx, cx, headCy - 90 * s, s);
 }
