@@ -32,7 +32,7 @@ const CREATE: Item[] = [
   { id: 'product-ai', name: '제품홍보영상', icon: 'box', href: '/studio/product-ai', cost: '15C', premium: true },
   { id: 'logo', name: '로고 생성', icon: 'sparkle', href: '/studio/logo', cost: '1C' },
   { id: 'convert', name: '파일 변환', icon: 'file', href: '/studio/convert', badge: 'soon', adminOnly: true },
-  { id: 'real-ad', name: '실사 제품광고', icon: 'box', href: '/admin/real-ad', badge: 'new', adminOnly: true },
+  { id: 'real-ad', name: '실사 제품광고', icon: 'box', href: '/studio/real-ad', badge: 'new', adminOnly: true },
   { id: 'youtube', name: '유튜브 배너·프로필', icon: 'youtube', href: '/studio/youtube', cost: '1C' },
 ];
 const WORK: Item[] = [
