@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { drawMascot, drawSceneProps, type Pose, type Face } from './mascot';
 
 const execAsync = promisify(exec);
 
@@ -28,11 +29,21 @@ export interface RealAdSlot {
   /** 훅: 고민 줄들(빌드업) + 마지막 질문은 question. 홍보/CTA: 제목 1~2줄 */
   lines: string[];
   question?: string;       // 훅 펀치라인
+  scenes?: HookSceneSpec[];// 훅: 고민별 마스코트 장면 (있으면 텍스트 빌드업 대신 사용)
   badge?: string;          // 상단 배지(선택)
   priceText?: string;      // CTA 가격
   footerText?: string;     // 하단(기본 브랜드명)
   mediaPath?: string;      // 홍보/CTA 카드에 얹을 이미지/영상/GIF (훅은 보통 없음)
   narration: string;       // TTS 원고
+}
+
+export interface HookSceneSpec {
+  text: string;
+  pose: string;
+  face: string;
+  prop?: 'qmark' | 'excl' | 'drops' | 'washer' | '';
+  item?: boolean;
+  itemLabel?: string;
 }
 
 export interface RealAdInput {
@@ -151,6 +162,32 @@ async function renderHookFrame(lines: string[], n: number, question: string | un
   fs.writeFileSync(out, canvas.toBuffer('image/png'));
 }
 
+/** 마스코트 훅 장면 렌더: 고민 텍스트(위) + 마스코트(포즈/표정) + 소품 + 질문(마지막) */
+async function renderMascotScene(scene: HookSceneSpec, showQ: boolean, question: string | undefined, out: string) {
+  const { createCanvas } = await import('@napi-rs/canvas');
+  const canvas = createCanvas(W, H);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = IVORY; ctx.fillRect(0, 0, W, H);
+  // 고민 텍스트 (상단, 빨강)
+  ctx.font = `bold 84px ${fontFamily()}`; ctx.fillStyle = RED; ctx.textAlign = 'center';
+  ctx.fillText(scene.text, W / 2, 430);
+  ctx.textAlign = 'left';
+  // 마스코트 (중앙)
+  const s = 2, cx = W / 2, cy = 1080;
+  drawMascot(ctx, cx, cy, { pose: (scene.pose || 'stand') as Pose, face: (scene.face || 'worried') as Face, s });
+  drawSceneProps(ctx, cx, cy, s, {
+    item: !!scene.item, itemLabel: scene.itemLabel,
+    washer: scene.prop === 'washer',
+    drops: scene.prop === 'drops',
+    mark: scene.prop === 'qmark' ? 'qmark' : scene.prop === 'excl' ? 'excl' : undefined,
+  });
+  if (showQ && question) {
+    ctx.font = `bold 54px ${fontFamily()}`; ctx.fillStyle = DARK; ctx.textAlign = 'center';
+    ctx.fillText(question, W / 2, 1620); ctx.textAlign = 'left';
+  }
+  fs.writeFileSync(out, canvas.toBuffer('image/png'));
+}
+
 function sh(cmd: string) { return execAsync(cmd, { maxBuffer: 1 << 26 }); }
 async function dur(f: string): Promise<number> {
   const { stdout } = await sh(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${f}"`);
@@ -197,8 +234,23 @@ export async function assembleRealAd(
     await ttsFn(slot.narration, vo);
     const vd = await dur(vo);
 
-    if (slot.kind === 'hook') {
-      // 빌드업: 고민 줄 수만큼 + 질문. 나레이션 길이를 줄 수에 비례 분배.
+    if (slot.kind === 'hook' && slot.scenes && slot.scenes.length) {
+      // 마스코트 장면 훅: 장면마다 최소 표시시간(1.8s), 단일 나레이션을 총길이에 패딩(목소리 일관)
+      const sc = slot.scenes;
+      const each = Math.max(1.8, vd / sc.length);
+      for (let k = 0; k < sc.length; k++) {
+        const fr = path.join(workDir, `mhook_${idx}_${k}.png`);
+        const showQ = k === sc.length - 1 && !!slot.question;
+        await renderMascotScene(sc[k], showQ, slot.question, fr);
+        const seg = path.join(workDir, `v_${idx}_${k}.mp4`);
+        await buildCardSeg(fr, undefined, each, seg); vids.push(seg);
+      }
+      const total = each * sc.length;
+      const ao = path.join(workDir, `a_${idx}.wav`);
+      await sh(`ffmpeg -v error -i "${vo}" -af "apad=whole_dur=${total.toFixed(3)}" -t ${total.toFixed(3)} -ar 44100 -ac 1 "${ao}" -y`);
+      auds.push(ao);
+    } else if (slot.kind === 'hook') {
+      // (폴백) 텍스트 빌드업
       const n = slot.lines.length;
       const beats = n + (slot.question ? 1 : 0);
       const each = Math.max(0.6, vd / beats);
@@ -214,7 +266,6 @@ export async function assembleRealAd(
         const seg = path.join(workDir, `v_${idx}_q.mp4`);
         await buildCardSeg(fr, undefined, each + 0.4, seg); vids.push(seg);
       }
-      // 훅 오디오: 전체 나레이션을 훅 세그먼트 총길이에 패딩
       const total = each * n + (slot.question ? each + 0.4 : 0);
       const ao = path.join(workDir, `a_${idx}.wav`);
       await sh(`ffmpeg -v error -i "${vo}" -af "apad=whole_dur=${total.toFixed(3)}" -t ${total.toFixed(3)} -ar 44100 -ac 1 "${ao}" -y`);

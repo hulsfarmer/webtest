@@ -18,6 +18,7 @@ interface SlotMeta {
   kind: 'hook' | 'promo' | 'cta';
   lines: string[];
   question?: string;
+  scenes?: { text: string; pose: string; face: string; prop?: string; item?: boolean; itemLabel?: string }[];
   badge?: string;
   priceText?: string;
   footerText?: string;
@@ -81,8 +82,9 @@ export async function POST(req: NextRequest) {
         } catch { /* 이미지 없이 진행 */ }
       }
       slots.push({
-        kind: s.kind, lines: s.lines || [], question: s.question, badge: s.badge,
-        priceText: s.priceText, footerText: s.footerText, narration: s.narration || '', mediaPath,
+        kind: s.kind, lines: s.lines || [], question: s.question,
+        scenes: s.scenes as RealAdSlot['scenes'],
+        badge: s.badge, priceText: s.priceText, footerText: s.footerText, narration: s.narration || '', mediaPath,
       });
     }
 

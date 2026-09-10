@@ -3,11 +3,14 @@
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { BGM_CATALOG } from '@/lib/bgm-catalog';
+import { POSES, FACES } from '@/lib/mascot';
 
+interface HookScene { text: string; pose: string; face: string; prop?: string; item?: boolean; itemLabel?: string }
 interface Slot {
   kind: 'hook' | 'promo' | 'cta';
   pains?: string[];      // hook
   question?: string;     // hook
+  scenes?: HookScene[];  // hook: 마스코트 장면
   caption?: string;      // promo/cta 자막
   price?: string;        // cta
   narration: string;
@@ -53,8 +56,8 @@ export default function RealAdAdminPage() {
       // draft.slots → UI slots (제품등장/홍보엔 이미지 자동 배정: 앞에서부터)
       const imgs: string[] = d.images || [];
       let gi = 0;
-      const us: Slot[] = (d.draft.slots || []).map((s: { kind: string; lines: string[]; question?: string; price?: string; narration: string }) => {
-        if (s.kind === 'hook') return { kind: 'hook', pains: s.lines, question: s.question, narration: s.narration };
+      const us: Slot[] = (d.draft.slots || []).map((s: { kind: string; lines: string[]; question?: string; scenes?: HookScene[]; price?: string; narration: string }) => {
+        if (s.kind === 'hook') return { kind: 'hook', pains: s.lines, question: s.question, scenes: s.scenes, narration: s.narration };
         const mediaUrl = imgs[gi++ % (imgs.length || 1)];
         return { kind: s.kind as 'promo' | 'cta', caption: (s.lines || [])[0] || '', price: s.price, narration: s.narration, mediaUrl };
       });
@@ -69,7 +72,7 @@ export default function RealAdAdminPage() {
     setErr(''); setVideoUrl(''); setBusy(true);
     try {
       const metaSlots = slots.map((s) => s.kind === 'hook'
-        ? { kind: 'hook', lines: (s.pains || []).filter(Boolean), question: s.question, narration: s.narration }
+        ? { kind: 'hook', lines: (s.pains || []).filter(Boolean), question: s.question, scenes: s.scenes, narration: s.narration }
         : { kind: s.kind, lines: [s.caption || ''], priceText: s.price, narration: s.narration, hasMedia: !!s.mediaFile, mediaUrl: s.mediaFile ? undefined : s.mediaUrl });
       const fd = new FormData();
       fd.append('meta', JSON.stringify({ slots: metaSlots, bgmId, voice, brandName }));
@@ -117,9 +120,13 @@ export default function RealAdAdminPage() {
           <section key={i} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 space-y-2">
             {s.kind === 'hook' ? (
               <>
-                <h2 className="font-semibold text-red-400">훅</h2>
-                {(s.pains || []).map((p, k) => (
-                  <input key={k} className={inp} value={p} onChange={(e) => patch(i, { pains: (s.pains || []).map((x, j) => j === k ? e.target.value : x) })} />
+                <h2 className="font-semibold text-red-400">훅 (마스코트 장면)</h2>
+                {(s.scenes && s.scenes.length ? s.scenes : (s.pains || []).map((t) => ({ text: t, pose: 'stand', face: 'worried' } as HookScene))).map((sc, k) => (
+                  <div key={k} className="flex gap-1.5 items-center">
+                    <input className={inp} value={sc.text} onChange={(e) => { const arr = [...(s.scenes || [])]; arr[k] = { ...sc, text: e.target.value }; patch(i, { scenes: arr, pains: arr.map((x) => x.text) }); }} placeholder={`고민 ${k + 1}`} />
+                    <select className="px-2 py-2 rounded-lg bg-neutral-800 border border-neutral-700 text-xs" value={sc.pose} onChange={(e) => { const arr = [...(s.scenes || [])]; arr[k] = { ...sc, pose: e.target.value }; patch(i, { scenes: arr }); }}>{POSES.map((p) => <option key={p} value={p}>{p}</option>)}</select>
+                    <select className="px-2 py-2 rounded-lg bg-neutral-800 border border-neutral-700 text-xs" value={sc.face} onChange={(e) => { const arr = [...(s.scenes || [])]; arr[k] = { ...sc, face: e.target.value }; patch(i, { scenes: arr }); }}>{FACES.map((f) => <option key={f} value={f}>{f}</option>)}</select>
+                  </div>
                 ))}
                 <input className={inp} value={s.question || ''} onChange={(e) => patch(i, { question: e.target.value })} placeholder="펀치라인 질문" />
               </>
