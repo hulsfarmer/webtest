@@ -18,7 +18,7 @@ interface SlotMeta {
   kind: 'hook' | 'promo' | 'cta';
   lines: string[];
   question?: string;
-  scenes?: { text: string; pose: string; face: string; prop?: string; item?: boolean; itemLabel?: string }[];
+  scenes?: { text: string; imgPrompt?: string; pose?: string; face?: string; prop?: string; item?: boolean; itemLabel?: string }[];
   badge?: string;
   priceText?: string;
   footerText?: string;

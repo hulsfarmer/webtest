@@ -3,9 +3,8 @@
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { BGM_CATALOG } from '@/lib/bgm-catalog';
-import { POSES, FACES } from '@/lib/mascot';
 
-interface HookScene { text: string; pose: string; face: string; prop?: string; item?: boolean; itemLabel?: string }
+interface HookScene { text: string; imgPrompt?: string; pose?: string; face?: string; prop?: string; item?: boolean; itemLabel?: string }
 interface Slot {
   kind: 'hook' | 'promo' | 'cta';
   pains?: string[];      // hook
@@ -120,12 +119,12 @@ export default function RealAdAdminPage() {
           <section key={i} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 space-y-2">
             {s.kind === 'hook' ? (
               <>
-                <h2 className="font-semibold text-red-400">훅 (마스코트 장면)</h2>
-                {(s.scenes && s.scenes.length ? s.scenes : (s.pains || []).map((t) => ({ text: t, pose: 'stand', face: 'worried' } as HookScene))).map((sc, k) => (
-                  <div key={k} className="flex gap-1.5 items-center">
+                <h2 className="font-semibold text-red-400">훅 (AI 일러스트 장면)</h2>
+                <p className="text-xs text-neutral-500">고민 문구 + 일러스트 프롬프트(영어). 캐릭터는 첫 장면 기준으로 일관 생성됩니다.</p>
+                {(s.scenes && s.scenes.length ? s.scenes : (s.pains || []).map((t) => ({ text: t } as HookScene))).map((sc, k) => (
+                  <div key={k} className="space-y-1 border-t border-neutral-800 pt-2">
                     <input className={inp} value={sc.text} onChange={(e) => { const arr = [...(s.scenes || [])]; arr[k] = { ...sc, text: e.target.value }; patch(i, { scenes: arr, pains: arr.map((x) => x.text) }); }} placeholder={`고민 ${k + 1}`} />
-                    <select className="px-2 py-2 rounded-lg bg-neutral-800 border border-neutral-700 text-xs" value={sc.pose} onChange={(e) => { const arr = [...(s.scenes || [])]; arr[k] = { ...sc, pose: e.target.value }; patch(i, { scenes: arr }); }}>{POSES.map((p) => <option key={p} value={p}>{p}</option>)}</select>
-                    <select className="px-2 py-2 rounded-lg bg-neutral-800 border border-neutral-700 text-xs" value={sc.face} onChange={(e) => { const arr = [...(s.scenes || [])]; arr[k] = { ...sc, face: e.target.value }; patch(i, { scenes: arr }); }}>{FACES.map((f) => <option key={f} value={f}>{f}</option>)}</select>
+                    <textarea className={`${inp} text-xs`} rows={2} value={sc.imgPrompt || ''} onChange={(e) => { const arr = [...(s.scenes || [])]; arr[k] = { ...sc, imgPrompt: e.target.value }; patch(i, { scenes: arr }); }} placeholder="일러스트 프롬프트 (영어) — 캐릭터 동작·감정" />
                   </div>
                 ))}
                 <input className={inp} value={s.question || ''} onChange={(e) => patch(i, { question: e.target.value })} placeholder="펀치라인 질문" />

@@ -8,6 +8,7 @@ import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { drawMascot, drawSceneProps, type Pose, type Face } from './mascot';
+import { generateHookImages } from './hook-image';
 
 const execAsync = promisify(exec);
 
@@ -39,9 +40,10 @@ export interface RealAdSlot {
 
 export interface HookSceneSpec {
   text: string;
-  pose: string;
-  face: string;
-  prop?: string;   // qmark/excl/drops/washer/hearts/zzz/coin/stink/sparkle/sweat
+  imgPrompt?: string;   // AI 일러스트 생성용(있으면 우선)
+  pose?: string;
+  face?: string;
+  prop?: string;
   item?: boolean;
   itemLabel?: string;
 }
@@ -189,6 +191,30 @@ async function renderMascotScene(scene: HookSceneSpec, showQ: boolean, question:
   fs.writeFileSync(out, canvas.toBuffer('image/png'));
 }
 
+/** AI 일러스트 장면 렌더: 일러스트(배경) + 고민 자막(상단) + 질문(마지막) */
+async function renderIllustratedScene(imagePath: string, painText: string, showQ: boolean, question: string | undefined, out: string) {
+  const { createCanvas, loadImage } = await import('@napi-rs/canvas');
+  const canvas = createCanvas(W, H);
+  const ctx = canvas.getContext('2d');
+  const img = await loadImage(imagePath);
+  // 폭 W 맞춰 배치, 배경은 이미지 좌상단 색으로 채움(이음새 없음)
+  const iw = W, ih = Math.round((img.height / img.width) * W);
+  // 배경색 추정: 작은 임시 캔버스로 코너 픽셀
+  const tmp = createCanvas(2, 2); const tctx = tmp.getContext('2d'); tctx.drawImage(img, 0, 0, 2, 2);
+  const px = tctx.getImageData(0, 0, 1, 1).data;
+  ctx.fillStyle = `rgb(${px[0]},${px[1]},${px[2]})`; ctx.fillRect(0, 0, W, H);
+  ctx.drawImage(img, 0, (H - ih) / 2, iw, ih);
+  // 고민 자막
+  ctx.font = `bold 84px ${fontFamily()}`; ctx.fillStyle = RED; ctx.textAlign = 'center';
+  ctx.fillText(painText, W / 2, 360); ctx.textAlign = 'left';
+  if (showQ && question) {
+    ctx.fillStyle = `rgb(${px[0]},${px[1]},${px[2]})`; ctx.fillRect(0, 1690, W, 120);
+    ctx.font = `bold 54px ${fontFamily()}`; ctx.fillStyle = DARK; ctx.textAlign = 'center';
+    ctx.fillText(question, W / 2, 1752); ctx.textAlign = 'left';
+  }
+  fs.writeFileSync(out, canvas.toBuffer('image/png'));
+}
+
 function sh(cmd: string) { return execAsync(cmd, { maxBuffer: 1 << 26 }); }
 async function dur(f: string): Promise<number> {
   const { stdout } = await sh(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${f}"`);
@@ -236,13 +262,20 @@ export async function assembleRealAd(
     const vd = await dur(vo);
 
     if (slot.kind === 'hook' && slot.scenes && slot.scenes.length) {
-      // 마스코트 장면 훅: 장면마다 최소 표시시간(1.8s), 단일 나레이션을 총길이에 패딩(목소리 일관)
+      // 훅: 장면마다 최소 표시시간(1.8s), 단일 나레이션을 총길이에 패딩(목소리 일관)
       const sc = slot.scenes;
       const each = Math.max(1.8, vd / sc.length);
+      // imgPrompt 있으면 AI 일러스트 훅(첫 장면 레퍼런스로 일관성), 실패 시 스틱 폴백
+      let illust: string[] | null = null;
+      if (sc.some((x) => x.imgPrompt)) {
+        try { illust = await generateHookImages(sc.map((x) => x.imgPrompt || x.text), workDir); }
+        catch (e) { console.warn('[real-ad] 훅 일러스트 생성 실패 → 스틱 폴백:', e instanceof Error ? e.message : e); illust = null; }
+      }
       for (let k = 0; k < sc.length; k++) {
         const fr = path.join(workDir, `mhook_${idx}_${k}.png`);
         const showQ = k === sc.length - 1 && !!slot.question;
-        await renderMascotScene(sc[k], showQ, slot.question, fr);
+        if (illust && illust[k]) await renderIllustratedScene(illust[k], sc[k].text, showQ, slot.question, fr);
+        else await renderMascotScene(sc[k], showQ, slot.question, fr);
         const seg = path.join(workDir, `v_${idx}_${k}.mp4`);
         await buildCardSeg(fr, undefined, each, seg); vids.push(seg);
       }

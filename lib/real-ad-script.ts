@@ -6,11 +6,13 @@ import Anthropic from '@anthropic-ai/sdk';
 // 훅 고민별 마스코트 장면 지정 (Claude가 매핑)
 export interface HookScene {
   text: string;                    // 고민 구 (예: "미끄럽고…")
-  pose: string;                    // POSES 중 하나
-  face: string;                    // FACES 중 하나
-  prop?: 'qmark' | 'excl' | 'drops' | 'washer' | '';
-  item?: boolean;                  // 제품(오벌) 들고 있기
-  itemLabel?: string;              // 제품 라벨 (예: MAT)
+  imgPrompt?: string;              // AI 일러스트 생성용 영어 프롬프트(캐릭터 동작·감정)
+  // (스틱 폴백용 - 선택)
+  pose?: string;
+  face?: string;
+  prop?: string;
+  item?: boolean;
+  itemLabel?: string;
 }
 export interface DraftSlot {
   kind: 'hook' | 'promo' | 'cta';
@@ -45,8 +47,7 @@ const SYS =
   '(1) 주어진 팩트에 없는 내용/과장 절대 금지. ' +
   '(2) 나레이션의 모든 숫자·수량은 한글로 풀어써(3장->세 장, 3개->세 개, 5종->다섯 가지, 100x70->가로 백 세로 칠십, 15,900원->만 오천구백 원, 30도->삼십 도). ' +
   '(3) 훅은 이 제품이 해결하는 고민 3개(각 6~10자 짧은 구)와 마지막 의문형 질문 한 문장. ' +
-  '(4) 각 고민마다 스틱 마스코트 장면을 연출해. pose는 [fall,liftfoot,holditem,shiver,headhold,point,shrug,think,onearm,twoarms,oneleg,jump,run,sit,liedown,clap,thumbsup,nosepinch,facepalm,armscross,wave,stand] 중, face는 [worried,shock,dizzy,annoyed,happy,sad,neutral,cold,hot,love,cry,sleepy,angry,disgust,wink] 중, prop은 [qmark,excl,drops,washer,hearts,zzz,coin,stink,sparkle,sweat, 또는 없음] 중 선택. ' +
-  '가이드: 미끄럼/넘어짐->fall,dizzy,excl / 물기·흡수안됨->liftfoot,annoyed,drops / 세탁·관리어려움->holditem,worried,item true,itemLabel(영문약칭),washer / 추움->shiver,cold / 더움->stand,hot,sweat / 냄새·찝찝->nosepinch,disgust,stink / 아픔·답답->headhold,sad / 비쌈·돈걱정->stand,sad,coin / 지루·귀찮->stand,sleepy,zzz / 불만->armscross,angry / 신남·추천·만족->thumbsup 또는 jump,happy,sparkle. ' +
+  '(4) 각 고민마다 AI 일러스트용 영어 프롬프트(imgPrompt)를 써. 귀여운 오리지널 마스코트 캐릭터가 그 고민 상황을 연출하는 한 장면 묘사: 캐릭터의 동작·표정·감정 + (관련되면 제품을 착용/사용/들고 있는 모습, 세탁기 등 소품). 20~40단어, 영어, 캐릭터 종류는 지정 말고 "the character"로. 예: "the character wearing a U-shaped neck pillow, wincing in discomfort, tiny red spark marks near the neck". ' +
   '(5) 자막(lines)은 6~14자로 짧게, 이모지 금지. ' +
   '(6) 오직 JSON만 출력(코드펜스·설명 없이).';
 
@@ -54,7 +55,7 @@ export async function generateAdDraft(productName: string, price: string, texts:
   const facts = [`제품명: ${productName}`, price ? `가격: ${price}` : '', ...texts].filter(Boolean).join('\n');
   const usr =
     `팩트:\n${facts}\n\n출력 JSON 스키마:\n` +
-    `{"hook":{"pains":["..","..",".."],"question":"..?","scenes":[{"text":"..","pose":"fall","face":"dizzy","prop":"excl","item":false,"itemLabel":""}]},` +
+    `{"hook":{"pains":["..","..",".."],"question":"..?","scenes":[{"text":"고민구","imgPrompt":"english scene description"}]},` +
     `"slots":[{"caption":"..","narration":".."}],` +
     `"cta":{"caption":"..","price":"..","narration":".."}}\n` +
     `scenes 는 pains 와 1:1(3개). slots 는 제품등장 포함 4~5개. 전체 나레이션 합계 약 165자(30초).`;
