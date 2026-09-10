@@ -23,6 +23,7 @@ interface SlotMeta {
   footerText?: string;
   narration: string;
   hasMedia?: boolean;
+  mediaUrl?: string;   // 상세페이지 이미지 URL (업로드 대신)
 }
 interface Meta {
   slots: SlotMeta[];
@@ -67,6 +68,17 @@ export async function POST(req: NextRequest) {
           mediaPath = path.join(workDir, `media_${i}.${ext}`);
           fs.writeFileSync(mediaPath, Buffer.from(await file.arrayBuffer()));
         }
+      } else if (s.mediaUrl && /^https?:\/\//i.test(s.mediaUrl)) {
+        // 상세페이지 이미지 URL → 서버에서 다운로드
+        try {
+          const r = await fetch(s.mediaUrl);
+          if (r.ok) {
+            const ct = r.headers.get('content-type') || '';
+            const ext = ct.includes('png') ? 'png' : ct.includes('gif') ? 'gif' : ct.includes('webp') ? 'webp' : ct.includes('mp4') ? 'mp4' : 'jpg';
+            mediaPath = path.join(workDir, `media_${i}.${ext}`);
+            fs.writeFileSync(mediaPath, Buffer.from(await r.arrayBuffer()));
+          }
+        } catch { /* 이미지 없이 진행 */ }
       }
       slots.push({
         kind: s.kind, lines: s.lines || [], question: s.question, badge: s.badge,

@@ -4,87 +4,76 @@ import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { BGM_CATALOG } from '@/lib/bgm-catalog';
 
-type Media = File | null;
-interface Promo { title: string; badge: string; narration: string; media: Media; }
+interface Slot {
+  kind: 'hook' | 'promo' | 'cta';
+  pains?: string[];      // hook
+  question?: string;     // hook
+  caption?: string;      // promo/cta 자막
+  price?: string;        // cta
+  narration: string;
+  mediaUrl?: string;     // 선택한 상세페이지 이미지
+  mediaFile?: File | null;
+}
 
 const VOICES = [
   { v: 'nova', label: '민지 (여·자연)' },
   { v: 'shimmer', label: '수아 (여·활기)' },
   { v: 'echo', label: '준호 (남·자연)' },
 ];
-const inputCls = 'w-full px-3 py-2 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-100 text-sm';
+const inp = 'w-full px-3 py-2 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-100 text-sm';
 
 export default function RealAdAdminPage() {
   const { data: session, status } = useSession();
   const isAdmin = !!(session?.user as { isAdmin?: boolean } | undefined)?.isAdmin;
 
-  const [brandName, setBrandName] = useState('');
-  const [bgmId, setBgmId] = useState('energetic');
+  const [productName, setProductName] = useState('');
+  const [price, setPrice] = useState('');
+  const [brandName, setBrandName] = useState('homeezion');
   const [voice, setVoice] = useState('nova');
+  const [bgmId, setBgmId] = useState('energetic');
+  const [html, setHtml] = useState('');
 
-  // 훅
-  const [pains, setPains] = useState(['미끄럽고…', '흡수 안 되고…', '세탁도 어렵고…']);
-  const [question, setQuestion] = useState('아직도 이런 발매트를 사용하세요?');
-  const [hookNarr, setHookNarr] = useState('');
-
-  // 제품등장 + 홍보들
-  const [reveal, setReveal] = useState<Promo>({ title: '', badge: 'NEW', narration: '', media: null });
-  const [promos, setPromos] = useState<Promo[]>([
-    { title: '', badge: '', narration: '', media: null },
-    { title: '', badge: '', narration: '', media: null },
-    { title: '', badge: '', narration: '', media: null },
-  ]);
-
-  // CTA
-  const [ctaTitle, setCtaTitle] = useState('');
-  const [ctaPrice, setCtaPrice] = useState('');
-  const [ctaNarr, setCtaNarr] = useState('');
-  const [ctaMedia, setCtaMedia] = useState<Media>(null);
-
+  const [images, setImages] = useState<string[]>([]);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [drafting, setDrafting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
 
-  function setPromo(i: number, patch: Partial<Promo>) {
-    setPromos((ps) => ps.map((p, j) => (j === i ? { ...p, ...patch } : p)));
+  async function makeDraft() {
+    setErr(''); setVideoUrl(''); setDrafting(true);
+    try {
+      const r = await fetch('/api/real-ad/draft', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ html, productName, price }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '초안 생성 실패');
+      setImages(d.images || []);
+      // draft.slots → UI slots (제품등장/홍보엔 이미지 자동 배정: 앞에서부터)
+      const imgs: string[] = d.images || [];
+      let gi = 0;
+      const us: Slot[] = (d.draft.slots || []).map((s: { kind: string; lines: string[]; question?: string; price?: string; narration: string }) => {
+        if (s.kind === 'hook') return { kind: 'hook', pains: s.lines, question: s.question, narration: s.narration };
+        const mediaUrl = imgs[gi++ % (imgs.length || 1)];
+        return { kind: s.kind as 'promo' | 'cta', caption: (s.lines || [])[0] || '', price: s.price, narration: s.narration, mediaUrl };
+      });
+      setSlots(us);
+    } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+    finally { setDrafting(false); }
   }
-  function addPromo() { if (promos.length < 4) setPromos((ps) => [...ps, { title: '', badge: '', narration: '', media: null }]); }
-  function removePromo(i: number) { if (promos.length > 1) setPromos((ps) => ps.filter((_, j) => j !== i)); }
+
+  function patch(i: number, p: Partial<Slot>) { setSlots((s) => s.map((x, j) => (j === i ? { ...x, ...p } : x))); }
 
   async function generate() {
     setErr(''); setVideoUrl(''); setBusy(true);
     try {
-      const slots: Record<string, unknown>[] = [];
-      const files: (Media)[] = [];
-
-      // 1) 훅
-      slots.push({ kind: 'hook', lines: pains.filter(Boolean), question: question.trim() || undefined,
-        narration: (hookNarr.trim() || [...pains.filter(Boolean), question].join(', ')) });
-      files.push(null);
-
-      // 2) 제품 등장
-      slots.push({ kind: 'promo', lines: [reveal.title || '제품'], badge: reveal.badge || undefined,
-        narration: reveal.narration || reveal.title, hasMedia: !!reveal.media });
-      files.push(reveal.media);
-
-      // 3) 홍보들
-      for (const p of promos) {
-        if (!p.title && !p.media) continue;
-        slots.push({ kind: 'promo', lines: [p.title], badge: p.badge || undefined,
-          narration: p.narration || p.title, hasMedia: !!p.media });
-        files.push(p.media);
-      }
-
-      // 4) CTA
-      slots.push({ kind: 'cta', lines: [ctaTitle || '지금 만나보세요'], priceText: ctaPrice || undefined,
-        narration: ctaNarr || ctaPrice || ctaTitle, hasMedia: !!ctaMedia });
-      files.push(ctaMedia);
-
-      const meta = { slots, bgmId, voice, brandName };
+      const metaSlots = slots.map((s) => s.kind === 'hook'
+        ? { kind: 'hook', lines: (s.pains || []).filter(Boolean), question: s.question, narration: s.narration }
+        : { kind: s.kind, lines: [s.caption || ''], priceText: s.price, narration: s.narration, hasMedia: !!s.mediaFile, mediaUrl: s.mediaFile ? undefined : s.mediaUrl });
       const fd = new FormData();
-      fd.append('meta', JSON.stringify(meta));
-      files.forEach((f, i) => { if (f) fd.append(`media_${i}`, f); });
-
+      fd.append('meta', JSON.stringify({ slots: metaSlots, bgmId, voice, brandName }));
+      slots.forEach((s, i) => { if (s.mediaFile) fd.append(`media_${i}`, s.mediaFile); });
       const r = await fetch('/api/real-ad', { method: 'POST', body: fd });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || '생성 실패');
@@ -98,67 +87,66 @@ export default function RealAdAdminPage() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 px-4 py-8">
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className="max-w-3xl mx-auto space-y-5">
         <div>
           <h1 className="text-2xl font-bold">실사 제품광고 쇼츠 <span className="text-sm text-amber-400">관리자</span></h1>
-          <p className="text-sm text-neutral-400 mt-1">훅 → 제품등장 → 홍보1~4 → CTA. 각 칸에 문구·미디어(이미지/영상)·나레이션. 실사 소재만 쓰세요(과장 금지).</p>
+          <p className="text-sm text-neutral-400 mt-1">상세 HTML 붙여넣기 → 초안 자동생성 → 이미지·문구 수정 → 완성. 실사·팩트만(과장 금지), 숫자는 자동 한글화.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div><label className="block text-xs text-neutral-400 mb-1">브랜드명(하단)</label><input className={inputCls} value={brandName} onChange={(e) => setBrandName(e.target.value)} placeholder="homeezion" /></div>
-          <div><label className="block text-xs text-neutral-400 mb-1">나레이터</label><select className={inputCls} value={voice} onChange={(e) => setVoice(e.target.value)}>{VOICES.map((v) => <option key={v.v} value={v.v}>{v.label}</option>)}</select></div>
-          <div className="col-span-2"><label className="block text-xs text-neutral-400 mb-1">배경음악</label><select className={inputCls} value={bgmId} onChange={(e) => setBgmId(e.target.value)}>{BGM_CATALOG.map((b) => <option key={b.id} value={b.id}>{b.emoji} {b.label} — {b.desc}</option>)}</select></div>
+          <div><label className="block text-xs text-neutral-400 mb-1">제품명 *</label><input className={inp} value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="리네아 극세사 무릎담요 3장 세트" /></div>
+          <div><label className="block text-xs text-neutral-400 mb-1">가격</label><input className={inp} value={price} onChange={(e) => setPrice(e.target.value)} placeholder="15,900원" /></div>
+          <div><label className="block text-xs text-neutral-400 mb-1">브랜드명(하단)</label><input className={inp} value={brandName} onChange={(e) => setBrandName(e.target.value)} /></div>
+          <div><label className="block text-xs text-neutral-400 mb-1">나레이터</label><select className={inp} value={voice} onChange={(e) => setVoice(e.target.value)}>{VOICES.map((v) => <option key={v.v} value={v.v}>{v.label}</option>)}</select></div>
+          <div className="col-span-2"><label className="block text-xs text-neutral-400 mb-1">배경음악</label><select className={inp} value={bgmId} onChange={(e) => setBgmId(e.target.value)}>{BGM_CATALOG.map((b) => <option key={b.id} value={b.id}>{b.emoji} {b.label} — {b.desc}</option>)}</select></div>
         </div>
 
-        {/* 훅 */}
-        <section className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 space-y-2">
-          <h2 className="font-semibold text-red-400">훅 (고민 빌드업)</h2>
-          {pains.map((p, i) => (
-            <input key={i} className={inputCls} value={p} onChange={(e) => setPains((ps) => ps.map((x, j) => j === i ? e.target.value : x))} placeholder={`고민 ${i + 1}`} />
-          ))}
-          <input className={inputCls} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="펀치라인 질문" />
-          <input className={inputCls} value={hookNarr} onChange={(e) => setHookNarr(e.target.value)} placeholder="나레이션(비우면 자동)" />
-        </section>
+        <div>
+          <label className="block text-xs text-neutral-400 mb-1">상세페이지 HTML</label>
+          <textarea className={`${inp} font-mono text-xs`} rows={5} value={html} onChange={(e) => setHtml(e.target.value)} placeholder="<div ...>상세페이지 HTML 전체 붙여넣기</div>" />
+          <button onClick={makeDraft} disabled={drafting || !html || !productName} className="mt-2 w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 font-semibold">
+            {drafting ? '초안 생성 중… (AI 스크립트 + 이미지 추출)' : '① 초안 자동 생성'}
+          </button>
+        </div>
 
-        {/* 제품 등장 */}
-        <section className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 space-y-2">
-          <h2 className="font-semibold">제품 등장</h2>
-          <input className={inputCls} value={reveal.title} onChange={(e) => setReveal({ ...reveal, title: e.target.value })} placeholder="제품명 (예: 3세대 규조토 발매트)" />
-          <div className="flex gap-2">
-            <input className={inputCls} value={reveal.badge} onChange={(e) => setReveal({ ...reveal, badge: e.target.value })} placeholder="배지 (예: NEW)" />
-            <input type="file" accept="image/*,video/*" className={inputCls} onChange={(e) => setReveal({ ...reveal, media: e.target.files?.[0] ?? null })} />
-          </div>
-          <input className={inputCls} value={reveal.narration} onChange={(e) => setReveal({ ...reveal, narration: e.target.value })} placeholder="나레이션(비우면 제품명)" />
-        </section>
+        {images.length > 0 && (
+          <p className="text-xs text-neutral-500">추출 이미지 {images.length}장 — 각 슬롯에서 클릭해 배정/변경하세요.</p>
+        )}
 
-        {/* 홍보들 */}
-        {promos.map((p, i) => (
+        {slots.map((s, i) => (
           <section key={i} className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 space-y-2">
-            <div className="flex justify-between items-center"><h2 className="font-semibold">홍보 {i + 1}</h2>{promos.length > 1 && <button onClick={() => removePromo(i)} className="text-xs text-neutral-500 hover:text-red-400">삭제</button>}</div>
-            <input className={inputCls} value={p.title} onChange={(e) => setPromo(i, { title: e.target.value })} placeholder="제목 (예: 물기 쫙~ 흡수)" />
-            <div className="flex gap-2">
-              <input className={inputCls} value={p.badge} onChange={(e) => setPromo(i, { badge: e.target.value })} placeholder="배지 (선택)" />
-              <input type="file" accept="image/*,video/*" className={inputCls} onChange={(e) => setPromo(i, { media: e.target.files?.[0] ?? null })} />
-            </div>
-            <input className={inputCls} value={p.narration} onChange={(e) => setPromo(i, { narration: e.target.value })} placeholder="나레이션(비우면 제목)" />
+            {s.kind === 'hook' ? (
+              <>
+                <h2 className="font-semibold text-red-400">훅</h2>
+                {(s.pains || []).map((p, k) => (
+                  <input key={k} className={inp} value={p} onChange={(e) => patch(i, { pains: (s.pains || []).map((x, j) => j === k ? e.target.value : x) })} />
+                ))}
+                <input className={inp} value={s.question || ''} onChange={(e) => patch(i, { question: e.target.value })} placeholder="펀치라인 질문" />
+              </>
+            ) : (
+              <>
+                <h2 className="font-semibold">{s.kind === 'cta' ? 'CTA' : `슬롯 ${i}`}</h2>
+                <input className={inp} value={s.caption || ''} onChange={(e) => patch(i, { caption: e.target.value })} placeholder="자막" />
+                {s.kind === 'cta' && <input className={inp} value={s.price || ''} onChange={(e) => patch(i, { price: e.target.value })} placeholder="가격 (예: 15,900원)" />}
+                {/* 이미지 선택 */}
+                <div className="flex gap-1.5 overflow-x-auto py-1">
+                  {images.map((u) => (
+                    <img key={u} src={u} onClick={() => patch(i, { mediaUrl: u, mediaFile: null })}
+                      className={`h-16 w-16 object-cover rounded cursor-pointer shrink-0 border-2 ${s.mediaUrl === u && !s.mediaFile ? 'border-emerald-400' : 'border-transparent'}`} />
+                  ))}
+                </div>
+                <input type="file" accept="image/*,video/*" className={inp} onChange={(e) => patch(i, { mediaFile: e.target.files?.[0] ?? null })} />
+              </>
+            )}
+            <textarea className={inp} rows={2} value={s.narration} onChange={(e) => patch(i, { narration: e.target.value })} placeholder="나레이션" />
           </section>
         ))}
-        {promos.length < 4 && <button onClick={addPromo} className="text-sm px-3 py-2 rounded-lg border border-neutral-700 text-neutral-300 hover:bg-neutral-800">+ 홍보 추가</button>}
 
-        {/* CTA */}
-        <section className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 space-y-2">
-          <h2 className="font-semibold text-emerald-400">CTA</h2>
-          <input className={inputCls} value={ctaTitle} onChange={(e) => setCtaTitle(e.target.value)} placeholder="제목 (예: 3세대 규조토 발매트)" />
-          <div className="flex gap-2">
-            <input className={inputCls} value={ctaPrice} onChange={(e) => setCtaPrice(e.target.value)} placeholder="가격 (예: 지금 17,900원)" />
-            <input type="file" accept="image/*,video/*" className={inputCls} onChange={(e) => setCtaMedia(e.target.files?.[0] ?? null)} />
-          </div>
-          <input className={inputCls} value={ctaNarr} onChange={(e) => setCtaNarr(e.target.value)} placeholder="나레이션" />
-        </section>
-
-        <button onClick={generate} disabled={busy} className="w-full py-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-neutral-950 font-semibold">
-          {busy ? '생성 중… (30~90초)' : '영상 생성'}
-        </button>
+        {slots.length > 0 && (
+          <button onClick={generate} disabled={busy} className="w-full py-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-neutral-950 font-semibold">
+            {busy ? '영상 생성 중… (30~90초)' : '② 영상 완성'}
+          </button>
+        )}
         {err && <p className="text-red-400 text-sm">{err}</p>}
         {videoUrl && (
           <div className="space-y-2">
