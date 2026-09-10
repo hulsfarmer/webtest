@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { buildPromoDescription, buildInstagramCaption } from '@/lib/promo-description';
 
 // 목소리 = Gemini 페르소나(VS_VOICE_MAP). google/pitch는 하위호환용 잔존 필드.
@@ -45,6 +46,8 @@ type Section = { type: 'hook' | 'main' | 'cta'; label: string; text: string };
 export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { embedded?: boolean; engine?: 'hedra' | 'visionstory' | 'visionstory-ai' } = {}) {
   const isAiActor = engine === 'visionstory-ai';
   const isVS = engine === 'visionstory' || isAiActor;
+  const { data: session } = useSession();
+  const isAdmin = !!(session?.user as { isAdmin?: boolean } | undefined)?.isAdmin;
   const apiBase = isVS ? '/api/promo-character-ai' : '/api/promo-character'; // 제품1·제품2 모두 AI배우 자동생성(tier로 저가/프리미엄 분기)
   const voiceOptions = isVS ? VS_VOICES : VOICES;
   const [phase, setPhase] = useState<'form' | 'script'>('form');
@@ -395,17 +398,17 @@ export function PromoCharacterTool({ embedded = false, engine = 'hedra' }: { emb
           {/* 좌: 입력 or 대본편집 */}
           {phase === 'form' ? (
             <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 space-y-4">
-              {false /* 쿠팡 스크래핑 불가 — 링크 자동채우기 임시 숨김(당분간). 재개 시 true */ && (
+              {isAdmin && (
               <div className="pb-4 border-b border-neutral-800">
-                <label className="block text-sm text-emerald-300 mb-1.5">제품 링크로 자동 채우기 (선택)</label>
+                <label className="block text-sm text-emerald-300 mb-1.5">제품 링크로 자동 채우기 (관리자 · 선택)</label>
                 <div className="flex gap-2">
-                  <input className={inputCls} value={importUrl} onChange={(e) => setImportUrl(e.target.value)} placeholder="쿠팡 상품 페이지 URL" />
+                  <input className={inputCls} value={importUrl} onChange={(e) => setImportUrl(e.target.value)} placeholder="쿠팡 또는 네이버 스마트스토어 상품 URL" />
                   <button onClick={onImport} disabled={importBusy}
                     className="shrink-0 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-medium">
                     {importBusy ? '불러오는 중' : '불러오기'}
                   </button>
                 </div>
-                <p className="text-xs text-neutral-500 mt-1.5">쿠팡 상품 링크를 붙여넣으면 제품명·대표이미지를 자동으로 채워요. (네이버 등 다른 몰은 아래에서 이미지 직접 업로드)</p>
+                <p className="text-xs text-neutral-500 mt-1.5">쿠팡·네이버 스마트스토어 상품 링크를 붙여넣으면 제품명·대표이미지를 자동으로 채워요. (네이버는 커머스 API 로 내 스토어 상품 조회)</p>
                 {importNote && <p className="text-xs text-amber-300/90 mt-1.5">{importNote}</p>}
               </div>
               )}
