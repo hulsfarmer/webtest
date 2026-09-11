@@ -73,7 +73,7 @@ export default function RealAdStudioPage() {
         ? { kind: 'hook', lines: (s.pains || []).filter(Boolean), question: s.question, scenes: s.scenes, narration: s.narration }
         : { kind: s.kind, lines: [s.caption || ''], priceText: s.price, narration: s.narration, hasMedia: !!s.mediaFile, mediaUrl: s.mediaFile ? undefined : s.mediaUrl });
       const fd = new FormData();
-      fd.append('meta', JSON.stringify({ slots: metaSlots, bgmId, voice, brandName }));
+      fd.append('meta', JSON.stringify({ slots: metaSlots, bgmId, voice, brandName, productName }));
       slots.forEach((s, i) => { if (s.mediaFile) fd.append(`media_${i}`, s.mediaFile); });
       const r = await fetch('/api/real-ad', { method: 'POST', body: fd });
       const d = await r.json();

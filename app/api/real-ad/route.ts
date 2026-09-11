@@ -9,6 +9,7 @@ import { generateAudio } from '@/lib/tts';
 import { resolveBgmPath } from '@/lib/bgm';
 import type { BgmId } from '@/lib/bgm-catalog';
 import { assembleRealAd, RealAdInput, RealAdSlot } from '@/lib/real-ad';
+import { createJob, updateJob } from '@/lib/jobStore';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -32,6 +33,7 @@ interface Meta {
   bgmVolume?: number;
   voice?: string;       // nova(민지)/shimmer(수아)/echo(남)
   brandName?: string;
+  productName?: string;
 }
 
 const EXT: Record<string, string> = {
@@ -97,6 +99,18 @@ export async function POST(req: NextRequest) {
     const ttsFn = (text: string, out: string) => generateAudio(text, out, 40, voice, 1.0);
 
     const { duration } = await assembleRealAd(input, ttsFn, workDir, outPath);
+
+    // 라이브러리(jobs)에 저장 — 로그인 사용자의 내 라이브러리에 노출
+    const userId = session?.user?.id;
+    if (userId) {
+      try {
+        const productName = meta.productName?.trim()
+          || meta.slots.find((s) => s.kind === 'cta')?.lines?.[0]
+          || meta.brandName || '실사 제품광고';
+        await createJob({ id, sessionId: userId, topic: `${productName} 실사광고`, duration, tone: 'energetic' });
+        updateJob(id, { status: 'done', progress: 100, steps: { script: 'done', audio: 'done', video: 'done' }, videoUrl: `/api/video/${id}` });
+      } catch (e) { console.error('[real-ad] 라이브러리 저장 실패:', e); }
+    }
 
     return NextResponse.json({ videoUrl: `/api/video/${id}`, id, duration });
   } catch (e) {
