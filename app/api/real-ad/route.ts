@@ -5,7 +5,7 @@ import { isAdminEmail } from '@/lib/admin';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
-import { generateAudio } from '@/lib/tts';
+import { generateRealAdNarration } from '@/lib/gemini-tts';
 import { resolveBgmPath } from '@/lib/bgm';
 import type { BgmId } from '@/lib/bgm-catalog';
 import { assembleRealAd, RealAdInput, RealAdSlot } from '@/lib/real-ad';
@@ -91,12 +91,13 @@ export async function POST(req: NextRequest) {
     }
 
     const bgmPath = meta.bgmId ? await resolveBgmPath(meta.bgmId) : null;
-    const voice = meta.voice || 'nova'; // 기본 민지(Chirp3-HD-Aoede)
 
     const input: RealAdInput = {
       slots, bgmPath, bgmVolume: meta.bgmVolume ?? 0.5, brandName: meta.brandName || '',
     };
-    const ttsFn = (text: string, out: string) => generateAudio(text, out, 40, voice, 1.0);
+    // 나레이션: 완성본과 동일한 Gemini Kore 톤 (훅/본문 스타일 분리)
+    const ttsFn = (text: string, out: string, kind?: string) =>
+      generateRealAdNarration(text, out, kind === 'hook');
 
     const { duration } = await assembleRealAd(input, ttsFn, workDir, outPath);
 

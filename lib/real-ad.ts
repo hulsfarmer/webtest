@@ -247,7 +247,7 @@ async function buildCardSeg(frame: string, media: string | undefined, d: number,
  */
 export async function assembleRealAd(
   input: RealAdInput,
-  ttsFn: (text: string, outPath: string) => Promise<void>,
+  ttsFn: (text: string, outPath: string, kind?: SlotKind) => Promise<void>,
   workDir: string,
   outPath: string,
 ): Promise<{ path: string; duration: number }> {
@@ -261,7 +261,7 @@ export async function assembleRealAd(
   for (const slot of input.slots) {
     // 나레이션 생성 → 길이 측정
     const vo = path.join(workDir, `vo_${idx}.mp3`);
-    await ttsFn(slot.narration, vo);
+    await ttsFn(slot.narration, vo, slot.kind);
     const vd = await dur(vo);
 
     if (slot.kind === 'hook' && slot.scenes && slot.scenes.length) {

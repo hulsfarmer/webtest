@@ -26,6 +26,43 @@ export const VS_VOICE_MAP: Record<string, { voice: string; style: string }> = {
   puppy:  { voice: 'Callirrhoe', style: '아주 어리고 귀여운 다섯 살 아이처럼 최대한 높고 밝게 애교 부리며 말해줘' },
 };
 
+// ── 실사 제품광고 전용 나레이션 ────────────────────────────────────────────────
+// 우리가 완성한 영상(규조토 발매트 등)에서 확정한 조합: gemini-3.1-flash-tts-preview + Kore.
+// 본문/훅 스타일 지시문도 그때 최종 채택본 그대로.
+const REALAD_MODEL = 'gemini-3.1-flash-tts-preview';
+const REALAD_VOICE = 'Kore';
+const REALAD_STYLE_BODY = '담백하면서도 밝고 생기 있는 광고 내레이터 톤으로, 쉼표에서 자연스럽게, 과하지 않게 또박또박 읽어줘';
+const REALAD_STYLE_HOOK = '담백하고 생기 있는 광고 내레이터 톤으로, 각 구절 사이를 또렷하게 한 박자씩 쉬면서, 마지막 문장은 끝을 올려 의문형으로 읽어줘';
+
+/** 실사 제품광고 나레이션(mp3) 생성 — 완성본과 동일한 Gemini Kore 톤. */
+export async function generateRealAdNarration(text: string, outMp3: string, isHook = false): Promise<void> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error('GEMINI_API_KEY 가 설정되지 않았습니다.');
+  const style = isHook ? REALAD_STYLE_HOOK : REALAD_STYLE_BODY;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${REALAD_MODEL}:generateContent?key=${key}`;
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: `${style}: ${text}` }] }],
+    generationConfig: {
+      responseModalities: ['AUDIO'],
+      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: REALAD_VOICE } } },
+    },
+  });
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+  const txt = await res.text();
+  if (!res.ok) throw new Error(`Gemini TTS 실패 (${res.status}): ${txt.slice(0, 300)}`);
+  const d = JSON.parse(txt);
+  const parts = d?.candidates?.[0]?.content?.parts || [];
+  const inline = parts.map((p: { inlineData?: { data?: string; mimeType?: string } }) => p.inlineData).find((x: unknown) => x && (x as { data?: string }).data);
+  if (!inline?.data) throw new Error(`Gemini TTS 응답에 오디오 없음: ${txt.slice(0, 200)}`);
+  const pcm = Buffer.from(inline.data, 'base64');
+  const rate = (/rate=(\d+)/.exec(inline.mimeType || '') || [])[1] || '24000';
+  const rawPath = outMp3 + '.pcm';
+  fs.writeFileSync(rawPath, pcm);
+  const ffmpeg = require('ffmpeg-static') as string;
+  await execAsync(`"${ffmpeg}" -y -loglevel error -f s16le -ar ${rate} -ac 1 -i "${rawPath}" -ar 44100 -ac 1 -b:a 128k "${outMp3}"`);
+  try { fs.unlinkSync(rawPath); } catch { /* noop */ }
+}
+
 /** 페르소나 id로 Gemini 음성 나레이션(mp3) 생성. */
 export async function generateGeminiAudio(text: string, personaId: string, outMp3: string): Promise<void> {
   const key = process.env.GEMINI_API_KEY;

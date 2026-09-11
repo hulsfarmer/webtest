@@ -18,9 +18,7 @@ interface Slot {
 }
 
 const VOICES = [
-  { v: 'nova', label: '민지 (여·자연)' },
-  { v: 'shimmer', label: '수아 (여·활기)' },
-  { v: 'echo', label: '준호 (남·자연)' },
+  { v: 'kore', label: '민지 톤 (완성본과 동일 · Gemini Kore)' },
 ];
 const inp = 'w-full px-3 py-2 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-100 text-sm';
 
@@ -31,7 +29,7 @@ export default function RealAdStudioPage() {
   const [productName, setProductName] = useState('');
   const [price, setPrice] = useState('');
   const [brandName, setBrandName] = useState('homeezion');
-  const [voice, setVoice] = useState('nova');
+  const [voice, setVoice] = useState('kore');
   const [bgmId, setBgmId] = useState('phonk');
   const [html, setHtml] = useState('');
 
